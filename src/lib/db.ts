@@ -2,7 +2,8 @@ import fs from "fs";
 import path from "path";
 import { seedBanners } from "./banners";
 import { DEFAULT_GEMINI_MODEL } from "./gemini-models";
-import { hasPersistentStore, hasRemoteStore, kvGetJson, kvSetJson } from "./kv";
+import { blobGetJson, blobSetJson, hasBlobStore } from "./blob-store";
+import { hasRemoteStore, kvGetJson, kvSetJson } from "./kv";
 import { seedPartners, seedPosts } from "./seed";
 import type { Banner, Partner, Post, Settings, Store } from "./types";
 
@@ -58,6 +59,13 @@ export class PersistError extends Error {
 }
 
 async function loadStore(): Promise<Store> {
+  if (hasBlobStore()) {
+    const remote = await blobGetJson<Store>();
+    if (remote) return normalize(remote);
+    const initial = defaultStore();
+    await blobSetJson(initial);
+    return initial;
+  }
   if (hasRemoteStore()) {
     const remote = await kvGetJson<Store>();
     if (remote) return normalize(remote);
@@ -70,13 +78,17 @@ async function loadStore(): Promise<Store> {
 
 async function saveStore(store: Store) {
   try {
+    if (hasBlobStore()) {
+      await blobSetJson(store);
+      return;
+    }
     if (hasRemoteStore()) {
       await kvSetJson(store);
       return;
     }
     if (process.env.VERCEL) {
       throw new PersistError(
-        "Vercel에서는 Redis(KV)를 연결해야 글이 저장됩니다. 프로젝트 → Storage에서 Upstash Redis를 만들고 이 프로젝트에 연결한 뒤 다시 배포하세요."
+        "Vercel Storage에서 Blob을 만든 뒤 mginfo에 연결하고 다시 배포하세요. Browse Stores 검색창에 Blob을 입력하면 나옵니다."
       );
     }
     writeFileStore(store);
@@ -89,7 +101,8 @@ async function saveStore(store: Store) {
 let queue: Promise<unknown> = Promise.resolve();
 
 export function persistenceReady(): boolean {
-  return hasPersistentStore();
+  if (hasBlobStore() || hasRemoteStore()) return true;
+  return !process.env.VERCEL;
 }
 
 export async function readStore(): Promise<Store> {

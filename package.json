@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
+    "@vercel/blob": "^2.8.0",
     "jose": "^6.0.12",
     "next": "^15.5.2",
     "react": "^19.1.1",
