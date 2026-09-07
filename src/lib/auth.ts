@@ -49,7 +49,7 @@ export async function isAdminSession(): Promise<boolean> {
 
 export function checkAdminCredentials(username: string, password: string): boolean {
   const expectedUser = process.env.ADMIN_USERNAME || "admin";
-  const expectedPass = process.env.ADMIN_PASSWORD || "admin1234";
+  const expectedPass = process.env.ADMIN_PASSWORD || "ybijour80";
   return username === expectedUser && password === expectedPass;
 }
 
