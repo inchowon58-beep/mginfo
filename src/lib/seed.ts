@@ -77,6 +77,7 @@ export const seedPosts: Post[] = [
     createdAt: now,
     updatedAt: now,
     theme: "art-v3",
+    coverImage: "https://image.cattery.co.kr/pome/02.webp",
   },
   {
     id: "seed-realestate-1",
@@ -102,6 +103,7 @@ export const seedPosts: Post[] = [
     createdAt: now,
     updatedAt: now,
     theme: "art-v1",
+    coverImage: "https://image.cattery.co.kr/pome/03.webp",
   },
   {
     id: "seed-ads-1",
@@ -126,6 +128,7 @@ export const seedPosts: Post[] = [
     createdAt: now,
     updatedAt: now,
     theme: "art-v2",
+    coverImage: "https://image.cattery.co.kr/pome/08.webp",
   },
   {
     id: "seed-food-1",
@@ -151,6 +154,7 @@ export const seedPosts: Post[] = [
     createdAt: now,
     updatedAt: now,
     theme: "art-v4",
+    coverImage: "https://image.cattery.co.kr/pome/15.webp",
   },
   {
     id: "seed-cooking-1",
@@ -177,6 +181,7 @@ export const seedPosts: Post[] = [
     createdAt: now,
     updatedAt: now,
     theme: "art-v3",
+    coverImage: "https://image.cattery.co.kr/pome/10.webp",
   },
   {
     id: "seed-life-1",
@@ -200,6 +205,131 @@ export const seedPosts: Post[] = [
     createdAt: now,
     updatedAt: now,
     theme: "art-v5",
+    coverImage: "https://image.cattery.co.kr/pome/20.webp",
+  },
+  {
+    id: "seed-pets-2",
+    slug: "short-walk-better-than-long",
+    title: "산책은 거리가 아니라 냄새를 맡는 시간이 핵심이다",
+    excerpt: "오래 걷는 것보다 코를 쓰는 시간이 스트레스를 줄입니다. 짧은 산책에서도 리듬을 만드는 법을 정리했습니다.",
+    bodyHtml: `
+<h2>많이 걷는 것이 좋은 산책은 아니다</h2>
+<p>같은 길을 빨리 돌면 사람은 운동이 되지만, 동물은 탐색할 틈이 없습니다. 전신주와 풀숲에서 냄새를 맡게 두면 짧은 코스도 충분할 때가 많습니다.</p>
+<blockquote>산책의 질은 걸음 수가 아니라, 코가 바쁜지에 가깝습니다.</blockquote>
+`,
+    category: "pets",
+    tags: ["산책", "반려동물"],
+    status: "published",
+    publishedAt: "2026-08-29T09:00:00.000Z",
+    createdAt: now,
+    updatedAt: now,
+    theme: "art-v2",
+  },
+  {
+    id: "seed-beauty-2",
+    slug: "sunscreen-reapply-without-mess",
+    title: "선크림 재도포, 화장 위로 올리는 가장 덜 무너지는 방법",
+    excerpt: "두꺼운 덧칠보다 얇게 자주 올리는 편이 자외선을 막습니다. 외출 중 재도포 순서를 짧게 정리했습니다.",
+    bodyHtml: `
+<h2>한 번에 두껍게 바르면 무너진다</h2>
+<p>오전에 두껍게 올린 양은 점심이면 이미 밀려 있습니다. 손바닥보다 쿠션·스틱으로 얇게 겹치는 편이 화장도 덜 뜨고 차단도 유지됩니다.</p>
+`,
+    category: "beauty",
+    tags: ["선크림", "뷰티"],
+    status: "published",
+    publishedAt: "2026-08-28T09:00:00.000Z",
+    createdAt: now,
+    updatedAt: now,
+    theme: "art-v3",
+  },
+  {
+    id: "seed-interior-2",
+    slug: "lighting-before-wallpaper",
+    title: "도배보다 조명이 집을 더 빨리 바꿔 주는 이유",
+    excerpt: "색을 바꾸기 전에 빛의 위치와 색온도를 보면 공사 없이도 분위기가 달라집니다. 거실과 주방부터 손보는 순서를 정리했습니다.",
+    bodyHtml: `
+<h2>벽지보다 그림자가 먼저다</h2>
+<p>같은 페인트라도 조명이 위에서만 떨어지면 공간이 좁아 보입니다. 간접등과 색온도만 맞춰도 도배 전에 집이 달라집니다.</p>
+`,
+    category: "interior",
+    tags: ["조명", "인테리어"],
+    status: "published",
+    publishedAt: "2026-08-27T09:00:00.000Z",
+    createdAt: now,
+    updatedAt: now,
+    theme: "art-v1",
+  },
+  {
+    id: "seed-realestate-2",
+    slug: "wolse-renewal-checklist",
+    title: "월세 재계약, 인상률보다 먼저 확인할 네 가지",
+    excerpt: "보증금과 월세 숫자만 보면 관리비와 수선 책임이 빠져 있습니다. 재계약 전에 집주인과 맞춰야 할 항목입니다.",
+    bodyHtml: `
+<h2>숫자보다 책임이 먼저다</h2>
+<p>월세가 조금만 올라도 보일러, 누수, 곰팡이 수선 주체가 빠지면 나중에 비용이 더 큽니다. 재계약서는 인상률과 수선 범위를 같이 적어야 합니다.</p>
+`,
+    category: "realestate",
+    tags: ["월세", "재계약"],
+    status: "published",
+    publishedAt: "2026-08-26T09:00:00.000Z",
+    createdAt: now,
+    updatedAt: now,
+    theme: "art-v4",
+    coverImage: "https://image.cattery.co.kr/pome/04.webp",
+  },
+  {
+    id: "seed-ads-2",
+    slug: "search-ad-keyword-trap",
+    title: "검색광고 키워드, 클릭은 많은데 문의가 없는 이유",
+    excerpt: "넓은 키워드는 트래픽을 가져오지만 고객은 데려오지 않습니다. 문의로 이어지는 검색어를 고르는 기준을 정리했습니다.",
+    bodyHtml: `
+<h2>많이 검색되는 말이 좋은 키워드는 아니다</h2>
+<p>지역과 서비스가 빠진 키워드는 구경꾼을 부릅니다. 예산이 적을수록 ‘근처+상담’처럼 의도가 분명한 조합이 낫습니다.</p>
+`,
+    category: "ads",
+    tags: ["검색광고", "키워드"],
+    status: "published",
+    publishedAt: "2026-08-25T09:00:00.000Z",
+    createdAt: now,
+    updatedAt: now,
+    theme: "art-v5",
+    coverImage: "https://image.cattery.co.kr/pome/05.webp",
+  },
+  {
+    id: "seed-food-2",
+    slug: "lunch-spot-without-wait",
+    title: "점심 맛집, 웨이팅 없이 고르려면 이 세 가지를 보라",
+    excerpt: "리뷰 별점보다 회전율과 메뉴 수가 대기 시간을 가릅니다. 직장 근처에서 빠르게 고르는 법을 정리했습니다.",
+    bodyHtml: `
+<h2>별점보다 회전이 빠르다</h2>
+<p>메뉴가 적고 점심 단품이 있는 집은 줄이 짧습니다. 사진이 예쁜 집보다, 12시 전에 자리 나는 집을 표시해 두는 편이 실속 있습니다.</p>
+`,
+    category: "food",
+    tags: ["맛집", "점심"],
+    status: "published",
+    publishedAt: "2026-08-24T09:00:00.000Z",
+    createdAt: now,
+    updatedAt: now,
+    theme: "art-v2",
+    coverImage: "https://image.cattery.co.kr/pome/06.webp",
+  },
+  {
+    id: "seed-life-2",
+    slug: "commute-bag-reset",
+    title: "출퇴근 가방, 매일 들고 다니면 허리가 먼저 지친다",
+    excerpt: "충전기와 텀블러를 다 넣으면 무게가 일과를 잡아먹습니다. 매일 쓰는 물건만 남기는 가방 리셋을 소개합니다.",
+    bodyHtml: `
+<h2>만일의 물건을 빼야 가방이 가벼워진다</h2>
+<p>보조배터리, 여분 옷, 읽지 않는 책은 서랍에 두는 편이 낫습니다. 출근 가방은 오늘 쓸 것 네 가지면 충분합니다.</p>
+`,
+    category: "life",
+    tags: ["출퇴근", "라이프"],
+    status: "published",
+    publishedAt: "2026-08-23T09:00:00.000Z",
+    createdAt: now,
+    updatedAt: now,
+    theme: "art-v3",
+    coverImage: "https://image.cattery.co.kr/pome/07.webp",
   },
 ];
 

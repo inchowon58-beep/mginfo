@@ -1,0 +1,425 @@
+.theme-qna {
+  --bg: #eef1f5;
+  --bg-soft: #ffffff;
+  --text: #1a2332;
+  --text-muted: #5c6778;
+  --border: #d5dbe3;
+  --accent: #1b365d;
+  --accent-hover: #122844;
+  --q: #ee9b00;
+  --a: #2b8a3e;
+  background: var(--bg);
+  color: var(--text);
+  font-family: Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", sans-serif;
+}
+
+.theme-qna a {
+  color: var(--accent);
+}
+
+.theme-qna a:hover {
+  color: var(--accent-hover);
+}
+
+.theme-qna .site-header {
+  background: #1b365d;
+  border-bottom: 0;
+}
+
+.theme-qna .site-header-inner {
+  max-width: 1080px;
+}
+
+.theme-qna .qna-logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #fff;
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  text-decoration: none;
+}
+
+.theme-qna .qna-logo:hover {
+  color: #fff;
+  text-decoration: none;
+}
+
+.theme-qna .qna-logo-q {
+  width: 22px;
+  height: 22px;
+  background: var(--q);
+  color: #1a1300;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.theme-qna .footer-brand .qna-logo-word {
+  color: #fff;
+  font-weight: 800;
+}
+
+.theme-qna .site-nav a {
+  color: #c5d0df;
+  background: transparent;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+  border-radius: 6px;
+  padding: 7px 12px;
+}
+
+.theme-qna .site-nav a.active,
+.theme-qna .site-nav a:hover {
+  color: #fff;
+  background: #24487a;
+  text-decoration: none;
+}
+
+.theme-qna .qna-hero,
+.theme-qna .qna-mast {
+  background: #fff;
+  border-bottom: 1px solid var(--border);
+  text-align: center;
+  padding: 36px 20px 28px;
+}
+
+.theme-qna .qna-mast {
+  text-align: left;
+  max-width: 1080px;
+  margin: 0 auto;
+  background: transparent;
+  border: 0;
+  padding: 28px 20px 8px;
+}
+
+.theme-qna .qna-kicker {
+  margin: 0 0 8px;
+  color: var(--q);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.theme-qna .qna-hero h1,
+.theme-qna .qna-mast h1 {
+  margin: 0;
+  color: var(--accent);
+  font-size: clamp(24px, 4vw, 34px);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+.theme-qna .qna-dek {
+  margin: 10px auto 0;
+  max-width: 520px;
+  color: var(--text-muted);
+  font-size: 15px;
+}
+
+.theme-qna .qna-mast .qna-dek {
+  margin-left: 0;
+}
+
+.theme-qna .qna-hero .mag-search {
+  max-width: 560px;
+  margin: 20px auto 0;
+  border-color: #cfd7e2;
+  box-shadow: 0 8px 24px #1b365d14;
+}
+
+.theme-qna .qna-hero .mag-search button,
+.theme-qna .mag-search button {
+  background: var(--accent);
+}
+
+.theme-qna .qna-stats {
+  margin: 16px 0 0;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.theme-qna .qna-stats b {
+  color: var(--accent);
+}
+
+.theme-qna .qna-ad {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 16px 20px 0;
+}
+
+.theme-qna .qna-board {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 280px;
+  gap: 20px;
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 20px 20px 72px;
+}
+
+.theme-qna .qna-col,
+.theme-qna .qna-panel section {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.theme-qna .qna-col-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin: 0;
+  padding: 14px 16px;
+  background: #f7f9fc;
+  border-bottom: 1px solid var(--border);
+}
+
+.theme-qna .qna-col-head h2,
+.theme-qna .qna-panel h2 {
+  margin: 0;
+  color: var(--accent);
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.theme-qna .qna-panel h2 {
+  padding: 14px 16px;
+  background: #f7f9fc;
+  border-bottom: 1px solid var(--border);
+}
+
+.theme-qna .qna-col-head a {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.theme-qna .qna-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.theme-qna .qna-list li + li {
+  border-top: 1px solid var(--border);
+}
+
+.theme-qna .qna-item {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr);
+  gap: 12px;
+  padding: 14px 16px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.theme-qna .qna-item:hover {
+  background: #f7f9fc;
+  text-decoration: none;
+}
+
+.theme-qna .qna-badge {
+  width: 28px;
+  height: 28px;
+  margin-top: 2px;
+  background: var(--q);
+  color: #1a1300;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.theme-qna .qna-item-body {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.theme-qna .qna-item strong {
+  color: var(--text);
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.4;
+}
+
+.theme-qna .qna-item:hover strong {
+  color: var(--accent);
+}
+
+.theme-qna .qna-item em {
+  color: var(--text-muted);
+  font-style: normal;
+  font-size: 13px;
+  line-height: 1.55;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.theme-qna .qna-item-meta {
+  color: #8893a3;
+  font-size: 12px;
+}
+
+.theme-qna .qna-item-go {
+  margin-left: 8px;
+  color: var(--a);
+  font-weight: 800;
+}
+
+.theme-qna .qna-panel {
+  display: grid;
+  gap: 16px;
+  align-content: start;
+}
+
+.theme-qna .qna-topics,
+.theme-qna .qna-helps {
+  list-style: none;
+  margin: 0;
+  padding: 8px 0;
+}
+
+.theme-qna .qna-topics a,
+.theme-qna .qna-helps a {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 16px;
+  color: var(--text);
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.theme-qna .qna-topics a:hover,
+.theme-qna .qna-helps a:hover {
+  background: #f7f9fc;
+  color: var(--accent);
+}
+
+.theme-qna .qna-topics span {
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+}
+
+.theme-qna .qna-helps a {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+.theme-qna .qna-helps small {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.theme-qna .container .qna-list {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin: 8px 0 48px;
+}
+
+.theme-qna .category-bar {
+  padding: 8px 0 16px;
+  border: 0;
+}
+
+.theme-qna .category-pill {
+  background: #fff;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  border-radius: 6px;
+}
+
+.theme-qna .category-pill.active,
+.theme-qna .category-pill:hover {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  text-decoration: none;
+}
+
+.theme-qna .pagination .page-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.theme-qna .partner-card {
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: none;
+}
+
+.theme-qna .article h1 {
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+.theme-qna .article-cat {
+  color: var(--q);
+  font-weight: 800;
+}
+
+.theme-qna .article-body {
+  color: #243044;
+}
+
+.theme-qna .tag {
+  color: var(--accent);
+  background: #e7eef8;
+}
+
+.theme-qna .site-footer {
+  background: #132744;
+  border-top: 0;
+  color: #9aabc0;
+}
+
+.theme-qna .footer-tag,
+.theme-qna .footer-copy,
+.theme-qna .footer-biz {
+  color: #8a9bb0;
+}
+
+.theme-qna .footer-links a {
+  color: #e7eef8;
+}
+
+.theme-qna .bottom-cat-nav {
+  background: rgba(238, 241, 245, 0.96);
+}
+
+.theme-qna .bottom-cat-nav .category-pill.active {
+  background: var(--accent);
+  color: #fff;
+}
+
+.theme-qna .vendor-cta-card {
+  background: #eef6f0;
+  border-color: #b7d8c0;
+}
+
+@media (max-width: 860px) {
+  .theme-qna .qna-board {
+    grid-template-columns: 1fr;
+  }
+}

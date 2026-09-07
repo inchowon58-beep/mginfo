@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { SITE } from "@/lib/categories";
-import { getPublishedPosts } from "@/lib/db";
+import { displaySiteName, SITE } from "@/lib/categories";
+import { getPublishedPosts, getSettings } from "@/lib/db";
 import { stripHtml } from "@/lib/format";
 import { SITE_ORIGIN } from "@/lib/seo";
 
@@ -16,7 +16,9 @@ function xmlEscape(value: string): string {
 }
 
 export async function GET() {
-  const posts = (await getPublishedPosts()).slice(0, 50);
+  const [postsRaw, settings] = await Promise.all([getPublishedPosts(), getSettings()]);
+  const posts = postsRaw.slice(0, 50);
+  const siteName = displaySiteName(settings.siteName);
   const items = posts
     .map((post) => {
       const url = `${SITE_ORIGIN}/posts/${post.slug}`;
@@ -40,7 +42,7 @@ export async function GET() {
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
-    <title>${xmlEscape(SITE.name)}</title>
+    <title>${xmlEscape(siteName)}</title>
     <link>${SITE_ORIGIN}/</link>
     <description>${xmlEscape(SITE.description)}</description>
     <language>ko</language>

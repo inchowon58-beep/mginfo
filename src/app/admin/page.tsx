@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { PersistNotice } from "@/components/admin/PersistNotice";
-import { CATEGORIES } from "@/lib/categories";
 import { readStore } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
@@ -44,11 +43,11 @@ export default async function AdminHome() {
             메인 배너
           </Link>
           <Link className="btn btn-ghost" href="/admin/settings">
-            API 키 설정
+            설정
           </Link>
         </div>
         <p style={{ color: "#64748b", fontSize: 13, marginTop: 20 }}>
-          카테고리: {CATEGORIES.map((c) => c.name).join(" · ")}
+          카테고리: {(store.categories || []).map((c) => c.name).join(" · ") || "없음"}
         </p>
       </div>
     </>

@@ -223,26 +223,26 @@ export function BannerManager({ banners }: { banners: Banner[] }) {
             <tbody>
               {banners.map((banner) => (
                 <tr key={banner.id}>
-                  <td>
+                  <td data-label="내용">
                     <strong>{banner.title || "이미지 배너"}</strong>
                     <div style={{ color: "#94a3b8", fontSize: 12 }}>
                       {banner.kind === "text" ? BANNER_THEMES.find((t) => t.slug === banner.theme)?.name : "이미지"}{" "}
                       · {banner.href}
                     </div>
                   </td>
-                  <td>{banner.kind === "text" ? "텍스트" : "이미지"}</td>
-                  <td>
+                  <td data-label="유형">{banner.kind === "text" ? "텍스트" : "이미지"}</td>
+                  <td data-label="노출">
                     <span className={banner.enabled ? "badge badge-on" : "badge badge-off"}>
                       {banner.enabled ? "켜짐" : "꺼짐"}
                     </span>
                   </td>
-                  <td>
+                  <td data-label="관리" className="admin-table-actions">
                     <button className="btn btn-ghost" type="button" onClick={() => fill(banner)}>
                       수정
-                    </button>{" "}
+                    </button>
                     <button className="btn btn-ghost" type="button" onClick={() => toggle(banner)}>
                       {banner.enabled ? "숨기기" : "켜기"}
-                    </button>{" "}
+                    </button>
                     <button className="btn btn-danger" type="button" onClick={() => remove(banner.id)}>
                       삭제
                     </button>

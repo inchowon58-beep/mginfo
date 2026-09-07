@@ -1,11 +1,38 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
+import { CategoryManager } from "@/components/admin/CategoryManager";
 import { DEFAULT_GEMINI_MODEL, GEMINI_MODELS } from "@/lib/gemini-models";
+import { SITE_THEMES } from "@/lib/site-theme";
+import type { SiteThemeId } from "@/lib/types";
+
+type SettingsTab = "basic" | "category" | "site" | "gemini";
+
+const TABS: { id: SettingsTab; label: string }[] = [
+  { id: "basic", label: "기본설정" },
+  { id: "category", label: "카테고리설정" },
+  { id: "site", label: "사이트설정" },
+  { id: "gemini", label: "제미나이설정" },
+];
 
 export default function SettingsPage() {
+  const [tab, setTab] = useState<SettingsTab>("basic");
   const [geminiApiKey, setGeminiApiKey] = useState("");
   const [geminiModel, setGeminiModel] = useState(DEFAULT_GEMINI_MODEL);
+  const [siteTheme, setSiteTheme] = useState<SiteThemeId>("press");
+  const [carrotKeywords, setCarrotKeywords] = useState("");
+  const [likeCountMin, setLikeCountMin] = useState("20");
+  const [likeCountMax, setLikeCountMax] = useState("200");
+  const [commentCountMin, setCommentCountMin] = useState("5");
+  const [commentCountMax, setCommentCountMax] = useState("48");
+  const [siteName, setSiteName] = useState("");
+  const [siteTagline, setSiteTagline] = useState("");
+  const [company, setCompany] = useState("");
+  const [ceo, setCeo] = useState("");
+  const [bizNo, setBizNo] = useState("");
+  const [address, setAddress] = useState("");
+  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
   const [hasKey, setHasKey] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -15,15 +42,35 @@ export default function SettingsPage() {
     fetch("/api/settings")
       .then((r) => r.json())
       .then((data) => {
-        setGeminiModel(data.settings?.geminiModel || DEFAULT_GEMINI_MODEL);
-        setHasKey(Boolean(data.settings?.hasKey));
-        if (data.settings?.geminiApiKey) setGeminiApiKey(data.settings.geminiApiKey);
+        const s = data.settings || {};
+        setGeminiModel(s.geminiModel || DEFAULT_GEMINI_MODEL);
+        setHasKey(Boolean(s.hasKey));
+        if (s.geminiApiKey) setGeminiApiKey(s.geminiApiKey);
+        if (s.siteTheme) setSiteTheme(s.siteTheme);
+        if (typeof s.carrotKeywords === "string") setCarrotKeywords(s.carrotKeywords);
+        if (s.likeCountMin != null) setLikeCountMin(String(s.likeCountMin));
+        if (s.likeCountMax != null) setLikeCountMax(String(s.likeCountMax));
+        if (s.commentCountMin != null) setCommentCountMin(String(s.commentCountMin));
+        if (s.commentCountMax != null) setCommentCountMax(String(s.commentCountMax));
+        setSiteName(s.siteName || "");
+        setSiteTagline(s.siteTagline || "");
+        setCompany(s.company || "");
+        setCeo(s.ceo || "");
+        setBizNo(s.bizNo || "");
+        setAddress(s.address || "");
+        setPhone(s.phone || "");
+        setEmail(s.email || "");
       })
       .catch(() => setError("설정을 불러오지 못했습니다."));
   }, []);
 
-  async function onSubmit(e: FormEvent) {
-    e.preventDefault();
+  function switchTab(next: SettingsTab) {
+    setTab(next);
+    setError("");
+    setMessage("");
+  }
+
+  async function save(payload: Record<string, string | number>) {
     setBusy(true);
     setError("");
     setMessage("");
@@ -31,12 +78,11 @@ export default function SettingsPage() {
       const res = await fetch("/api/settings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ geminiApiKey, geminiModel }),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "저장 실패");
       setMessage("설정을 저장했습니다.");
-      setHasKey(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "저장 실패");
     } finally {
@@ -44,39 +90,228 @@ export default function SettingsPage() {
     }
   }
 
+  async function saveBasics(e: FormEvent) {
+    e.preventDefault();
+    await save({ siteName, siteTagline, company, ceo, bizNo, address, phone, email });
+  }
+
+  async function saveSite(e: FormEvent) {
+    e.preventDefault();
+    await save({
+      siteTheme,
+      carrotKeywords,
+      likeCountMin,
+      likeCountMax,
+      commentCountMin,
+      commentCountMax,
+    });
+  }
+
+  async function saveGemini(e: FormEvent) {
+    e.preventDefault();
+    await save({ geminiApiKey, geminiModel });
+    if (geminiApiKey && !geminiApiKey.includes("•")) setHasKey(true);
+  }
+
   const known = GEMINI_MODELS.some((m) => m.id === geminiModel);
 
   return (
-    <form className="admin-card admin-form" onSubmit={onSubmit} style={{ maxWidth: 640 }}>
-      <h2>제미나이 API 설정</h2>
-      <p style={{ color: "#94a3b8", fontSize: 14 }}>
-        Google AI Studio에서 발급한 API 키를 저장하면 글 작성 화면에서 초안을 만들 수 있습니다.
-        현재 Gemini 3.5 Flash부터 사용할 수 있습니다.
-        {hasKey ? " 키가 이미 저장되어 있습니다. 새 키를 넣으면 교체됩니다." : ""}
-      </p>
-      <label>Gemini API Key</label>
-      <input
-        value={geminiApiKey}
-        onChange={(e) => setGeminiApiKey(e.target.value)}
-        placeholder="AIza..."
-        autoComplete="off"
-      />
-      <label>모델</label>
-      <select value={geminiModel} onChange={(e) => setGeminiModel(e.target.value)}>
-        {GEMINI_MODELS.map((m) => (
-          <option key={m.id} value={m.id}>
-            {m.label}
-          </option>
+    <div className="settings-stack">
+      <div className="admin-tabs" role="tablist" aria-label="설정 구분">
+        {TABS.map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            role="tab"
+            aria-selected={tab === item.id}
+            className={`admin-tab ${tab === item.id ? "active" : ""}`}
+            onClick={() => switchTab(item.id)}
+          >
+            {item.label}
+          </button>
         ))}
-        {!known && geminiModel ? <option value={geminiModel}>{geminiModel} (이전 설정)</option> : null}
-      </select>
-      {error && <p className="notice">{error}</p>}
-      {message && <p className="notice ok">{message}</p>}
-      <div className="admin-actions">
-        <button className="btn btn-primary" disabled={busy}>
-          {busy ? "저장 중…" : "저장"}
-        </button>
       </div>
-    </form>
+
+      {tab === "basic" ? (
+        <form className="admin-card admin-form" onSubmit={saveBasics}>
+          <h2>기본 설정</h2>
+          <p style={{ color: "#94a3b8", fontSize: 14 }}>
+            블로그 이름은 로고, 브라우저 제목, 글 상단, 푸터 저작권에 쓰입니다. 푸터 항목은 비워 두면 숨깁니다.
+          </p>
+          <label>블로그 이름</label>
+          <input
+            value={siteName}
+            onChange={(e) => setSiteName(e.target.value)}
+            placeholder="예: infocs 매거진"
+          />
+          <label>한줄 소개 (선택)</label>
+          <input
+            value={siteTagline}
+            onChange={(e) => setSiteTagline(e.target.value)}
+            placeholder="예: 모든 생활 정보를 한눈에"
+          />
+          <h3 className="admin-subhead">하단 푸터</h3>
+          <div className="admin-form-grid">
+            <div>
+              <label>상호</label>
+              <input value={company} onChange={(e) => setCompany(e.target.value)} placeholder="비워 두면 표시하지 않음" />
+            </div>
+            <div>
+              <label>대표</label>
+              <input value={ceo} onChange={(e) => setCeo(e.target.value)} placeholder="비워 두면 표시하지 않음" />
+            </div>
+            <div>
+              <label>사업자등록번호</label>
+              <input value={bizNo} onChange={(e) => setBizNo(e.target.value)} placeholder="비워 두면 표시하지 않음" />
+            </div>
+            <div>
+              <label>연락처</label>
+              <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="비워 두면 표시하지 않음" />
+            </div>
+          </div>
+          <label>주소</label>
+          <input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="비워 두면 표시하지 않음" />
+          <label>이메일</label>
+          <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="비워 두면 표시하지 않음" />
+          {error ? <p className="notice">{error}</p> : null}
+          {message ? <p className="notice ok">{message}</p> : null}
+          <div className="admin-actions">
+            <button className="btn btn-primary" disabled={busy}>
+              {busy ? "저장 중…" : "기본 설정 저장"}
+            </button>
+          </div>
+        </form>
+      ) : null}
+
+      {tab === "category" ? <CategoryManager /> : null}
+
+      {tab === "site" ? (
+        <form className="admin-card admin-form" onSubmit={saveSite}>
+          <h2>사이트 설정</h2>
+          <p style={{ color: "#94a3b8", fontSize: 14 }}>
+            고른 디자인이 로고, 색, 홈 구성까지 한꺼번에 바뀝니다. 지금은 1~8번입니다.
+          </p>
+          <div className="theme-picker">
+            {SITE_THEMES.map((theme) => (
+              <button
+                key={theme.id}
+                type="button"
+                className={`theme-pick ${siteTheme === theme.id ? "active" : ""}`}
+                onClick={() => setSiteTheme(theme.id)}
+              >
+                <span className="theme-swatch" style={{ background: theme.paper, color: theme.accent }}>
+                  {theme.number}
+                </span>
+                <b>
+                  {theme.number}번 · {theme.name}
+                  <small>{theme.nameEn}</small>
+                </b>
+                <p>{theme.description}</p>
+              </button>
+            ))}
+          </div>
+          {siteTheme === "carrot" ? (
+            <>
+              <label>인기 검색어</label>
+              <textarea
+                value={carrotKeywords}
+                onChange={(e) => setCarrotKeywords(e.target.value)}
+                placeholder={"반려동물, 뷰티, 인테리어\n맛집, 부동산"}
+                style={{ minHeight: 90 }}
+              />
+              <p style={{ color: "#94a3b8", fontSize: 13, marginTop: -4 }}>
+                쉼표 또는 줄바꿈으로 구분합니다. 홈 검색창 아래에 그대로 나갑니다.
+              </p>
+            </>
+          ) : null}
+          {siteTheme === "journal" || siteTheme === "talk" ? (
+            <div className="admin-engage-fields">
+              <h3 className="admin-subhead">좋아요 · 댓글 표시</h3>
+              <p className="field-hint" style={{ marginTop: 0 }}>
+                글마다 이 구간 안에서 다른 숫자가 나갑니다. 같은 글은 항상 같은 숫자입니다.
+              </p>
+              <label>좋아요 개수</label>
+              <div className="admin-range">
+                <input
+                  type="number"
+                  min={0}
+                  inputMode="numeric"
+                  value={likeCountMin}
+                  onChange={(e) => setLikeCountMin(e.target.value)}
+                />
+                <span>개 ~</span>
+                <input
+                  type="number"
+                  min={0}
+                  inputMode="numeric"
+                  value={likeCountMax}
+                  onChange={(e) => setLikeCountMax(e.target.value)}
+                />
+                <span>개</span>
+              </div>
+              <label>댓글 개수</label>
+              <div className="admin-range">
+                <input
+                  type="number"
+                  min={0}
+                  inputMode="numeric"
+                  value={commentCountMin}
+                  onChange={(e) => setCommentCountMin(e.target.value)}
+                />
+                <span>개 ~</span>
+                <input
+                  type="number"
+                  min={0}
+                  inputMode="numeric"
+                  value={commentCountMax}
+                  onChange={(e) => setCommentCountMax(e.target.value)}
+                />
+                <span>개</span>
+              </div>
+            </div>
+          ) : null}
+          {error ? <p className="notice">{error}</p> : null}
+          {message ? <p className="notice ok">{message}</p> : null}
+          <div className="admin-actions">
+            <button className="btn btn-primary" disabled={busy}>
+              {busy ? "적용 중…" : "사이트 설정 저장"}
+            </button>
+          </div>
+        </form>
+      ) : null}
+
+      {tab === "gemini" ? (
+        <form className="admin-card admin-form" onSubmit={saveGemini} style={{ maxWidth: 640 }}>
+          <h2>제미나이 설정</h2>
+          <p style={{ color: "#94a3b8", fontSize: 14 }}>
+            Google AI Studio에서 발급한 API 키를 저장하면 글 작성 화면에서 초안을 만들 수 있습니다.
+            {hasKey ? " 키가 이미 저장되어 있습니다. 새 키를 넣으면 교체됩니다." : ""}
+          </p>
+          <label>Gemini API Key</label>
+          <input
+            value={geminiApiKey}
+            onChange={(e) => setGeminiApiKey(e.target.value)}
+            placeholder="AIza..."
+            autoComplete="off"
+          />
+          <label>모델</label>
+          <select value={geminiModel} onChange={(e) => setGeminiModel(e.target.value)}>
+            {GEMINI_MODELS.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.label}
+              </option>
+            ))}
+            {!known && geminiModel ? <option value={geminiModel}>{geminiModel} (이전 설정)</option> : null}
+          </select>
+          {error ? <p className="notice">{error}</p> : null}
+          {message ? <p className="notice ok">{message}</p> : null}
+          <div className="admin-actions">
+            <button className="btn btn-primary" disabled={busy}>
+              {busy ? "저장 중…" : "제미나이 설정 저장"}
+            </button>
+          </div>
+        </form>
+      ) : null}
+    </div>
   );
 }

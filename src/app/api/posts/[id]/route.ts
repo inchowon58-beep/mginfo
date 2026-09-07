@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
 import { isAdminSession } from "@/lib/auth";
-import { getPostById, updateStore } from "@/lib/db";
-import { CATEGORIES } from "@/lib/categories";
+import { getPostById, getCategories, updateStore } from "@/lib/db";
+import { ensureCategorySlug } from "@/lib/categories";
 import { notifyPostIndexed } from "@/lib/indexnow";
 import { persistFail } from "@/lib/persist-api";
 import { cleanHtml } from "@/lib/sanitize";
 import { slugify } from "@/lib/slug";
 import { parseVendorFields } from "@/lib/vendor";
-import type { CategorySlug, PostStatus } from "@/lib/types";
+import type { PostStatus } from "@/lib/types";
 
 export async function PUT(
   request: Request,
@@ -22,9 +22,8 @@ export async function PUT(
   const body = await request.json().catch(() => ({}));
   const now = new Date().toISOString();
   const status: PostStatus = body.status === "published" ? "published" : body.status === "draft" ? "draft" : current.status;
-  const category = CATEGORIES.some((c) => c.slug === body.category)
-    ? (body.category as CategorySlug)
-    : current.category;
+  const cats = await getCategories();
+  const category = ensureCategorySlug(body.category, cats, current.category);
 
   let slug = body.slug ? slugify(String(body.slug)) : current.slug;
   try {

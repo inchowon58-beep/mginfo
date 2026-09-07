@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { CATEGORIES } from "@/lib/categories";
+import { ensureCategorySlug } from "@/lib/categories";
 import { isAdminSession } from "@/lib/auth";
 import { getPublishedPosts, readStore, updateStore } from "@/lib/db";
 import { notifyPostIndexed } from "@/lib/indexnow";
@@ -7,7 +7,7 @@ import { persistFail } from "@/lib/persist-api";
 import { cleanHtml } from "@/lib/sanitize";
 import { slugify, uid } from "@/lib/slug";
 import { parseVendorFields } from "@/lib/vendor";
-import type { CategorySlug, PostStatus } from "@/lib/types";
+import type { PostStatus } from "@/lib/types";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -26,12 +26,10 @@ export async function POST(request: Request) {
   const title = String(body.title || "").trim();
   if (!title) return NextResponse.json({ error: "제목을 입력하세요." }, { status: 400 });
 
-  const category = CATEGORIES.some((c) => c.slug === body.category)
-    ? (body.category as CategorySlug)
-    : "life";
   const status: PostStatus = body.status === "published" ? "published" : "draft";
   let slug = slugify(String(body.slug || title));
   const store = await readStore();
+  const category = ensureCategorySlug(body.category, store.categories || []);
   if (store.posts.some((p) => p.slug === slug)) slug = `${slug}-${Date.now().toString(36)}`;
 
   const now = new Date().toISOString();

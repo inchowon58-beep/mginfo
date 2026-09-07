@@ -1,65 +1,79 @@
 import Link from "next/link";
 import { BrandMark, BrandText } from "@/components/Brand";
 import { CategoryIcon } from "@/components/CategoryIcon";
-import { CATEGORIES, SITE } from "@/lib/categories";
+import { displaySiteName, footerBizLines } from "@/lib/categories";
+import { getThemeChrome } from "@/lib/theme-chrome";
+import type { Category, Settings, SiteThemeId } from "@/lib/types";
 
 export function Header({
   active,
+  themeId = "folio",
+  siteName,
 }: {
   active?: "home" | "posts" | "partners";
+  themeId?: SiteThemeId;
+  siteName?: string;
 }) {
+  const chrome = getThemeChrome(themeId);
   return (
     <header className="site-header">
       <div className="site-header-inner">
-        <BrandMark />
+        <BrandMark themeId={themeId} name={siteName} />
         <nav className="site-nav">
           <Link className={active === "home" ? "active" : ""} href="/">
-            Home
+            {chrome.home}
           </Link>
           <Link className={active === "posts" ? "active" : ""} href="/posts">
-            Stories
+            {chrome.posts}
           </Link>
           <Link className={active === "partners" ? "active" : ""} href="/partners">
-            Partners
+            {chrome.partners}
           </Link>
         </nav>
-        <Link className="header-search-link" href="/posts">
-          Search
-        </Link>
       </div>
     </header>
   );
 }
 
-export function Footer() {
+export function Footer({
+  themeId = "folio",
+  settings,
+}: {
+  themeId?: SiteThemeId;
+  settings?: Settings;
+}) {
+  const chrome = getThemeChrome(themeId);
+  const siteName = displaySiteName(settings?.siteName);
+  const bizLines = settings ? footerBizLines(settings) : [];
   return (
     <footer className="site-footer">
       <div className="footer-inner">
         <div className="footer-brand">
-          <BrandText />
+          <BrandText themeId={themeId} name={siteName} />
         </div>
-        <p className="footer-tag">{SITE.tagline}</p>
+        <p className="footer-tag">{chrome.tagline}</p>
         <div className="footer-links">
-          <Link href="/">Home</Link>
-          <Link href="/posts">Stories</Link>
-          <Link href="/partners">Partners</Link>
-          <Link href="/admin">Admin</Link>
+          <Link href="/">{chrome.home}</Link>
+          <Link href="/posts">{chrome.posts}</Link>
+          <Link href="/partners">{chrome.partners}</Link>
+          <Link href="/admin">{chrome.admin}</Link>
         </div>
-        <div className="footer-biz">
-          <p>
-            상호: {SITE.company} | 대표: {SITE.ceo} | 사업자등록번호: {SITE.bizNo}
-          </p>
-          <p>
-            주소: {SITE.address} | Email: {SITE.email}
-          </p>
-        </div>
-        <p className="footer-copy">© {new Date().getFullYear()} infocs magazine</p>
+        {bizLines.length ? (
+          <div className="footer-biz">
+            {bizLines.map((line) => (
+              <p key={line}>{line}</p>
+            ))}
+          </div>
+        ) : null}
+        <p className="footer-copy">
+          © {new Date().getFullYear()} {siteName}
+        </p>
       </div>
     </footer>
   );
 }
 
-export function BottomNav({ current }: { current?: string }) {
+export function BottomNav({ current, categories }: { current?: string; categories: Category[] }) {
   return (
     <nav className="bottom-cat-nav" aria-label="카테고리">
       <div className="bottom-cat-nav-inner">
@@ -67,7 +81,7 @@ export function BottomNav({ current }: { current?: string }) {
           <CategoryIcon slug="all" />
           전체
         </Link>
-        {CATEGORIES.map((c) => (
+        {categories.map((c) => (
           <Link
             key={c.slug}
             className={`category-pill ${current === c.slug ? "active" : ""}`}

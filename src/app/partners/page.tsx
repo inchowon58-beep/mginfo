@@ -1,6 +1,7 @@
-import { BottomNav, Footer, Header } from "@/components/Header";
-import { getPartners } from "@/lib/db";
-import { SITE } from "@/lib/categories";
+import { SiteFrame, getPublicTheme } from "@/components/SiteFrame";
+import { PageMast } from "@/components/PageMast";
+import { displaySiteName } from "@/lib/categories";
+import { getPartners, getSettings } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
@@ -9,15 +10,50 @@ export const metadata = {
 };
 
 export default async function PartnersPage() {
+  const theme = await getPublicTheme();
   const partners = await getPartners();
+  const siteName = displaySiteName((await getSettings()).siteName);
+  const kicker =
+    theme.id === "carrot"
+      ? "Nearby"
+      : theme.id === "portal"
+      ? "Partners"
+      : theme.id === "talk"
+        ? "Suggested"
+        : theme.id === "qna"
+          ? "Directory"
+          : theme.id === "journal"
+            ? "About"
+            : theme.id === "night"
+              ? "Market"
+              : theme.id === "press"
+                ? "함께하는 업체"
+                : "Partners";
+  const title =
+    theme.id === "carrot"
+      ? "동네파트너"
+      : theme.id === "portal"
+      ? "파트너"
+      : theme.id === "talk"
+        ? "추천계정"
+        : theme.id === "qna"
+          ? "파트너"
+          : theme.id === "journal"
+            ? "소개"
+            : theme.id === "night"
+              ? "파트너"
+              : theme.id === "press"
+                ? "제휴 업체"
+                : "함께하는 브랜드";
+
   return (
-    <div className="magazine-root editorial">
-      <Header active="partners" />
-      <section className="edit-hero is-page">
-        <p className="edit-kicker">Partners</p>
-        <h1>함께하는 브랜드</h1>
-        <p className="edit-dek">{SITE.name}이 신뢰하고 소개하는 현장의 파트너입니다.</p>
-      </section>
+    <SiteFrame active="partners">
+      <PageMast
+        themeId={theme.id}
+        kicker={kicker}
+        title={title}
+        dek={`${siteName}이 신뢰하고 소개하는 현장의 파트너입니다.`}
+      />
       <main className="container">
         <div className="partner-grid">
           {partners.map((p) => (
@@ -45,8 +81,6 @@ export default async function PartnersPage() {
           ))}
         </div>
       </main>
-      <Footer />
-      <BottomNav />
-    </div>
+    </SiteFrame>
   );
 }

@@ -1,15 +1,18 @@
+"use client";
+
 import Link from "next/link";
-import { CATEGORIES } from "@/lib/categories";
+import { useCategories } from "@/components/CategoriesContext";
 import { CategoryIcon } from "@/components/CategoryIcon";
 
 export function CategoryBar({ current }: { current?: string }) {
+  const categories = useCategories();
   return (
     <div className="category-bar">
       <Link className={`category-pill ${!current ? "active" : ""}`} href="/posts">
         <CategoryIcon slug="all" />
         전체
       </Link>
-      {CATEGORIES.map((c) => (
+      {categories.map((c) => (
         <Link
           key={c.slug}
           className={`category-pill ${current === c.slug ? "active" : ""}`}

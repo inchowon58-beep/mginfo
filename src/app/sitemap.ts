@@ -1,19 +1,18 @@
 import type { MetadataRoute } from "next";
-import { CATEGORIES } from "@/lib/categories";
-import { getPublishedPosts } from "@/lib/db";
+import { getCategories, getPublishedPosts } from "@/lib/db";
 import { SITE_ORIGIN } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const posts = await getPublishedPosts();
+  const [posts, categories] = await Promise.all([getPublishedPosts(), getCategories()]);
   const now = new Date();
 
   const staticPages: MetadataRoute.Sitemap = [
     { url: `${SITE_ORIGIN}/`, lastModified: now, changeFrequency: "daily", priority: 1 },
     { url: `${SITE_ORIGIN}/posts`, lastModified: now, changeFrequency: "daily", priority: 0.8 },
     { url: `${SITE_ORIGIN}/partners`, lastModified: now, changeFrequency: "weekly", priority: 0.5 },
-    ...CATEGORIES.map((c) => ({
+    ...categories.map((c) => ({
       url: `${SITE_ORIGIN}/category/${c.slug}`,
       lastModified: now,
       changeFrequency: "weekly" as const,

@@ -1,9 +1,9 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { CATEGORIES } from "@/lib/categories";
-import type { CategorySlug, Post, PostStatus } from "@/lib/types";
+import { useEffect, useRef, useState } from "react";
+import { DEFAULT_GEMINI_NOTES, resolveGeminiNotes } from "@/lib/gemini-notes";
+import type { Category, CategorySlug, Post, PostStatus } from "@/lib/types";
 
 export function PostEditor({ post }: { post?: Post }) {
   const router = useRouter();
@@ -24,24 +24,48 @@ export function PostEditor({ post }: { post?: Post }) {
   const [vendorKakao, setVendorKakao] = useState(post?.vendorKakao || "");
   const [topic, setTopic] = useState("");
   const [keywords, setKeywords] = useState("");
-  const [notes, setNotes] = useState("매거진 특집 톤. 과장 없이, 현장 관찰과 실질 조언. 가짜 실명 후기는 쓰지 말 것.");
+  const [notes, setNotes] = useState(DEFAULT_GEMINI_NOTES);
   const [localNotes, setLocalNotes] = useState("");
   const [experienceNotes, setExperienceNotes] = useState("");
-  const [sourceUrl, setSourceUrl] = useState("");
   const [busy, setBusy] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [genBusy, setGenBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [vendorOpen, setVendorOpen] = useState(
+    Boolean(post?.vendorName || post?.vendorPhone || post?.vendorWebsite || post?.vendorKakao)
+  );
+  const notesForCategory = useRef("");
 
-  async function runGenerate(mode: "topic" | "rewrite") {
+  useEffect(() => {
+    fetch("/api/categories")
+      .then((r) => r.json())
+      .then((data) => {
+        const list: Category[] = data.categories || [];
+        setCategories(list);
+        setCategory((current) => {
+          if (post) return current;
+          if (list.length && !list.some((c) => c.slug === current)) return list[0].slug;
+          return current;
+        });
+      })
+      .catch(() => undefined);
+  }, [post]);
+
+  useEffect(() => {
+    if (!categories.length) return;
+    if (notesForCategory.current === category) return;
+    notesForCategory.current = category;
+    const cat = categories.find((c) => c.slug === category);
+    setNotes(resolveGeminiNotes("", cat?.geminiNotes));
+  }, [category, categories]);
+
+  async function runGenerate() {
     setError("");
     setMessage("");
-    if (mode === "topic" && !topic.trim()) {
+    if (!topic.trim()) {
       setError("제미나이로 쓰려면 주제를 입력하세요.");
-      return;
-    }
-    if (mode === "rewrite" && !sourceUrl.trim()) {
-      setError("재창조할 블로그 글 주소를 입력하세요.");
       return;
     }
     setGenBusy(true);
@@ -59,7 +83,6 @@ export function PostEditor({ post }: { post?: Post }) {
           localNotes,
           experienceNotes,
           vendorName,
-          sourceUrl: mode === "rewrite" ? sourceUrl : "",
         }),
       });
       const data = await res.json();
@@ -69,15 +92,30 @@ export function PostEditor({ post }: { post?: Post }) {
       setBodyHtml(data.article.bodyHtml || "");
       setTags((data.article.tags || []).join(", "));
       if (!slug && data.article.slugHint) setSlug(data.article.slugHint);
-      setMessage(
-        mode === "rewrite"
-          ? "원문을 매거진 정보글로 재창조했습니다. 대표 이미지를 직접 넣은 뒤 발행하세요."
-          : "제미나이 초안을 넣었습니다. 확인하고 발행하세요."
-      );
+      setMessage("제미나이 초안을 넣었습니다. 확인하고 발행하세요.");
     } catch (err) {
       setError(err instanceof Error ? err.message : "생성 실패");
     } finally {
       setGenBusy(false);
+    }
+  }
+
+  async function uploadCover(file: File) {
+    setError("");
+    setMessage("");
+    setUploading(true);
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      const res = await fetch("/api/upload", { method: "POST", body: form });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "업로드 실패");
+      setCoverImage(data.url);
+      setMessage("대표 이미지를 올렸습니다.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "업로드 실패");
+    } finally {
+      setUploading(false);
     }
   }
 
@@ -86,6 +124,14 @@ export function PostEditor({ post }: { post?: Post }) {
     setMessage("");
     if (!title.trim()) {
       setError("제목을 입력하세요.");
+      return;
+    }
+    if (!category) {
+      setError("카테고리를 선택하세요.");
+      return;
+    }
+    if (!bodyHtml.trim() && status === "published") {
+      setError("본문을 입력하세요.");
       return;
     }
     setBusy(true);
@@ -134,17 +180,27 @@ export function PostEditor({ post }: { post?: Post }) {
     <div className="editor-grid">
       <div className="admin-card admin-form">
         <h2>{post ? "글 수정" : "새 글 작성"}</h2>
-        <label>제목</label>
+        <p className="field-hint" style={{ marginTop: 0 }}>
+          <span className="req">*</span> 표시는 필수입니다.
+        </p>
+        <label>
+          제목 <span className="req">*</span>
+        </label>
         <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="매거진 기사 제목" />
         <label>슬러그 (URL)</label>
         <input value={slug} onChange={(e) => setSlug(e.target.value)} placeholder="비워 두면 제목에서 생성" />
-        <label>카테고리</label>
+        <label>
+          카테고리 <span className="req">*</span>
+        </label>
         <select value={category} onChange={(e) => setCategory(e.target.value as CategorySlug)}>
-          {CATEGORIES.map((c) => (
+          {categories.map((c) => (
             <option key={c.slug} value={c.slug}>
               {c.name}
             </option>
           ))}
+          {category && !categories.some((c) => c.slug === category) ? (
+            <option value={category}>{category}</option>
+          ) : null}
         </select>
         <label>메인 키워드 (SEO)</label>
         <input
@@ -160,44 +216,69 @@ export function PostEditor({ post }: { post?: Post }) {
           placeholder="예: 경기 부천시 중동"
         />
         <p className="field-hint">지역 업체 글일 때만 적으면 됩니다. 비워 둬도 초안은 만들어집니다.</p>
-        <div className="vendor-admin">
-          <h3>소개 업체 (선택)</h3>
-          <p className="field-hint" style={{ marginTop: 0 }}>
-            특정 업체를 소개할 때만 적으세요. 비워 두면 일반 매거진 글이 됩니다. 전화·홈페이지·카카오를 넣으면
-            글 하단에 버튼이 생깁니다.
-          </p>
-          <label>업체명</label>
-          <input value={vendorName} onChange={(e) => setVendorName(e.target.value)} placeholder="예: 인포씨에스" />
-          <label>전화번호</label>
-          <input value={vendorPhone} onChange={(e) => setVendorPhone(e.target.value)} placeholder="예: 032-000-0000" />
-          <label>홈페이지 주소</label>
-          <input
-            value={vendorWebsite}
-            onChange={(e) => setVendorWebsite(e.target.value)}
-            placeholder="https://..."
-          />
-          <label>카카오톡 주소</label>
-          <input
-            value={vendorKakao}
-            onChange={(e) => setVendorKakao(e.target.value)}
-            placeholder="https://pf.kakao.com/..."
-          />
-        </div>
+        <button className="vendor-toggle" type="button" onClick={() => setVendorOpen((open) => !open)}>
+          {vendorOpen ? "소개 업체 닫기" : "소개 업체 작성"}
+        </button>
+        {vendorOpen ? (
+          <div className="vendor-admin">
+            <h3>소개 업체</h3>
+            <p className="field-hint" style={{ marginTop: 0 }}>
+              특정 업체를 소개할 때만 적으세요. 전화·홈페이지·카카오를 넣으면 글 하단에 버튼이 생깁니다.
+            </p>
+            <label>업체명</label>
+            <input value={vendorName} onChange={(e) => setVendorName(e.target.value)} placeholder="예: 인포씨에스" />
+            <label>전화번호</label>
+            <input value={vendorPhone} onChange={(e) => setVendorPhone(e.target.value)} placeholder="예: 032-000-0000" />
+            <label>홈페이지 주소</label>
+            <input
+              value={vendorWebsite}
+              onChange={(e) => setVendorWebsite(e.target.value)}
+              placeholder="https://..."
+            />
+            <label>카카오톡 주소</label>
+            <input
+              value={vendorKakao}
+              onChange={(e) => setVendorKakao(e.target.value)}
+              placeholder="https://pf.kakao.com/..."
+            />
+          </div>
+        ) : null}
         <label>리드 / 요약</label>
         <textarea style={{ minHeight: 90 }} value={excerpt} onChange={(e) => setExcerpt(e.target.value)} />
-        <label>본문 HTML (뉴스·매거진 형식)</label>
+        <label>
+          본문 HTML <span className="req">*</span>
+        </label>
         <textarea value={bodyHtml} onChange={(e) => setBodyHtml(e.target.value)} />
         <label>태그 (쉼표로 구분)</label>
         <input value={tags} onChange={(e) => setTags(e.target.value)} />
-        <label>대표 이미지 URL (OG / 네이버 썸네일)</label>
+        <label>대표 이미지</label>
+        <div className="cover-upload">
+          <label className="btn btn-ghost cover-file-btn">
+            {uploading ? "올리는 중…" : "내 컴퓨터에서 올리기"}
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/gif"
+              disabled={uploading}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                e.target.value = "";
+                if (file) void uploadCover(file);
+              }}
+            />
+          </label>
+          {coverImage ? (
+            <button className="btn btn-ghost" type="button" onClick={() => setCoverImage("")}>
+              이미지 빼기
+            </button>
+          ) : null}
+        </div>
         <input
           value={coverImage}
           onChange={(e) => setCoverImage(e.target.value)}
-          placeholder="https://..."
+          placeholder="또는 이미지 주소 https://..."
         />
         <p className="field-hint">
-          원문 이미지는 가져오지 않습니다. 직접 등록한 이미지가 글 상단과 네이버 검색 썸네일(og:image)로
-          쓰입니다.
+          파일을 올리거나 주소를 넣으면 됩니다. 이 이미지가 글 상단과 네이버 검색 썸네일로 쓰입니다.
         </p>
         {coverImage ? (
           <img className="cover-preview" src={coverImage} alt="대표 이미지 미리보기" />
@@ -226,7 +307,7 @@ export function PostEditor({ post }: { post?: Post }) {
       <div className="admin-card admin-form">
         <h2>제미나이로 작성</h2>
         <p style={{ color: "#94a3b8", fontSize: 13, marginTop: 0 }}>
-          필수는 주제(또는 원문 주소)만입니다. 아래 메모는 있을 때만 적으면 초안에 반영됩니다.
+          빨간 * 표시가 있는 항목만 채우면 초안을 만들 수 있습니다. 추가 지시는 카테고리에 넣어 둔 내용이 기본으로 들어갑니다.
         </p>
         <label>메인 키워드 (SEO)</label>
         <input
@@ -234,7 +315,9 @@ export function PostEditor({ post }: { post?: Post }) {
           onChange={(e) => setFocusKeyword(e.target.value)}
           placeholder="예: 부천강아지분양"
         />
-        <label>주제</label>
+        <label>
+          주제 <span className="req">*</span>
+        </label>
         <input value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="예: 부천 전세 계약 전 체크리스트" />
         <label>보조 키워드</label>
         <input value={keywords} onChange={(e) => setKeywords(e.target.value)} placeholder="예: 등기부, 확정일자, 보증금" />
@@ -253,35 +336,17 @@ export function PostEditor({ post }: { post?: Post }) {
           placeholder="실제로 들은 손님 질문, 동선만. 없으면 비워 두세요."
         />
         <label>추가 지시</label>
-        <textarea style={{ minHeight: 100 }} value={notes} onChange={(e) => setNotes(e.target.value)} />
+        <textarea
+          style={{ minHeight: 100 }}
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          placeholder={DEFAULT_GEMINI_NOTES}
+        />
+        <p className="field-hint">비워 두면 이 카테고리의 기본 지시, 그것도 없으면 공통 기본 지시가 쓰입니다.</p>
         <div className="admin-actions">
-          <button className="btn btn-primary" type="button" onClick={() => runGenerate("topic")} disabled={genBusy}>
+          <button className="btn btn-primary" type="button" onClick={() => runGenerate()} disabled={genBusy}>
             {genBusy ? "작성 중…" : "초안 생성"}
           </button>
-        </div>
-
-        <div className="rewrite-box">
-          <h3>다른 블로그 글 재창조</h3>
-          <p>
-            글 주소를 넣으면 텍스트만 읽어 매거진 정보글로 다시 씁니다. 이미지는 가져오지 않으니, 왼쪽에서
-            대표 이미지를 직접 등록하세요.
-          </p>
-          <label>원문 주소</label>
-          <input
-            value={sourceUrl}
-            onChange={(e) => setSourceUrl(e.target.value)}
-            placeholder="https://blog.naver.com/..."
-          />
-          <div className="admin-actions">
-            <button
-              className="btn btn-primary"
-              type="button"
-              onClick={() => runGenerate("rewrite")}
-              disabled={genBusy}
-            >
-              {genBusy ? "재창조 중…" : "재창조하기"}
-            </button>
-          </div>
         </div>
         <p style={{ color: "#64748b", fontSize: 12 }}>
           API 키는 <a href="/admin/settings">설정</a>에서 저장합니다.

@@ -1,11 +1,10 @@
 import { NextResponse } from "next/server";
 import { isAdminSession } from "@/lib/auth";
-import { getSettings } from "@/lib/db";
-import { fetchSourceArticle } from "@/lib/fetch-source";
+import { getCategories, getSettings } from "@/lib/db";
 import { DEFAULT_GEMINI_MODEL } from "@/lib/gemini-models";
 import { generateArticle } from "@/lib/gemini";
-import { CATEGORIES } from "@/lib/categories";
-import type { CategorySlug } from "@/lib/types";
+import { resolveGeminiNotes } from "@/lib/gemini-notes";
+import { ensureCategorySlug, getCategory } from "@/lib/categories";
 
 export async function POST(request: Request) {
   if (!(await isAdminSession())) {
@@ -13,13 +12,12 @@ export async function POST(request: Request) {
   }
   const body = await request.json().catch(() => ({}));
   const topic = String(body.topic || "").trim();
-  const sourceUrl = String(body.sourceUrl || "").trim();
-  if (!topic && !sourceUrl) {
-    return NextResponse.json({ error: "주제 또는 원문 주소를 입력하세요." }, { status: 400 });
+  if (!topic) {
+    return NextResponse.json({ error: "주제를 입력하세요." }, { status: 400 });
   }
-  const category = CATEGORIES.some((c) => c.slug === body.category)
-    ? (body.category as CategorySlug)
-    : "life";
+  const cats = await getCategories();
+  const category = ensureCategorySlug(body.category, cats);
+  const cat = getCategory(category, cats);
   const settings = await getSettings();
   const apiKey = settings.geminiApiKey || process.env.GEMINI_API_KEY || "";
   if (!apiKey) {
@@ -29,33 +27,18 @@ export async function POST(request: Request) {
     );
   }
 
-  let sourceTitle = "";
-  let sourceText = "";
-  if (sourceUrl) {
-    try {
-      const source = await fetchSourceArticle(sourceUrl);
-      sourceTitle = source.title;
-      sourceText = source.text;
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "원문을 가져오지 못했습니다.";
-      return NextResponse.json({ error: message }, { status: 400 });
-    }
-  }
-
   try {
     const article = await generateArticle({
-      topic: topic || sourceTitle,
+      topic,
       category,
+      categoryName: cat?.name,
       keywords: String(body.keywords || ""),
-      notes: String(body.notes || ""),
+      notes: resolveGeminiNotes(String(body.notes || ""), cat?.geminiNotes),
       focusKeyword: String(body.focusKeyword || ""),
       region: String(body.region || ""),
       localNotes: String(body.localNotes || ""),
       experienceNotes: String(body.experienceNotes || ""),
       vendorName: String(body.vendorName || ""),
-      sourceTitle,
-      sourceUrl,
-      sourceText,
       apiKey,
       model: settings.geminiModel || DEFAULT_GEMINI_MODEL,
     });

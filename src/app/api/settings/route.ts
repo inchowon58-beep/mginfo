@@ -1,7 +1,16 @@
 import { NextResponse } from "next/server";
 import { isAdminSession } from "@/lib/auth";
 import { getSettings, updateStore } from "@/lib/db";
+import {
+  DEFAULT_COMMENT_MAX,
+  DEFAULT_COMMENT_MIN,
+  DEFAULT_LIKE_MAX,
+  DEFAULT_LIKE_MIN,
+  clampCount,
+  orderedRange,
+} from "@/lib/engagement";
 import { persistFail } from "@/lib/persist-api";
+import { isSiteThemeId } from "@/lib/site-theme";
 
 export async function GET() {
   if (!(await isAdminSession())) {
@@ -32,11 +41,40 @@ export async function POST(request: Request) {
       if (typeof body.geminiModel === "string" && body.geminiModel.trim()) {
         s.settings.geminiModel = body.geminiModel.trim();
       }
-      if (typeof body.siteName === "string" && body.siteName.trim()) {
-        s.settings.siteName = body.siteName.trim();
+      const textKeys = [
+        "siteName",
+        "siteTagline",
+        "company",
+        "ceo",
+        "bizNo",
+        "address",
+        "phone",
+        "email",
+        "carrotKeywords",
+      ] as const;
+      for (const key of textKeys) {
+        if (typeof body[key] === "string") {
+          s.settings[key] = body[key].trim();
+        }
       }
-      if (typeof body.siteTagline === "string" && body.siteTagline.trim()) {
-        s.settings.siteTagline = body.siteTagline.trim();
+      if (isSiteThemeId(body.siteTheme)) {
+        s.settings.siteTheme = body.siteTheme;
+      }
+      if (body.likeCountMin != null || body.likeCountMax != null) {
+        const likes = orderedRange(
+          clampCount(body.likeCountMin, s.settings.likeCountMin ?? DEFAULT_LIKE_MIN),
+          clampCount(body.likeCountMax, s.settings.likeCountMax ?? DEFAULT_LIKE_MAX)
+        );
+        s.settings.likeCountMin = likes.min;
+        s.settings.likeCountMax = likes.max;
+      }
+      if (body.commentCountMin != null || body.commentCountMax != null) {
+        const comments = orderedRange(
+          clampCount(body.commentCountMin, s.settings.commentCountMin ?? DEFAULT_COMMENT_MIN),
+          clampCount(body.commentCountMax, s.settings.commentCountMax ?? DEFAULT_COMMENT_MAX)
+        );
+        s.settings.commentCountMin = comments.min;
+        s.settings.commentCountMax = comments.max;
       }
     });
   } catch (err) {

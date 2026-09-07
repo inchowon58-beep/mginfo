@@ -1,5 +1,4 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { CATEGORIES } from "./categories";
 import { DEFAULT_GEMINI_MODEL } from "./gemini-models";
 import { stripGeneratedImages } from "./sanitize";
 import type { CategorySlug } from "./types";
@@ -7,6 +6,7 @@ import type { CategorySlug } from "./types";
 export type GenerateInput = {
   topic?: string;
   category: CategorySlug;
+  categoryName?: string;
   keywords?: string;
   notes?: string;
   focusKeyword?: string;
@@ -14,9 +14,6 @@ export type GenerateInput = {
   localNotes?: string;
   experienceNotes?: string;
   vendorName?: string;
-  sourceTitle?: string;
-  sourceUrl?: string;
-  sourceText?: string;
   apiKey: string;
   model: string;
 };
@@ -46,7 +43,6 @@ function uniquenessRules(input: GenerateInput): string {
 
   return `유사문서 회피(네이버가 복제·유사 문서로 보지 않게):
 - 흔한 총정리/완벽가이드 제목과 똑같은 목차를 쓰지 마라. 이 글만의 각도(지역 동선, 선택 기준, 현장 관찰)로 구성한다.
-- 원문이 있으면 문장·소제목·순서를 모두 바꾼다. 핵심 정보만 검증해 새로 쓴다.
 - 다른 지역에도 그대로 붙여 넣을 수 있는 문장은 줄인다. 지명, 역, 도로, 상권, 주차, 접근 동선처럼 그 동네만의 정보를 본문에 녹인다.
 - 숫자·절차·주의점은 일반론으로만 끝내지 말고, 그 지역에서 실제로 생기는 장면으로 풀어 쓴다.
 - 제목은 검색 의도를 담되, 다른 블로그와 겹치지 않는 표현을 고른다.
@@ -90,45 +86,30 @@ function seoRules(focusKeyword: string): string {
 }
 
 export async function generateArticle(input: GenerateInput): Promise<GenerateResult> {
-  const category = CATEGORIES.find((c) => c.slug === input.category);
+  const categoryName = input.categoryName || input.category;
   const focusKeyword = (input.focusKeyword || "").trim();
-  const isRewrite = Boolean(input.sourceText);
   const genAI = new GoogleGenerativeAI(input.apiKey);
   const model = genAI.getGenerativeModel({
     model: input.model || DEFAULT_GEMINI_MODEL,
     generationConfig: {
-      temperature: isRewrite ? 0.88 : 0.82,
+      temperature: 0.82,
       maxOutputTokens: 8192,
     },
   });
-
-  const rewriteBlock = isRewrite
-    ? `작업: 아래 원문을 참고만 해서 완전히 새로운 매거진 정보글로 재창조한다.
-원문을 문장 단위로 옮기지 마라. 구성, 소제목, 표현을 새로 짠다.
-원문에 있는 이미지는 무시한다. HTML에 <img>, <figure>, 이미지 URL을 절대 넣지 마라.
-원문 주소: ${input.sourceUrl || "(없음)"}
-원문 제목: ${input.sourceTitle || "(없음)"}
-원문 텍스트:
-"""
-${input.sourceText}
-"""
-`
-    : `작업: 주제와 키워드로 매거진 정보글을 새로 작성한다.
-주제: ${input.topic || "(없음)"}
-`;
 
   const prompt = `너는 한국어 라이프스타일 매거진의 전문 에디터다.
 독자가 실제로 도움이 되는 특집 기사를 쓴다. 뉴스 속보가 아니라, 현장을 보고 온 매거진 톤이다.
 과장 광고, 이모지, 영어 해시태그, ‘지금 클릭’ 식 문장은 쓰지 않는다.
 
-카테고리: ${category?.name || input.category}
+카테고리: ${categoryName}
 보조 키워드: ${input.keywords || "(없음)"}
 추가 지시: ${input.notes || "(없음)"}
 ${seoRules(focusKeyword)}
 
 ${uniquenessRules(input)}
 
-${rewriteBlock}
+작업: 주제와 키워드로 매거진 정보글을 새로 작성한다.
+주제: ${input.topic || "(없음)"}
 
 반드시 JSON만 출력한다. 설명 문장이나 마크다운 울타리는 넣지 않는다.
 형식:

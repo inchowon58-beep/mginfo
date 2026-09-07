@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { useCategories } from "@/components/CategoriesContext";
 import { getCategory } from "@/lib/categories";
 import { formatDate } from "@/lib/format";
 import type { Post } from "@/lib/types";
@@ -10,7 +13,7 @@ export function PostCard({
   post: Post;
   featured?: boolean;
 }) {
-  const cat = getCategory(post.category);
+  const cat = getCategory(post.category, useCategories());
   return (
     <Link className={`post-card ${featured ? "is-featured" : ""}`} href={`/posts/${post.slug}`}>
       <div className="post-card-thumb">

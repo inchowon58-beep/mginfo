@@ -5,7 +5,15 @@ import { DEFAULT_GEMINI_MODEL } from "./gemini-models";
 import { blobGetJson, blobSetJson, hasBlobStore } from "./blob-store";
 import { hasRemoteStore, kvGetJson, kvSetJson } from "./kv";
 import { seedPartners, seedPosts } from "./seed";
-import type { Banner, Partner, Post, Settings, Store } from "./types";
+import { DEFAULT_SITE_THEME, getSiteTheme, isSiteThemeId } from "./site-theme";
+import type { AdminPostRow, Banner, Category, Partner, Post, Settings, Store } from "./types";
+import { DEFAULT_CATEGORIES, SITE } from "./categories";
+import {
+  DEFAULT_COMMENT_MAX,
+  DEFAULT_COMMENT_MIN,
+  DEFAULT_LIKE_MAX,
+  DEFAULT_LIKE_MIN,
+} from "./engagement";
 
 const LOCAL_PATH = path.join(process.cwd(), "data", "store.json");
 
@@ -13,8 +21,20 @@ function defaultSettings(): Settings {
   return {
     geminiApiKey: process.env.GEMINI_API_KEY || "",
     geminiModel: process.env.GEMINI_MODEL || DEFAULT_GEMINI_MODEL,
-    siteName: "인포씨에스 매거진",
+    siteName: SITE.name,
     siteTagline: "모든 생활 정보를 한눈에",
+    siteTheme: DEFAULT_SITE_THEME,
+    carrotKeywords: "",
+    likeCountMin: DEFAULT_LIKE_MIN,
+    likeCountMax: DEFAULT_LIKE_MAX,
+    commentCountMin: DEFAULT_COMMENT_MIN,
+    commentCountMax: DEFAULT_COMMENT_MAX,
+    company: SITE.company,
+    ceo: SITE.ceo,
+    bizNo: SITE.bizNo,
+    address: SITE.address,
+    phone: "",
+    email: SITE.email,
   };
 }
 
@@ -24,6 +44,7 @@ function defaultStore(): Store {
       posts: seedPosts,
       partners: seedPartners,
       banners: seedBanners,
+      categories: DEFAULT_CATEGORIES,
       settings: defaultSettings(),
     })
   ) as Store;
@@ -33,6 +54,8 @@ function normalize(parsed: Store): Store {
   parsed.posts ||= [];
   parsed.partners ||= [];
   parsed.banners = parsed.banners?.length ? parsed.banners : seedBanners;
+  parsed.categories = parsed.categories?.length ? parsed.categories : DEFAULT_CATEGORIES.map((c) => ({ ...c }));
+  parsed.categories = parsed.categories.map((c) => ({ ...c, geminiNotes: c.geminiNotes || "" }));
   parsed.settings = { ...defaultSettings(), ...parsed.settings };
   return parsed;
 }
@@ -140,12 +163,59 @@ export async function getPostById(id: string): Promise<Post | undefined> {
   return store.posts.find((p) => p.id === id);
 }
 
+export const ADMIN_POSTS_PAGE_SIZE = 25;
+
+function toAdminPostRow(post: Post): AdminPostRow {
+  return {
+    id: post.id,
+    slug: post.slug,
+    title: post.title,
+    category: post.category,
+    status: post.status,
+    publishedAt: post.publishedAt,
+    createdAt: post.createdAt,
+  };
+}
+
+export async function listAdminPosts(opts: { page?: number; category?: string } = {}) {
+  const store = await readStore();
+  const pageSize = ADMIN_POSTS_PAGE_SIZE;
+  const category = (opts.category || "").trim();
+  const sorted = store.posts
+    .slice()
+    .sort((a, b) => (b.updatedAt || b.createdAt).localeCompare(a.updatedAt || a.createdAt));
+  const filtered = category ? sorted.filter((p) => p.category === category) : sorted;
+  const total = filtered.length;
+  const totalPages = Math.max(1, Math.ceil(total / pageSize) || 1);
+  const page = Math.min(Math.max(1, opts.page || 1), totalPages);
+  const start = (page - 1) * pageSize;
+  const counts: Record<string, number> = {};
+  for (const post of store.posts) {
+    counts[post.category] = (counts[post.category] || 0) + 1;
+  }
+  return {
+    posts: filtered.slice(start, start + pageSize).map(toAdminPostRow),
+    total,
+    page,
+    pageSize,
+    totalPages,
+    categories: store.categories?.length ? store.categories : DEFAULT_CATEGORIES,
+    counts,
+    allCount: store.posts.length,
+  };
+}
+
 export async function getPartners(): Promise<Partner[]> {
   return (await readStore()).partners;
 }
 
 export async function getSettings(): Promise<Settings> {
   return (await readStore()).settings;
+}
+
+export async function getCategories(): Promise<Category[]> {
+  const store = await readStore();
+  return store.categories?.length ? store.categories : DEFAULT_CATEGORIES;
 }
 
 export async function getBanners(): Promise<Banner[]> {
@@ -155,4 +225,9 @@ export async function getBanners(): Promise<Banner[]> {
 export async function getEnabledBanners(): Promise<Banner[]> {
   const banners = await getBanners();
   return banners.filter((b) => b.enabled);
+}
+
+export async function resolveSiteTheme() {
+  const settings = await getSettings();
+  return getSiteTheme(isSiteThemeId(settings.siteTheme) ? settings.siteTheme : DEFAULT_SITE_THEME);
 }

@@ -1,0 +1,486 @@
+@import "https://fonts.googleapis.com/css2?family=Grand+Hotel&display=swap";
+
+.theme-talk {
+  --bg: #fafafa;
+  --bg-soft: #fff;
+  --text: #262626;
+  --text-muted: #8e8e8e;
+  --border: #dbdbdb;
+  --accent: #d62976;
+  --accent-hover: #962fbf;
+  background: var(--bg);
+  color: var(--text);
+  font-family: Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", sans-serif;
+}
+
+.theme-talk a {
+  color: var(--text);
+}
+
+.theme-talk a:hover {
+  color: #111;
+}
+
+.theme-talk .site-header {
+  background: #fff;
+  border-bottom: 1px solid var(--border);
+}
+
+.theme-talk .site-header-inner {
+  max-width: 935px;
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+
+.theme-talk .talk-logo,
+.theme-talk .site-logo.talk-logo {
+  color: #111;
+  font-family: "Grand Hotel", cursive;
+  font-size: 32px;
+  font-weight: 400;
+  letter-spacing: 0;
+  line-height: 1;
+  text-decoration: none;
+}
+
+.theme-talk .talk-logo span,
+.theme-talk .site-logo.talk-logo span {
+  display: none;
+}
+
+.theme-talk .talk-logo:hover,
+.theme-talk .site-logo.talk-logo:hover {
+  color: #111;
+  text-decoration: none;
+}
+
+.theme-talk .site-nav a {
+  color: #262626;
+  background: transparent;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  border-radius: 0;
+  padding: 8px 10px;
+}
+
+.theme-talk .site-nav a.active,
+.theme-talk .site-nav a:hover {
+  color: #111;
+  background: transparent;
+  text-decoration: none;
+  font-weight: 800;
+}
+
+.theme-talk .talk-wrap,
+.theme-talk .talk-mast,
+.theme-talk .container {
+  max-width: 470px;
+  margin: 0 auto;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.theme-talk .talk-wrap {
+  padding: 16px 0 72px;
+}
+
+.theme-talk .talk-mast {
+  text-align: left;
+  padding: 20px 16px 8px;
+}
+
+.theme-talk .talk-kicker {
+  margin: 0 0 4px;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.theme-talk .talk-mast h1 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.theme-talk .talk-dek {
+  margin: 6px 0 0;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.theme-talk .talk-stories {
+  display: flex;
+  gap: 14px;
+  overflow-x: auto;
+  padding: 8px 16px 18px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 12px;
+}
+
+.theme-talk .talk-stories a {
+  flex: 0 0 auto;
+  width: 74px;
+  text-align: center;
+  text-decoration: none;
+}
+
+.theme-talk .talk-story-ring {
+  display: flex;
+  width: 66px;
+  height: 66px;
+  margin: 0 auto 6px;
+  padding: 2px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #f9ce34, #ee2a7b 50%, #6228d7);
+}
+
+.theme-talk .talk-story-inner {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: #fff;
+  color: #111;
+  border: 2px solid #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.theme-talk .talk-stories em {
+  display: block;
+  font-style: normal;
+  font-size: 11px;
+  color: #262626;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.theme-talk .talk-ad {
+  padding: 0 0 12px;
+}
+
+.theme-talk .talk-feed {
+  display: grid;
+  gap: 18px;
+}
+
+.theme-talk .talk-post {
+  background: #fff;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+
+.theme-talk .talk-post-head {
+  display: flex;
+  align-items: center;
+  padding: 10px 12px;
+}
+
+.theme-talk .talk-user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+}
+
+.theme-talk .talk-user-pic {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #efefef;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.theme-talk .talk-user b {
+  display: block;
+  font-size: 13px;
+}
+
+.theme-talk .talk-user small {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.theme-talk .talk-photo {
+  display: block;
+  background: #000;
+  aspect-ratio: 1;
+  overflow: hidden;
+}
+
+.theme-talk .talk-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  max-width: none;
+}
+
+.theme-talk .talk-photo-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  padding: 24px;
+  color: #fff;
+  text-align: center;
+  font-weight: 700;
+  background: linear-gradient(135deg, #833ab4, #fd1d1d 50%, #fcb045);
+}
+
+.theme-talk .talk-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 12px 0;
+  color: #262626;
+}
+
+.theme-talk .talk-action,
+.theme-talk .talk-actions .engage-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.theme-talk .talk-caption,
+.theme-talk .talk-more {
+  margin: 8px 12px 0;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.theme-talk .talk-caption a {
+  font-weight: 800;
+  text-decoration: none;
+  margin-right: 6px;
+}
+
+.theme-talk .talk-more {
+  color: var(--text-muted);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.theme-talk .talk-open {
+  display: inline-block;
+  margin: 6px 12px 14px;
+  color: var(--text-muted);
+  font-size: 13px;
+  text-decoration: none;
+}
+
+.theme-talk .talk-explore,
+.theme-talk .talk-suggest {
+  padding: 20px 12px 0;
+}
+
+.theme-talk .talk-explore h2,
+.theme-talk .talk-suggest h2 {
+  margin: 0 0 10px;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.theme-talk .talk-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 2px;
+}
+
+.theme-talk .talk-grid a {
+  aspect-ratio: 1;
+  overflow: hidden;
+  background: #efefef;
+}
+
+.theme-talk .talk-grid img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  max-width: none;
+}
+
+.theme-talk .talk-suggest div {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 10px;
+}
+
+.theme-talk .talk-suggest a {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 4px;
+  padding: 12px 8px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  text-decoration: none;
+}
+
+.theme-talk .talk-suggest a span {
+  width: 40px;
+  height: 40px;
+  margin-bottom: 4px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #f9ce34, #ee2a7b);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+}
+
+.theme-talk .talk-suggest b {
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.theme-talk .talk-suggest small {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.theme-talk .category-bar {
+  border: 0;
+  padding: 8px 12px 16px;
+  overflow-x: auto;
+}
+
+.theme-talk .category-pill {
+  background: #fff;
+  border: 1px solid var(--border);
+  color: #262626;
+  border-radius: 999px;
+}
+
+.theme-talk .category-pill.active,
+.theme-talk .category-pill:hover {
+  background: #262626;
+  border-color: #262626;
+  color: #fff;
+  text-decoration: none;
+}
+
+.theme-talk .mag-search {
+  margin-left: 16px;
+  margin-right: 16px;
+  background: #efefef;
+  border: 0;
+  box-shadow: none;
+}
+
+.theme-talk .mag-search button {
+  background: #262626;
+  color: #fff;
+}
+
+.theme-talk .pagination .page-btn.active {
+  background: #262626;
+  border-color: #262626;
+}
+
+.theme-talk .partner-card {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: none;
+}
+
+.theme-talk .article h1 {
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.theme-talk .article-cat {
+  color: var(--accent);
+}
+
+.theme-talk .tag {
+  background: #f5f5f5;
+  color: #262626;
+}
+
+.theme-talk .site-footer {
+  background: #fff;
+  border-top: 1px solid var(--border);
+  color: var(--text-muted);
+}
+
+.theme-talk .footer-brand .talk-logo {
+  color: #111;
+}
+
+.theme-talk .footer-links a {
+  color: #262626;
+}
+
+.theme-talk .bottom-cat-nav {
+  background: rgba(255, 255, 255, 0.96);
+  border-top: 1px solid var(--border);
+}
+
+.theme-talk .bottom-cat-nav .category-pill.active {
+  background: #262626;
+  color: #fff;
+}
+
+.theme-talk .vendor-cta-card {
+  background: #fff5fb;
+  border-color: #f5c2dc;
+}
+
+.theme-talk .empty-note {
+  text-align: center;
+  color: var(--text-muted);
+  padding: 24px;
+}
+
+@media (min-width: 860px) {
+  .theme-talk .talk-wrap,
+  .theme-talk .talk-mast,
+  .theme-talk .container {
+    max-width: 980px;
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+  .theme-talk .talk-wrap {
+    padding-top: 24px;
+  }
+  .theme-talk .talk-feed {
+    grid-template-columns: 1fr 1fr;
+    align-items: start;
+    gap: 20px;
+  }
+  .theme-talk .partner-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .theme-talk .talk-post {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .theme-talk .talk-stories {
+    padding-left: 0;
+    padding-right: 0;
+  }
+}

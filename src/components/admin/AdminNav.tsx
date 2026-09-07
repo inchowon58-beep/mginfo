@@ -5,10 +5,10 @@ import { usePathname, useRouter } from "next/navigation";
 
 const NAV = [
   { href: "/admin", label: "대시보드" },
+  { href: "/admin/settings", label: "설정" },
   { href: "/admin/posts", label: "글 목록" },
   { href: "/admin/posts/new", label: "새 글 작성" },
   { href: "/admin/banners", label: "메인 배너" },
-  { href: "/admin/settings", label: "제미나이 설정" },
 ];
 
 export function AdminNav() {
@@ -21,25 +21,34 @@ export function AdminNav() {
     router.refresh();
   }
 
+  function isActive(href: string) {
+    if (href === "/admin") return pathname === "/admin";
+    if (href === "/admin/settings") return pathname.startsWith("/admin/settings");
+    if (href === "/admin/posts") {
+      return pathname === "/admin/posts" || /^\/admin\/posts\/[^/]+$/.test(pathname);
+    }
+    return pathname === href;
+  }
+
   return (
     <aside className="admin-side">
-      <h1>InfoCS 관리자</h1>
-      <p>magazine.infocs.co.kr</p>
-      {NAV.map((item) => (
-        <Link
-          key={item.href}
-          href={item.href}
-          className={pathname === item.href ? "active" : ""}
-        >
-          {item.label}
+      <div className="admin-side-brand">
+        <h1>InfoCS 관리자</h1>
+        <p>magazine.infocs.co.kr</p>
+      </div>
+      <nav className="admin-side-nav" aria-label="관리 메뉴">
+        {NAV.map((item) => (
+          <Link key={item.href} href={item.href} className={isActive(item.href) ? "active" : ""}>
+            {item.label}
+          </Link>
+        ))}
+        <Link href="/" target="_blank">
+          사이트 보기
         </Link>
-      ))}
-      <Link href="/" target="_blank">
-        사이트 보기
-      </Link>
-      <button className="linkish" type="button" onClick={logout}>
-        로그아웃
-      </button>
+        <button className="linkish" type="button" onClick={logout}>
+          로그아웃
+        </button>
+      </nav>
     </aside>
   );
 }

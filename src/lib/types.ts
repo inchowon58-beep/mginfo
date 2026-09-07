@@ -1,12 +1,12 @@
-export type CategorySlug =
-  | "pets"
-  | "beauty"
-  | "interior"
-  | "realestate"
-  | "ads"
-  | "food"
-  | "cooking"
-  | "life";
+export type CategorySlug = string;
+
+export type Category = {
+  slug: string;
+  name: string;
+  color: string;
+  filterClass: string;
+  geminiNotes?: string;
+};
 
 export type PostStatus = "draft" | "published";
 
@@ -30,6 +30,16 @@ export type Post = {
   vendorPhone?: string;
   vendorWebsite?: string;
   vendorKakao?: string;
+};
+
+export type AdminPostRow = {
+  id: string;
+  slug: string;
+  title: string;
+  category: CategorySlug;
+  status: PostStatus;
+  publishedAt: string | null;
+  createdAt: string;
 };
 
 export type Partner = {
@@ -60,16 +70,31 @@ export type Banner = {
   updatedAt: string;
 };
 
+export type SiteThemeId = "folio" | "press" | "night" | "journal" | "qna" | "talk" | "portal" | "carrot";
+
 export type Settings = {
   geminiApiKey: string;
   geminiModel: string;
   siteName: string;
   siteTagline: string;
+  siteTheme: SiteThemeId;
+  carrotKeywords: string;
+  likeCountMin: number;
+  likeCountMax: number;
+  commentCountMin: number;
+  commentCountMax: number;
+  company: string;
+  ceo: string;
+  bizNo: string;
+  address: string;
+  phone: string;
+  email: string;
 };
 
 export type Store = {
   posts: Post[];
   partners: Partner[];
   banners: Banner[];
+  categories: Category[];
   settings: Settings;
 };

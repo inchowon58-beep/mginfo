@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { BottomNav, Footer, Header } from "@/components/Header";
+import { SiteFrame } from "@/components/SiteFrame";
 import { VendorCta } from "@/components/VendorCta";
-import { getCategory, SITE } from "@/lib/categories";
-import { getPostBySlug, getPublishedPosts } from "@/lib/db";
+import { displaySiteName, getCategory } from "@/lib/categories";
+import { getCategories, getPostBySlug, getPublishedPosts, getSettings } from "@/lib/db";
 import { formatDate, stripHtml } from "@/lib/format";
 import { hasVendorCta } from "@/lib/vendor";
 
@@ -18,6 +18,8 @@ export async function generateMetadata({
   const { slug } = await params;
   const post = await getPostBySlug(slug);
   if (!post || post.status !== "published") return { title: "글을 찾을 수 없습니다" };
+  const settings = await getSettings();
+  const siteName = displaySiteName(settings.siteName);
   const description = post.excerpt || stripHtml(post.bodyHtml).slice(0, 140);
   const url = `https://magazine.infocs.co.kr/posts/${post.slug}`;
   const keywords = [post.focusKeyword, ...post.tags].filter(Boolean) as string[];
@@ -42,7 +44,7 @@ export async function generateMetadata({
       description,
       type: "article",
       url,
-      siteName: SITE.name,
+      siteName,
       locale: "ko_KR",
       publishedTime: post.publishedAt || undefined,
       images: ogImages,
@@ -60,7 +62,9 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
   const { slug } = await params;
   const post = await getPostBySlug(slug);
   if (!post || post.status !== "published") notFound();
-  const cat = getCategory(post.category);
+  const [categories, settings] = await Promise.all([getCategories(), getSettings()]);
+  const cat = getCategory(post.category, categories);
+  const siteName = displaySiteName(settings.siteName);
   const related = (await getPublishedPosts())
     .filter((p) => p.id !== post.id && p.category === post.category)
     .slice(0, 6);
@@ -76,10 +80,10 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
     mainEntityOfPage: pageUrl,
     image: post.coverImage ? [post.coverImage] : undefined,
     keywords: [post.focusKeyword, post.region, ...post.tags].filter(Boolean).join(", "),
-    author: { "@type": "Organization", name: SITE.company },
+    author: { "@type": "Organization", name: settings.company || siteName },
     publisher: {
       "@type": "Organization",
-      name: SITE.name,
+      name: siteName,
     },
     about: post.vendorName
       ? {
@@ -93,16 +97,15 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
   };
 
   return (
-    <div className={`magazine-root editorial ${showVendor ? "has-vendor-cta" : ""}`}>
+    <SiteFrame hideBottomNav={showVendor} current={post.category} className={showVendor ? "has-vendor-cta" : ""}>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
-      <Header />
       <article className={`article container-narrow ${post.theme || "art-v1"}`}>
         <div className="article-meta">
           <Link className="article-cat" href={`/category/${post.category}`}>
             {cat?.name}
           </Link>
           <span>·</span>
-          <span>{SITE.name}</span>
+          <span>{siteName}</span>
         </div>
         <h1>{post.title}</h1>
         <div className="article-info">
@@ -138,8 +141,6 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
           </div>
         )}
       </article>
-      <Footer />
-      {showVendor ? null : <BottomNav current={post.category} />}
-    </div>
+    </SiteFrame>
   );
 }

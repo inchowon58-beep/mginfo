@@ -1,12 +1,18 @@
 import Link from "next/link";
 import type { Partner } from "@/lib/types";
 
-export function PartnerStrip({ partners }: { partners: Partner[] }) {
+export function PartnerStrip({
+  partners,
+  title = "Partners",
+}: {
+  partners: Partner[];
+  title?: string;
+}) {
   if (!partners.length) return null;
   return (
     <section className="partner-banner">
       <div className="container">
-        <h2>Partners</h2>
+        <h2>{title}</h2>
         <div className="partner-strip">
           {partners.map((p) => (
             <Link
