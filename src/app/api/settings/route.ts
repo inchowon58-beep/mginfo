@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { isAdminSession } from "@/lib/auth";
+import { isAdminSession, isMasterSession } from "@/lib/auth";
 import { getSettings, updateStore } from "@/lib/db";
 import {
   DEFAULT_COMMENT_MAX,
@@ -17,13 +17,14 @@ export async function GET() {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
   const settings = await getSettings();
+  const master = await isMasterSession();
+  const { geminiApiKey, geminiModel, ...rest } = settings;
   return NextResponse.json({
     settings: {
-      ...settings,
-      geminiApiKey: settings.geminiApiKey
-        ? `${settings.geminiApiKey.slice(0, 6)}••••${settings.geminiApiKey.slice(-4)}`
-        : "",
-      hasKey: Boolean(settings.geminiApiKey),
+      ...rest,
+      geminiApiKey: master && geminiApiKey ? `${geminiApiKey.slice(0, 6)}••••${geminiApiKey.slice(-4)}` : "",
+      geminiModel: master ? geminiModel : undefined,
+      hasKey: master ? Boolean(geminiApiKey) : undefined,
     },
   });
 }
@@ -33,6 +34,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
   const body = await request.json().catch(() => ({}));
+  const wantsGemini =
+    (typeof body.geminiApiKey === "string" && body.geminiApiKey && !body.geminiApiKey.includes("•")) ||
+    typeof body.geminiModel === "string";
+  if (wantsGemini && !(await isMasterSession())) {
+    return NextResponse.json(
+      { error: "마스터 관리자만 제미나이 설정을 바꿀 수 있습니다." },
+      { status: 403 }
+    );
+  }
   try {
     await updateStore((s) => {
       if (typeof body.geminiApiKey === "string" && body.geminiApiKey && !body.geminiApiKey.includes("•")) {

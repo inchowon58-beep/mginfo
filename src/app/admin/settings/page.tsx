@@ -37,6 +37,8 @@ export default function SettingsPage() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [geminiUnlocked, setGeminiUnlocked] = useState(false);
+  const [masterPassword, setMasterPassword] = useState("");
 
   useEffect(() => {
     fetch("/api/settings")
@@ -60,8 +62,17 @@ export default function SettingsPage() {
         setAddress(s.address || "");
         setPhone(s.phone || "");
         setEmail(s.email || "");
+        if (s.geminiModel) setGeminiModel(s.geminiModel);
+        if (typeof s.hasKey === "boolean") setHasKey(s.hasKey);
+        if (s.geminiApiKey) setGeminiApiKey(s.geminiApiKey);
       })
       .catch(() => setError("설정을 불러오지 못했습니다."));
+    fetch("/api/auth/master")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.unlocked) setGeminiUnlocked(true);
+      })
+      .catch(() => undefined);
   }, []);
 
   function switchTab(next: SettingsTab) {
@@ -111,6 +122,34 @@ export default function SettingsPage() {
     e.preventDefault();
     await save({ geminiApiKey, geminiModel });
     if (geminiApiKey && !geminiApiKey.includes("•")) setHasKey(true);
+  }
+
+  async function unlockGemini(e: FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    setError("");
+    setMessage("");
+    try {
+      const res = await fetch("/api/auth/master", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: masterPassword }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "확인 실패");
+      setGeminiUnlocked(true);
+      setMasterPassword("");
+      const settingsRes = await fetch("/api/settings");
+      const settingsData = await settingsRes.json();
+      const s = settingsData.settings || {};
+      setGeminiModel(s.geminiModel || DEFAULT_GEMINI_MODEL);
+      setHasKey(Boolean(s.hasKey));
+      setGeminiApiKey(s.geminiApiKey || "");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "확인 실패");
+    } finally {
+      setBusy(false);
+    }
   }
 
   const known = GEMINI_MODELS.some((m) => m.id === geminiModel);
@@ -280,7 +319,30 @@ export default function SettingsPage() {
         </form>
       ) : null}
 
-      {tab === "gemini" ? (
+      {tab === "gemini" && !geminiUnlocked ? (
+        <form className="admin-card admin-form" onSubmit={unlockGemini} style={{ maxWidth: 640 }}>
+          <h2>제미나이 설정</h2>
+          <p style={{ color: "#94a3b8", fontSize: 14 }}>
+            마스터 관리자만 볼 수 있습니다. 비밀번호를 한 번 더 입력하세요.
+          </p>
+          <label>마스터 비밀번호</label>
+          <input
+            type="password"
+            value={masterPassword}
+            onChange={(e) => setMasterPassword(e.target.value)}
+            placeholder="마스터 비밀번호"
+            autoComplete="off"
+          />
+          {error ? <p className="notice">{error}</p> : null}
+          <div className="admin-actions">
+            <button className="btn btn-primary" disabled={busy || !masterPassword.trim()}>
+              {busy ? "확인 중…" : "확인"}
+            </button>
+          </div>
+        </form>
+      ) : null}
+
+      {tab === "gemini" && geminiUnlocked ? (
         <form className="admin-card admin-form" onSubmit={saveGemini} style={{ maxWidth: 640 }}>
           <h2>제미나이 설정</h2>
           <p style={{ color: "#94a3b8", fontSize: 14 }}>

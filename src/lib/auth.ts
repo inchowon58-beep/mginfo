@@ -2,6 +2,7 @@ import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 
 const COOKIE = "infocs_admin";
+const MASTER_COOKIE = "infocs_master";
 
 function secretKey() {
   const secret = process.env.AUTH_SECRET || "infocs-magazine-dev-secret";
@@ -13,6 +14,14 @@ export async function createAdminToken(): Promise<string> {
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime("7d")
+    .sign(secretKey());
+}
+
+export async function createMasterToken(): Promise<string> {
+  return new SignJWT({ role: "master" })
+    .setProtectedHeader({ alg: "HS256" })
+    .setIssuedAt()
+    .setExpirationTime("8h")
     .sign(secretKey());
 }
 
@@ -35,9 +44,25 @@ export async function setAdminCookie(token: string) {
   });
 }
 
+export async function setMasterCookie(token: string) {
+  const jar = await cookies();
+  jar.set(MASTER_COOKIE, token, {
+    httpOnly: true,
+    sameSite: "lax",
+    path: "/",
+    maxAge: 60 * 60 * 8,
+  });
+}
+
 export async function clearAdminCookie() {
   const jar = await cookies();
   jar.delete(COOKIE);
+  jar.delete(MASTER_COOKIE);
+}
+
+export async function clearMasterCookie() {
+  const jar = await cookies();
+  jar.delete(MASTER_COOKIE);
 }
 
 export async function isAdminSession(): Promise<boolean> {
@@ -47,10 +72,28 @@ export async function isAdminSession(): Promise<boolean> {
   return verifyAdminToken(token);
 }
 
+export async function isMasterSession(): Promise<boolean> {
+  if (!(await isAdminSession())) return false;
+  const jar = await cookies();
+  const token = jar.get(MASTER_COOKIE)?.value;
+  if (!token) return false;
+  try {
+    const { payload } = await jwtVerify(token, secretKey());
+    return payload.role === "master";
+  } catch {
+    return false;
+  }
+}
+
 export function checkAdminCredentials(username: string, password: string): boolean {
   const expectedUser = process.env.ADMIN_USERNAME || "admin";
   const expectedPass = process.env.ADMIN_PASSWORD || "ybijour80";
   return username === expectedUser && password === expectedPass;
 }
 
-export { COOKIE };
+export function checkMasterPassword(password: string): boolean {
+  const expected = process.env.MASTER_PASSWORD || "ybijour80";
+  return password === expected;
+}
+
+export { COOKIE, MASTER_COOKIE };

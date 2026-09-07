@@ -134,7 +134,7 @@
   display: grid;
   grid-template-columns: 1.15fr 1fr;
   gap: 24px;
-  align-items: stretch;
+  align-items: start;
   border: 1px solid var(--border);
   border-radius: 18px;
   overflow: hidden;
@@ -142,20 +142,30 @@
   box-shadow: 0 10px 30px -18px #0f172a33;
 }
 
-.theme-press .press-feed .post-card.is-featured .post-card-thumb {
+.theme-press .press-feed .post-card.is-featured .post-card-thumb,
+.theme-press .press-feed .post-card:not(.is-featured) .post-card-thumb,
+.theme-press .post-grid .post-card-thumb {
+  height: auto;
+  min-height: 0;
   padding-bottom: 0;
-  height: 320px;
-  min-height: 280px;
+}
+
+.theme-press .press-feed .post-card.is-featured .post-card-thumb:not(:has(img)),
+.theme-press .press-feed .post-card:not(.is-featured) .post-card-thumb:not(:has(img)),
+.theme-press .post-grid .post-card-thumb:not(:has(img)) {
+  min-height: 140px;
 }
 
 .theme-press .press-feed .post-card.is-featured .post-card-thumb img,
 .theme-press .press-feed .post-card:not(.is-featured) .post-card-thumb img,
 .theme-press .post-grid .post-card-thumb img {
-  position: absolute;
-  inset: 0;
+  position: static;
+  inset: auto;
   width: 100%;
-  height: 100%;
-  object-fit: cover;
+  height: auto;
+  max-width: 100%;
+  object-fit: contain;
+  object-position: center;
 }
 
 .theme-press .press-feed .post-card.is-featured .post-card-body {
@@ -187,21 +197,12 @@
   display: grid;
   grid-template-columns: 200px 1fr;
   gap: 18px;
+  align-items: start;
   border: 1px solid var(--border);
   border-radius: 16px;
   overflow: hidden;
   background: #fff;
   padding: 0;
-}
-
-.theme-press .press-feed .post-card:not(.is-featured) .post-card-thumb {
-  padding-bottom: 0;
-  height: 160px;
-}
-
-.theme-press .post-grid .post-card-thumb {
-  padding-bottom: 0;
-  height: 140px;
 }
 
 .theme-press .press-feed .post-card:not(.is-featured) .post-card-body {
@@ -217,6 +218,7 @@
   display: grid;
   grid-template-columns: 180px 1fr;
   gap: 16px;
+  align-items: start;
   border: 1px solid var(--border);
   border-radius: 16px;
   overflow: hidden;
@@ -330,10 +332,6 @@
   .theme-press .press-feed .post-card.is-featured .post-card-body,
   .theme-press .press-feed .post-card:not(.is-featured) .post-card-body {
     padding: 16px;
-  }
-  .theme-press .press-feed .post-card.is-featured .post-card-thumb {
-    height: 200px;
-    min-height: 200px;
   }
   .theme-press .post-grid .post-card-body {
     padding: 16px;
