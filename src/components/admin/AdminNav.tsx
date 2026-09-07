@@ -1,0 +1,45 @@
+"use client";
+
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+
+const NAV = [
+  { href: "/admin", label: "대시보드" },
+  { href: "/admin/posts", label: "글 목록" },
+  { href: "/admin/posts/new", label: "새 글 작성" },
+  { href: "/admin/banners", label: "메인 배너" },
+  { href: "/admin/settings", label: "제미나이 설정" },
+];
+
+export function AdminNav() {
+  const pathname = usePathname();
+  const router = useRouter();
+
+  async function logout() {
+    await fetch("/api/auth/logout", { method: "POST" });
+    router.push("/admin/login");
+    router.refresh();
+  }
+
+  return (
+    <aside className="admin-side">
+      <h1>InfoCS 관리자</h1>
+      <p>magazine.infocs.co.kr</p>
+      {NAV.map((item) => (
+        <Link
+          key={item.href}
+          href={item.href}
+          className={pathname === item.href ? "active" : ""}
+        >
+          {item.label}
+        </Link>
+      ))}
+      <Link href="/" target="_blank">
+        사이트 보기
+      </Link>
+      <button className="linkish" type="button" onClick={logout}>
+        로그아웃
+      </button>
+    </aside>
+  );
+}
