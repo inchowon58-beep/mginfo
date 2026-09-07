@@ -5,8 +5,12 @@ import { DEFAULT_GEMINI_MODEL } from "./gemini-models";
 import { seedPartners, seedPosts } from "./seed";
 import type { Banner, Partner, Post, Settings, Store } from "./types";
 
-const DATA_DIR = path.join(process.cwd(), "data");
-const DATA_PATH = path.join(DATA_DIR, "store.json");
+const LOCAL_PATH = path.join(process.cwd(), "data", "store.json");
+const TMP_PATH = path.join("/tmp", "infocs-store.json");
+
+function dataPath(): string {
+  return process.env.VERCEL ? TMP_PATH : LOCAL_PATH;
+}
 
 function defaultSettings(): Settings {
   return {
@@ -18,37 +22,51 @@ function defaultSettings(): Settings {
 }
 
 function defaultStore(): Store {
-  return {
-    posts: seedPosts,
-    partners: seedPartners,
-    banners: seedBanners,
-    settings: defaultSettings(),
-  };
+  return JSON.parse(
+    JSON.stringify({
+      posts: seedPosts,
+      partners: seedPartners,
+      banners: seedBanners,
+      settings: defaultSettings(),
+    })
+  ) as Store;
 }
 
-function ensureStore(): Store {
-  if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
-  if (!fs.existsSync(DATA_PATH)) {
-    const initial = defaultStore();
-    fs.writeFileSync(DATA_PATH, JSON.stringify(initial, null, 2), "utf8");
-    return initial;
-  }
+function normalize(parsed: Store): Store {
+  parsed.posts ||= [];
+  parsed.partners ||= [];
+  parsed.banners = parsed.banners?.length ? parsed.banners : seedBanners;
+  parsed.settings = { ...defaultSettings(), ...parsed.settings };
+  return parsed;
+}
+
+function readFileStore(file: string): Store | null {
   try {
-    const raw = fs.readFileSync(DATA_PATH, "utf8");
-    const parsed = JSON.parse(raw) as Store;
-    parsed.posts ||= [];
-    parsed.partners ||= [];
-    parsed.settings = { ...defaultSettings(), ...parsed.settings };
-    if (!parsed.banners?.length) {
-      parsed.banners = seedBanners;
-      fs.writeFileSync(DATA_PATH, JSON.stringify(parsed, null, 2), "utf8");
-    }
-    return parsed;
+    if (!fs.existsSync(file)) return null;
+    return normalize(JSON.parse(fs.readFileSync(file, "utf8")) as Store);
   } catch {
-    const fallback = defaultStore();
-    fs.writeFileSync(DATA_PATH, JSON.stringify(fallback, null, 2), "utf8");
-    return fallback;
+    return null;
   }
+}
+
+function persist(store: Store) {
+  memory = store;
+  const file = dataPath();
+  try {
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, JSON.stringify(store, null, 2), "utf8");
+  } catch {
+    // Vercel 등 읽기 전용 환경에서는 메모리만 유지
+  }
+}
+
+let memory: Store | null = null;
+
+function ensureStore(): Store {
+  if (memory) return memory;
+  const loaded = readFileStore(dataPath()) || readFileStore(LOCAL_PATH) || defaultStore();
+  persist(loaded);
+  return loaded;
 }
 
 let queue: Promise<unknown> = Promise.resolve();
@@ -61,7 +79,7 @@ export async function updateStore(mutator: (store: Store) => void): Promise<Stor
   const run = queue.then(() => {
     const store = ensureStore();
     mutator(store);
-    fs.writeFileSync(DATA_PATH, JSON.stringify(store, null, 2), "utf8");
+    persist(store);
     return store;
   });
   queue = run.then(
