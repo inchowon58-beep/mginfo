@@ -6,6 +6,7 @@ import { notifyPostIndexed } from "@/lib/indexnow";
 import { persistFail } from "@/lib/persist-api";
 import { cleanHtml } from "@/lib/sanitize";
 import { slugify, uid } from "@/lib/slug";
+import { parseVendorFields } from "@/lib/vendor";
 import type { CategorySlug, PostStatus } from "@/lib/types";
 
 export async function GET(request: Request) {
@@ -54,6 +55,7 @@ export async function POST(request: Request) {
     createdAt: now,
     updatedAt: now,
     theme: String(body.theme || "art-v1"),
+    ...parseVendorFields(body),
   };
 
   try {

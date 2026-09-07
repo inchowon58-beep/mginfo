@@ -25,6 +25,11 @@ export type Post = {
   createdAt: string;
   updatedAt: string;
   theme?: string;
+  region?: string;
+  vendorName?: string;
+  vendorPhone?: string;
+  vendorWebsite?: string;
+  vendorKakao?: string;
 };
 
 export type Partner = {

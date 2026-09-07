@@ -6,6 +6,7 @@ import { notifyPostIndexed } from "@/lib/indexnow";
 import { persistFail } from "@/lib/persist-api";
 import { cleanHtml } from "@/lib/sanitize";
 import { slugify } from "@/lib/slug";
+import { parseVendorFields } from "@/lib/vendor";
 import type { CategorySlug, PostStatus } from "@/lib/types";
 
 export async function PUT(
@@ -63,6 +64,7 @@ export async function PUT(
             : s.posts[idx].publishedAt,
         updatedAt: now,
         theme: body.theme != null ? String(body.theme) : s.posts[idx].theme,
+        ...parseVendorFields(body),
       };
     });
   } catch (err) {

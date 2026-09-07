@@ -16,10 +16,17 @@ export function PostEditor({ post }: { post?: Post }) {
   const [coverImage, setCoverImage] = useState(post?.coverImage || "");
   const [focusKeyword, setFocusKeyword] = useState(post?.focusKeyword || "");
   const [status, setStatus] = useState<PostStatus>(post?.status || "draft");
-  const [theme, setTheme] = useState(post?.theme || "art-v1");
+  const [theme, setTheme] = useState(post?.theme || "art-v2");
+  const [region, setRegion] = useState(post?.region || "");
+  const [vendorName, setVendorName] = useState(post?.vendorName || "");
+  const [vendorPhone, setVendorPhone] = useState(post?.vendorPhone || "");
+  const [vendorWebsite, setVendorWebsite] = useState(post?.vendorWebsite || "");
+  const [vendorKakao, setVendorKakao] = useState(post?.vendorKakao || "");
   const [topic, setTopic] = useState("");
   const [keywords, setKeywords] = useState("");
-  const [notes, setNotes] = useState("뉴스기사·매거진 톤. 과장 없이, 실무 조언 포함.");
+  const [notes, setNotes] = useState("매거진 특집 톤. 과장 없이, 현장 관찰과 실질 조언. 가짜 실명 후기는 쓰지 말 것.");
+  const [localNotes, setLocalNotes] = useState("");
+  const [experienceNotes, setExperienceNotes] = useState("");
   const [sourceUrl, setSourceUrl] = useState("");
   const [busy, setBusy] = useState(false);
   const [genBusy, setGenBusy] = useState(false);
@@ -48,6 +55,10 @@ export function PostEditor({ post }: { post?: Post }) {
           keywords,
           notes,
           focusKeyword,
+          region,
+          localNotes,
+          experienceNotes,
+          vendorName,
           sourceUrl: mode === "rewrite" ? sourceUrl : "",
         }),
       });
@@ -90,6 +101,11 @@ export function PostEditor({ post }: { post?: Post }) {
         focusKeyword,
         status,
         theme,
+        region,
+        vendorName,
+        vendorPhone,
+        vendorWebsite,
+        vendorKakao,
       };
       const res = await fetch(post ? `/api/posts/${post.id}` : "/api/posts", {
         method: post ? "PUT" : "POST",
@@ -137,6 +153,36 @@ export function PostEditor({ post }: { post?: Post }) {
           placeholder="예: 부천강아지분양"
         />
         <p className="field-hint">제목·리드·본문이 이 키워드에 맞춰 검색되도록 작성됩니다.</p>
+        <label>지역 (선택)</label>
+        <input
+          value={region}
+          onChange={(e) => setRegion(e.target.value)}
+          placeholder="예: 경기 부천시 중동"
+        />
+        <p className="field-hint">지역 업체 글일 때만 적으면 됩니다. 비워 둬도 초안은 만들어집니다.</p>
+        <div className="vendor-admin">
+          <h3>소개 업체 (선택)</h3>
+          <p className="field-hint" style={{ marginTop: 0 }}>
+            특정 업체를 소개할 때만 적으세요. 비워 두면 일반 매거진 글이 됩니다. 전화·홈페이지·카카오를 넣으면
+            글 하단에 버튼이 생깁니다.
+          </p>
+          <label>업체명</label>
+          <input value={vendorName} onChange={(e) => setVendorName(e.target.value)} placeholder="예: 인포씨에스" />
+          <label>전화번호</label>
+          <input value={vendorPhone} onChange={(e) => setVendorPhone(e.target.value)} placeholder="예: 032-000-0000" />
+          <label>홈페이지 주소</label>
+          <input
+            value={vendorWebsite}
+            onChange={(e) => setVendorWebsite(e.target.value)}
+            placeholder="https://..."
+          />
+          <label>카카오톡 주소</label>
+          <input
+            value={vendorKakao}
+            onChange={(e) => setVendorKakao(e.target.value)}
+            placeholder="https://pf.kakao.com/..."
+          />
+        </div>
         <label>리드 / 요약</label>
         <textarea style={{ minHeight: 90 }} value={excerpt} onChange={(e) => setExcerpt(e.target.value)} />
         <label>본문 HTML (뉴스·매거진 형식)</label>
@@ -180,7 +226,7 @@ export function PostEditor({ post }: { post?: Post }) {
       <div className="admin-card admin-form">
         <h2>제미나이로 작성</h2>
         <p style={{ color: "#94a3b8", fontSize: 13, marginTop: 0 }}>
-          메인 키워드를 넣으면 네이버 검색용 정보형 매거진 글로 씁니다. 저장 전에 꼭 검토하세요.
+          필수는 주제(또는 원문 주소)만입니다. 아래 메모는 있을 때만 적으면 초안에 반영됩니다.
         </p>
         <label>메인 키워드 (SEO)</label>
         <input
@@ -192,6 +238,20 @@ export function PostEditor({ post }: { post?: Post }) {
         <input value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="예: 부천 전세 계약 전 체크리스트" />
         <label>보조 키워드</label>
         <input value={keywords} onChange={(e) => setKeywords(e.target.value)} placeholder="예: 등기부, 확정일자, 보증금" />
+        <label>현장·지역 메모 (선택)</label>
+        <textarea
+          style={{ minHeight: 90 }}
+          value={localNotes}
+          onChange={(e) => setLocalNotes(e.target.value)}
+          placeholder="알고 있는 동네 정보만. 예: 중동역 도보 8분, 공영주차장"
+        />
+        <label>경험·후기 메모 (선택)</label>
+        <textarea
+          style={{ minHeight: 90 }}
+          value={experienceNotes}
+          onChange={(e) => setExperienceNotes(e.target.value)}
+          placeholder="실제로 들은 손님 질문, 동선만. 없으면 비워 두세요."
+        />
         <label>추가 지시</label>
         <textarea style={{ minHeight: 100 }} value={notes} onChange={(e) => setNotes(e.target.value)} />
         <div className="admin-actions">

@@ -809,6 +809,12 @@ body {
   overflow: hidden;
 }
 
+.magazine-root.editorial .article.container-narrow {
+  padding-left: 24px;
+  padding-right: 24px;
+  box-sizing: border-box;
+}
+
 @media (max-width: 860px) {
   .magazine-root.editorial .is-featured {
     grid-template-columns: 1fr;
@@ -820,6 +826,23 @@ body {
   .magazine-root.editorial .edit-section-head {
     flex-direction: column;
     gap: 6px;
+  }
+  .magazine-root.editorial .article.container-narrow {
+    padding: 28px 20px 96px;
+  }
+  .magazine-root.editorial .article h1 {
+    overflow-wrap: anywhere;
+    word-break: keep-all;
+  }
+  .magazine-root.editorial .article-body,
+  .magazine-root.editorial .article-body p,
+  .magazine-root.editorial .article-body li {
+    overflow-wrap: anywhere;
+    word-break: keep-all;
+  }
+  .magazine-root.has-vendor-cta .vendor-cta-bar {
+    padding-left: 16px;
+    padding-right: 16px;
   }
 }
 
@@ -1197,6 +1220,138 @@ body {
   font-size: 13px;
   margin: 0 0 12px;
   line-height: 1.55;
+}
+
+.vendor-admin {
+  margin: 18px 0 8px;
+  padding: 16px;
+  border: 1px solid #1f2937;
+  border-radius: 12px;
+  background: #0b1220;
+}
+
+.vendor-admin h3 {
+  margin: 0 0 8px;
+  font-size: 15px;
+}
+
+.magazine-root .vendor-cta-card {
+  margin: 36px 0 8px;
+  padding: 22px 22px 20px;
+  border: 1px solid #e8e2d6;
+  border-radius: 16px;
+  background: #f7f3eb;
+}
+
+.magazine-root .vendor-cta-kicker {
+  margin: 0 0 6px;
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #8a8174;
+}
+
+.magazine-root .vendor-cta-card strong {
+  display: block;
+  font-family: var(--serif);
+  font-size: 22px;
+  font-weight: 500;
+  color: #1f1b16;
+}
+
+.magazine-root .vendor-cta-region {
+  margin: 6px 0 0;
+  color: #6b6358;
+  font-size: 14px;
+}
+
+.magazine-root .vendor-cta-copy {
+  margin: 10px 0 16px;
+  color: #5c564c;
+  font-size: 14px;
+}
+
+.magazine-root .vendor-cta-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.magazine-root .vendor-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 16px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+  flex: 1 1 140px;
+}
+
+.magazine-root .vendor-btn svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.magazine-root .vendor-btn.is-phone {
+  background: #15803d;
+  color: #fff;
+}
+
+.magazine-root .vendor-btn.is-website {
+  background: #1f1b16;
+  color: #f6f3ee;
+}
+
+.magazine-root .vendor-btn.is-kakao {
+  background: #fee500;
+  color: #191919;
+}
+
+.magazine-root .vendor-btn:hover {
+  text-decoration: none;
+  filter: brightness(1.06);
+}
+
+.magazine-root .vendor-cta-bar {
+  display: none;
+}
+
+@media (max-width: 860px) {
+  .magazine-root.has-vendor-cta .vendor-cta-card .vendor-cta-actions {
+    display: none;
+  }
+  .magazine-root.has-vendor-cta .vendor-cta-bar {
+    display: block;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 50;
+    padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0px));
+    background: rgba(246, 243, 238, 0.96);
+    border-top: 1px solid #e8e2d6;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+  .magazine-root.has-vendor-cta .vendor-cta-bar .vendor-cta-actions {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 8px;
+  }
+  .magazine-root.has-vendor-cta .vendor-cta-bar .vendor-btn {
+    flex: 1 1 0;
+    min-width: 0;
+    padding: 0 10px;
+    font-size: 13px;
+  }
+  .magazine-root.has-vendor-cta .site-footer {
+    padding-bottom: 84px;
+  }
 }
 
 @media (max-width: 960px) {

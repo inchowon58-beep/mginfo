@@ -2,9 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { BottomNav, Footer, Header } from "@/components/Header";
+import { VendorCta } from "@/components/VendorCta";
 import { getCategory, SITE } from "@/lib/categories";
 import { getPostBySlug, getPublishedPosts } from "@/lib/db";
 import { formatDate, stripHtml } from "@/lib/format";
+import { hasVendorCta } from "@/lib/vendor";
 
 export const dynamic = "force-dynamic";
 
@@ -63,6 +65,7 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
     .filter((p) => p.id !== post.id && p.category === post.category)
     .slice(0, 6);
   const pageUrl = `https://magazine.infocs.co.kr/posts/${post.slug}`;
+  const showVendor = hasVendorCta(post);
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "Article",
@@ -72,16 +75,25 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
     dateModified: post.updatedAt,
     mainEntityOfPage: pageUrl,
     image: post.coverImage ? [post.coverImage] : undefined,
-    keywords: [post.focusKeyword, ...post.tags].filter(Boolean).join(", "),
+    keywords: [post.focusKeyword, post.region, ...post.tags].filter(Boolean).join(", "),
     author: { "@type": "Organization", name: SITE.company },
     publisher: {
       "@type": "Organization",
       name: SITE.name,
     },
+    about: post.vendorName
+      ? {
+          "@type": "LocalBusiness",
+          name: post.vendorName,
+          telephone: post.vendorPhone,
+          url: post.vendorWebsite,
+          areaServed: post.region,
+        }
+      : undefined,
   };
 
   return (
-    <div className="magazine-root editorial">
+    <div className={`magazine-root editorial ${showVendor ? "has-vendor-cta" : ""}`}>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <Header />
       <article className={`article container-narrow ${post.theme || "art-v1"}`}>
@@ -103,6 +115,7 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
           </figure>
         )}
         <div className="article-body" dangerouslySetInnerHTML={{ __html: post.bodyHtml }} />
+        <VendorCta post={post} />
         {post.tags.length > 0 && (
           <div className="article-tags">
             {post.tags.map((tag) => (
@@ -126,7 +139,7 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
         )}
       </article>
       <Footer />
-      <BottomNav current={post.category} />
+      {showVendor ? null : <BottomNav current={post.category} />}
     </div>
   );
 }
