@@ -14,7 +14,7 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const post = getPostBySlug(slug);
+  const post = await getPostBySlug(slug);
   if (!post || post.status !== "published") return { title: "글을 찾을 수 없습니다" };
   const description = post.excerpt || stripHtml(post.bodyHtml).slice(0, 140);
   const url = `https://magazine.infocs.co.kr/posts/${post.slug}`;
@@ -56,10 +56,10 @@ export async function generateMetadata({
 
 export default async function PostPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const post = getPostBySlug(slug);
+  const post = await getPostBySlug(slug);
   if (!post || post.status !== "published") notFound();
   const cat = getCategory(post.category);
-  const related = getPublishedPosts()
+  const related = (await getPublishedPosts())
     .filter((p) => p.id !== post.id && p.category === post.category)
     .slice(0, 6);
   const pageUrl = `https://magazine.infocs.co.kr/posts/${post.slug}`;

@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
 import { isAdminSession } from "@/lib/auth";
 import { getSettings, updateStore } from "@/lib/db";
+import { persistFail } from "@/lib/persist-api";
 
 export async function GET() {
   if (!(await isAdminSession())) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
-  const settings = getSettings();
+  const settings = await getSettings();
   return NextResponse.json({
     settings: {
       ...settings,
@@ -23,19 +24,23 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
   const body = await request.json().catch(() => ({}));
-  await updateStore((s) => {
-    if (typeof body.geminiApiKey === "string" && body.geminiApiKey && !body.geminiApiKey.includes("•")) {
-      s.settings.geminiApiKey = body.geminiApiKey.trim();
-    }
-    if (typeof body.geminiModel === "string" && body.geminiModel.trim()) {
-      s.settings.geminiModel = body.geminiModel.trim();
-    }
-    if (typeof body.siteName === "string" && body.siteName.trim()) {
-      s.settings.siteName = body.siteName.trim();
-    }
-    if (typeof body.siteTagline === "string" && body.siteTagline.trim()) {
-      s.settings.siteTagline = body.siteTagline.trim();
-    }
-  });
+  try {
+    await updateStore((s) => {
+      if (typeof body.geminiApiKey === "string" && body.geminiApiKey && !body.geminiApiKey.includes("•")) {
+        s.settings.geminiApiKey = body.geminiApiKey.trim();
+      }
+      if (typeof body.geminiModel === "string" && body.geminiModel.trim()) {
+        s.settings.geminiModel = body.geminiModel.trim();
+      }
+      if (typeof body.siteName === "string" && body.siteName.trim()) {
+        s.settings.siteName = body.siteName.trim();
+      }
+      if (typeof body.siteTagline === "string" && body.siteTagline.trim()) {
+        s.settings.siteTagline = body.siteTagline.trim();
+      }
+    });
+  } catch (err) {
+    return persistFail(err);
+  }
   return NextResponse.json({ ok: true });
 }

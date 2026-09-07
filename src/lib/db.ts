@@ -2,15 +2,11 @@ import fs from "fs";
 import path from "path";
 import { seedBanners } from "./banners";
 import { DEFAULT_GEMINI_MODEL } from "./gemini-models";
+import { hasPersistentStore, hasRemoteStore, kvGetJson, kvSetJson } from "./kv";
 import { seedPartners, seedPosts } from "./seed";
 import type { Banner, Partner, Post, Settings, Store } from "./types";
 
 const LOCAL_PATH = path.join(process.cwd(), "data", "store.json");
-const TMP_PATH = path.join("/tmp", "infocs-store.json");
-
-function dataPath(): string {
-  return process.env.VERCEL ? TMP_PATH : LOCAL_PATH;
-}
 
 function defaultSettings(): Settings {
   return {
@@ -49,37 +45,62 @@ function readFileStore(file: string): Store | null {
   }
 }
 
-function persist(store: Store) {
-  memory = store;
-  const file = dataPath();
-  try {
-    fs.mkdirSync(path.dirname(file), { recursive: true });
-    fs.writeFileSync(file, JSON.stringify(store, null, 2), "utf8");
-  } catch {
-    // Vercel 등 읽기 전용 환경에서는 메모리만 유지
+function writeFileStore(store: Store) {
+  fs.mkdirSync(path.dirname(LOCAL_PATH), { recursive: true });
+  fs.writeFileSync(LOCAL_PATH, JSON.stringify(store, null, 2), "utf8");
+}
+
+export class PersistError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "PersistError";
   }
 }
 
-let memory: Store | null = null;
+async function loadStore(): Promise<Store> {
+  if (hasRemoteStore()) {
+    const remote = await kvGetJson<Store>();
+    if (remote) return normalize(remote);
+    const initial = defaultStore();
+    await kvSetJson(initial);
+    return initial;
+  }
+  return readFileStore(LOCAL_PATH) || defaultStore();
+}
 
-function ensureStore(): Store {
-  if (memory) return memory;
-  const loaded = readFileStore(dataPath()) || readFileStore(LOCAL_PATH) || defaultStore();
-  persist(loaded);
-  return loaded;
+async function saveStore(store: Store) {
+  try {
+    if (hasRemoteStore()) {
+      await kvSetJson(store);
+      return;
+    }
+    if (process.env.VERCEL) {
+      throw new PersistError(
+        "Vercel에서는 Redis(KV)를 연결해야 글이 저장됩니다. 프로젝트 → Storage에서 Upstash Redis를 만들고 이 프로젝트에 연결한 뒤 다시 배포하세요."
+      );
+    }
+    writeFileStore(store);
+  } catch (err) {
+    if (err instanceof PersistError) throw err;
+    throw new PersistError(err instanceof Error ? err.message : "글을 저장하지 못했습니다.");
+  }
 }
 
 let queue: Promise<unknown> = Promise.resolve();
 
-export function readStore(): Store {
-  return ensureStore();
+export function persistenceReady(): boolean {
+  return hasPersistentStore();
+}
+
+export async function readStore(): Promise<Store> {
+  return loadStore();
 }
 
 export async function updateStore(mutator: (store: Store) => void): Promise<Store> {
-  const run = queue.then(() => {
-    const store = ensureStore();
+  const run = queue.then(async () => {
+    const store = await loadStore();
     mutator(store);
-    persist(store);
+    await saveStore(store);
     return store;
   });
   queue = run.then(
@@ -89,32 +110,36 @@ export async function updateStore(mutator: (store: Store) => void): Promise<Stor
   return run;
 }
 
-export function getPublishedPosts(): Post[] {
-  return readStore()
-    .posts.filter((p) => p.status === "published")
+export async function getPublishedPosts(): Promise<Post[]> {
+  const store = await readStore();
+  return store.posts
+    .filter((p) => p.status === "published")
     .sort((a, b) => (b.publishedAt || b.createdAt).localeCompare(a.publishedAt || a.createdAt));
 }
 
-export function getPostBySlug(slug: string): Post | undefined {
-  return readStore().posts.find((p) => p.slug === slug);
+export async function getPostBySlug(slug: string): Promise<Post | undefined> {
+  const store = await readStore();
+  return store.posts.find((p) => p.slug === slug);
 }
 
-export function getPostById(id: string): Post | undefined {
-  return readStore().posts.find((p) => p.id === id);
+export async function getPostById(id: string): Promise<Post | undefined> {
+  const store = await readStore();
+  return store.posts.find((p) => p.id === id);
 }
 
-export function getPartners(): Partner[] {
-  return readStore().partners;
+export async function getPartners(): Promise<Partner[]> {
+  return (await readStore()).partners;
 }
 
-export function getSettings(): Settings {
-  return readStore().settings;
+export async function getSettings(): Promise<Settings> {
+  return (await readStore()).settings;
 }
 
-export function getBanners(): Banner[] {
-  return readStore().banners || [];
+export async function getBanners(): Promise<Banner[]> {
+  return (await readStore()).banners || [];
 }
 
-export function getEnabledBanners(): Banner[] {
-  return getBanners().filter((b) => b.enabled);
+export async function getEnabledBanners(): Promise<Banner[]> {
+  const banners = await getBanners();
+  return banners.filter((b) => b.enabled);
 }

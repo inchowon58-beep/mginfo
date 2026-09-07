@@ -1,9 +1,15 @@
+import { PersistNotice } from "@/components/admin/PersistNotice";
 import { PostTable } from "@/components/admin/PostTable";
 import { readStore } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
-export default function AdminPostsPage() {
-  const posts = readStore().posts;
-  return <PostTable posts={posts} />;
+export default async function AdminPostsPage() {
+  const posts = (await readStore()).posts;
+  return (
+    <>
+      <PersistNotice />
+      <PostTable posts={posts} />
+    </>
+  );
 }

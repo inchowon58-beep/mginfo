@@ -20,7 +20,7 @@ export async function POST(request: Request) {
   const category = CATEGORIES.some((c) => c.slug === body.category)
     ? (body.category as CategorySlug)
     : "life";
-  const settings = getSettings();
+  const settings = await getSettings();
   const apiKey = settings.geminiApiKey || process.env.GEMINI_API_KEY || "";
   if (!apiKey) {
     return NextResponse.json(

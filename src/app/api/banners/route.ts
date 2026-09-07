@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { isBannerTheme, safeBannerHref } from "@/lib/banners";
 import { isAdminSession } from "@/lib/auth";
 import { getBanners, updateStore } from "@/lib/db";
+import { persistFail } from "@/lib/persist-api";
 import { uid } from "@/lib/slug";
 import type { Banner, BannerKind } from "@/lib/types";
 
@@ -34,7 +35,7 @@ export async function GET() {
   if (!(await isAdminSession())) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
-  return NextResponse.json({ banners: getBanners() });
+  return NextResponse.json({ banners: await getBanners() });
 }
 
 export async function POST(request: Request) {
@@ -46,9 +47,13 @@ export async function POST(request: Request) {
   if ("error" in parsed) {
     return NextResponse.json({ error: parsed.error }, { status: 400 });
   }
-  await updateStore((s) => {
-    s.banners = s.banners || [];
-    s.banners.unshift(parsed);
-  });
+  try {
+    await updateStore((s) => {
+      s.banners = s.banners || [];
+      s.banners.unshift(parsed);
+    });
+  } catch (err) {
+    return persistFail(err);
+  }
   return NextResponse.json({ ok: true, banner: parsed });
 }

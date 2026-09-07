@@ -3,6 +3,7 @@ import { CATEGORIES } from "@/lib/categories";
 import { isAdminSession } from "@/lib/auth";
 import { getPublishedPosts, readStore, updateStore } from "@/lib/db";
 import { notifyPostIndexed } from "@/lib/indexnow";
+import { persistFail } from "@/lib/persist-api";
 import { cleanHtml } from "@/lib/sanitize";
 import { slugify, uid } from "@/lib/slug";
 import type { CategorySlug, PostStatus } from "@/lib/types";
@@ -11,9 +12,9 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const admin = await isAdminSession();
   if (admin && searchParams.get("all") === "1") {
-    return NextResponse.json({ posts: readStore().posts });
+    return NextResponse.json({ posts: (await readStore()).posts });
   }
-  return NextResponse.json({ posts: getPublishedPosts() });
+  return NextResponse.json({ posts: await getPublishedPosts() });
 }
 
 export async function POST(request: Request) {
@@ -29,7 +30,7 @@ export async function POST(request: Request) {
     : "life";
   const status: PostStatus = body.status === "published" ? "published" : "draft";
   let slug = slugify(String(body.slug || title));
-  const store = readStore();
+  const store = await readStore();
   if (store.posts.some((p) => p.slug === slug)) slug = `${slug}-${Date.now().toString(36)}`;
 
   const now = new Date().toISOString();
@@ -55,9 +56,13 @@ export async function POST(request: Request) {
     theme: String(body.theme || "art-v1"),
   };
 
-  await updateStore((s) => {
-    s.posts.unshift(post);
-  });
+  try {
+    await updateStore((s) => {
+      s.posts.unshift(post);
+    });
+  } catch (err) {
+    return persistFail(err);
+  }
   let indexNow: { ok: boolean; detail?: string } = { ok: false, detail: "초안" };
   if (status === "published") {
     indexNow = await notifyPostIndexed(post.slug);

@@ -10,12 +10,12 @@ import { getEnabledBanners, getPartners, getPublishedPosts } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
-export default function HomePage() {
-  const posts = getPublishedPosts();
+export default async function HomePage() {
+  const posts = await getPublishedPosts();
   const cover = posts[0];
   const rest = posts.slice(1, 7);
-  const partners = getPartners();
-  const banner = pickRandomBanner(getEnabledBanners());
+  const partners = await getPartners();
+  const banner = pickRandomBanner(await getEnabledBanners());
 
   return (
     <div className="magazine-root editorial">

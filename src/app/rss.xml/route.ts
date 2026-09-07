@@ -16,7 +16,7 @@ function xmlEscape(value: string): string {
 }
 
 export async function GET() {
-  const posts = getPublishedPosts().slice(0, 50);
+  const posts = (await getPublishedPosts()).slice(0, 50);
   const items = posts
     .map((post) => {
       const url = `${SITE_ORIGIN}/posts/${post.slug}`;

@@ -3,6 +3,7 @@ import { isAdminSession } from "@/lib/auth";
 import { getPostById, updateStore } from "@/lib/db";
 import { CATEGORIES } from "@/lib/categories";
 import { notifyPostIndexed } from "@/lib/indexnow";
+import { persistFail } from "@/lib/persist-api";
 import { cleanHtml } from "@/lib/sanitize";
 import { slugify } from "@/lib/slug";
 import type { CategorySlug, PostStatus } from "@/lib/types";
@@ -15,7 +16,7 @@ export async function PUT(
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
   const { id } = await params;
-  const current = getPostById(id);
+  const current = await getPostById(id);
   if (!current) return NextResponse.json({ error: "not found" }, { status: 404 });
   const body = await request.json().catch(() => ({}));
   const now = new Date().toISOString();
@@ -25,45 +26,49 @@ export async function PUT(
     : current.category;
 
   let slug = body.slug ? slugify(String(body.slug)) : current.slug;
-  await updateStore((s) => {
-    if (s.posts.some((p) => p.slug === slug && p.id !== id)) {
-      slug = `${slug}-${Date.now().toString(36)}`;
-    }
-    const idx = s.posts.findIndex((p) => p.id === id);
-    if (idx < 0) return;
-    const wasPublished = s.posts[idx].status === "published";
-    s.posts[idx] = {
-      ...s.posts[idx],
-      title: String(body.title ?? s.posts[idx].title).trim() || s.posts[idx].title,
-      slug,
-      excerpt: body.excerpt != null ? String(body.excerpt) : s.posts[idx].excerpt,
-      bodyHtml: body.bodyHtml != null ? cleanHtml(String(body.bodyHtml)) : s.posts[idx].bodyHtml,
-      category,
-      tags: Array.isArray(body.tags)
-        ? body.tags.map((t: string) => String(t)).filter(Boolean)
-        : body.tags != null
-          ? String(body.tags)
-              .split(",")
-              .map((t: string) => t.trim())
-              .filter(Boolean)
-          : s.posts[idx].tags,
-      coverImage: body.coverImage != null ? String(body.coverImage) || undefined : s.posts[idx].coverImage,
-      focusKeyword:
-        body.focusKeyword != null
-          ? String(body.focusKeyword).trim() || undefined
-          : s.posts[idx].focusKeyword,
-      status,
-      publishedAt:
-        status === "published"
-          ? wasPublished
-            ? s.posts[idx].publishedAt
-            : now
-          : s.posts[idx].publishedAt,
-      updatedAt: now,
-      theme: body.theme != null ? String(body.theme) : s.posts[idx].theme,
-    };
-  });
-  const saved = getPostById(id);
+  try {
+    await updateStore((s) => {
+      if (s.posts.some((p) => p.slug === slug && p.id !== id)) {
+        slug = `${slug}-${Date.now().toString(36)}`;
+      }
+      const idx = s.posts.findIndex((p) => p.id === id);
+      if (idx < 0) return;
+      const wasPublished = s.posts[idx].status === "published";
+      s.posts[idx] = {
+        ...s.posts[idx],
+        title: String(body.title ?? s.posts[idx].title).trim() || s.posts[idx].title,
+        slug,
+        excerpt: body.excerpt != null ? String(body.excerpt) : s.posts[idx].excerpt,
+        bodyHtml: body.bodyHtml != null ? cleanHtml(String(body.bodyHtml)) : s.posts[idx].bodyHtml,
+        category,
+        tags: Array.isArray(body.tags)
+          ? body.tags.map((t: string) => String(t)).filter(Boolean)
+          : body.tags != null
+            ? String(body.tags)
+                .split(",")
+                .map((t: string) => t.trim())
+                .filter(Boolean)
+            : s.posts[idx].tags,
+        coverImage: body.coverImage != null ? String(body.coverImage) || undefined : s.posts[idx].coverImage,
+        focusKeyword:
+          body.focusKeyword != null
+            ? String(body.focusKeyword).trim() || undefined
+            : s.posts[idx].focusKeyword,
+        status,
+        publishedAt:
+          status === "published"
+            ? wasPublished
+              ? s.posts[idx].publishedAt
+              : now
+            : s.posts[idx].publishedAt,
+        updatedAt: now,
+        theme: body.theme != null ? String(body.theme) : s.posts[idx].theme,
+      };
+    });
+  } catch (err) {
+    return persistFail(err);
+  }
+  const saved = await getPostById(id);
   let indexNow: { ok: boolean; detail?: string } = { ok: false, detail: "초안" };
   if (saved?.status === "published") {
     indexNow = await notifyPostIndexed(saved.slug);
@@ -79,8 +84,12 @@ export async function DELETE(
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
   const { id } = await params;
-  await updateStore((s) => {
-    s.posts = s.posts.filter((p) => p.id !== id);
-  });
+  try {
+    await updateStore((s) => {
+      s.posts = s.posts.filter((p) => p.id !== id);
+    });
+  } catch (err) {
+    return persistFail(err);
+  }
   return NextResponse.json({ ok: true });
 }

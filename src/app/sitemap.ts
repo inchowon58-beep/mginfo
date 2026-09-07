@@ -5,8 +5,8 @@ import { SITE_ORIGIN } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
 
-export default function sitemap(): MetadataRoute.Sitemap {
-  const posts = getPublishedPosts();
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  const posts = await getPublishedPosts();
   const now = new Date();
 
   const staticPages: MetadataRoute.Sitemap = [

@@ -16,7 +16,7 @@ export default async function PostsPage({
   const q = (sp.q || "").trim();
   const page = Math.max(1, Number(sp.page || 1));
   const perPage = 12;
-  const all = getPublishedPosts().filter((p) => {
+  const all = (await getPublishedPosts()).filter((p) => {
     if (!q) return true;
     const hay = `${p.title} ${p.excerpt} ${stripHtml(p.bodyHtml)}`.toLowerCase();
     return hay.includes(q.toLowerCase());

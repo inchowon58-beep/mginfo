@@ -1,17 +1,19 @@
 import Link from "next/link";
+import { PersistNotice } from "@/components/admin/PersistNotice";
 import { CATEGORIES } from "@/lib/categories";
 import { readStore } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
-export default function AdminHome() {
-  const store = readStore();
+export default async function AdminHome() {
+  const store = await readStore();
   const published = store.posts.filter((p) => p.status === "published").length;
   const drafts = store.posts.filter((p) => p.status === "draft").length;
   const hasKey = Boolean(store.settings.geminiApiKey);
 
   return (
     <>
+      <PersistNotice />
       <div className="admin-stats">
         <div className="admin-stat">
           전체 글<b>{store.posts.length}</b>

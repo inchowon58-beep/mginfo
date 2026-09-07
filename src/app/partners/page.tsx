@@ -8,8 +8,8 @@ export const metadata = {
   title: "제휴 업체",
 };
 
-export default function PartnersPage() {
-  const partners = getPartners();
+export default async function PartnersPage() {
+  const partners = await getPartners();
   return (
     <div className="magazine-root editorial">
       <Header active="partners" />

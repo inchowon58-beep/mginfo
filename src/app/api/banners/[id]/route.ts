@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { isBannerTheme, safeBannerHref } from "@/lib/banners";
 import { isAdminSession } from "@/lib/auth";
 import { getBanners, updateStore } from "@/lib/db";
+import { persistFail } from "@/lib/persist-api";
 import type { Banner, BannerKind } from "@/lib/types";
 
 function applyPatch(current: Banner, body: Record<string, unknown>): Banner | { error: string } {
@@ -38,17 +39,21 @@ export async function PUT(
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
   const { id } = await params;
-  const current = getBanners().find((b) => b.id === id);
+  const current = (await getBanners()).find((b) => b.id === id);
   if (!current) return NextResponse.json({ error: "not found" }, { status: 404 });
   const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
   const next = applyPatch(current, body);
   if ("error" in next) {
     return NextResponse.json({ error: next.error }, { status: 400 });
   }
-  await updateStore((s) => {
-    const idx = s.banners.findIndex((b) => b.id === id);
-    if (idx >= 0) s.banners[idx] = next;
-  });
+  try {
+    await updateStore((s) => {
+      const idx = s.banners.findIndex((b) => b.id === id);
+      if (idx >= 0) s.banners[idx] = next;
+    });
+  } catch (err) {
+    return persistFail(err);
+  }
   return NextResponse.json({ ok: true, banner: next });
 }
 
@@ -60,8 +65,12 @@ export async function DELETE(
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
   const { id } = await params;
-  await updateStore((s) => {
-    s.banners = (s.banners || []).filter((b) => b.id !== id);
-  });
+  try {
+    await updateStore((s) => {
+      s.banners = (s.banners || []).filter((b) => b.id !== id);
+    });
+  } catch (err) {
+    return persistFail(err);
+  }
   return NextResponse.json({ ok: true });
 }

@@ -883,6 +883,29 @@ body {
   padding: 32px;
 }
 
+.admin-alert {
+  background: #431407;
+  border: 1px solid #f97316;
+  color: #ffedd5;
+  padding: 14px 16px;
+  border-radius: 12px;
+  margin-bottom: 20px;
+  font-size: 14px;
+  line-height: 1.65;
+}
+
+.admin-alert b {
+  display: block;
+  margin-bottom: 6px;
+}
+
+.admin-alert code {
+  font-size: 12px;
+  background: #7c2d12;
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+
 .admin-card {
   background: #111827;
   border: 1px solid #1f2937;

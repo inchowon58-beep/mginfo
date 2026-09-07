@@ -23,7 +23,7 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
   const { slug } = await params;
   const cat = getCategory(slug);
   if (!cat) notFound();
-  const posts = getPublishedPosts().filter((p) => p.category === cat.slug);
+  const posts = (await getPublishedPosts()).filter((p) => p.category === cat.slug);
 
   return (
     <div className="magazine-root editorial">
