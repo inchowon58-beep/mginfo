@@ -15,6 +15,11 @@ export type FaqItem = {
   answer: string;
 };
 
+export type PostImage = {
+  url: string;
+  caption?: string;
+};
+
 export type Post = {
   id: string;
   slug: string;
@@ -24,6 +29,8 @@ export type Post = {
   category: CategorySlug;
   tags: string[];
   coverImage?: string;
+  coverCaption?: string;
+  extraImages?: PostImage[];
   focusKeyword?: string;
   faqItems?: FaqItem[];
   regionInfo?: string;
@@ -110,6 +117,7 @@ export type Settings = {
   usableUntil: string;
   dailyPostLimit: number;
   naverRankWork: boolean;
+  extraImagesEnabled: boolean;
   company: string;
   ceo: string;
   bizNo: string;

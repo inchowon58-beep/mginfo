@@ -45,7 +45,8 @@ export async function POST(request: Request) {
     wantsGemini ||
     body.usableUntil !== undefined ||
     body.dailyPostLimit !== undefined ||
-    body.naverRankWork !== undefined;
+    body.naverRankWork !== undefined ||
+    body.extraImagesEnabled !== undefined;
   if (wantsMaster && !(await isMasterSession())) {
     return NextResponse.json(
       { error: "마스터 관리자만 마스터 설정을 바꿀 수 있습니다." },
@@ -72,6 +73,13 @@ export async function POST(request: Request) {
         s.settings.naverRankWork = true;
       } else if (body.naverRankWork === "false" || body.naverRankWork === "0") {
         s.settings.naverRankWork = false;
+      }
+      if (typeof body.extraImagesEnabled === "boolean") {
+        s.settings.extraImagesEnabled = body.extraImagesEnabled;
+      } else if (body.extraImagesEnabled === "true" || body.extraImagesEnabled === "1") {
+        s.settings.extraImagesEnabled = true;
+      } else if (body.extraImagesEnabled === "false" || body.extraImagesEnabled === "0") {
+        s.settings.extraImagesEnabled = false;
       }
       const textKeys = [
         "siteName",

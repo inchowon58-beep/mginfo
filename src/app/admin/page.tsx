@@ -140,6 +140,15 @@ export default async function AdminHome() {
               <b>{hasKey ? "연결됨" : "미설정"}</b>
             </div>
           </div>
+          <div className="admin-ops-row">
+            <span className={`admin-kpi-ico${store.settings.extraImagesEnabled ? " is-violet" : " is-amber"}`}>
+              <AdminIcon name="banner" />
+            </span>
+            <div>
+              <span>추가사진사용</span>
+              <b>{store.settings.extraImagesEnabled ? "최대 7장" : "대표 1장"}</b>
+            </div>
+          </div>
         </section>
 
         <section className="admin-card">

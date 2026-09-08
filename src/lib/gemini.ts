@@ -142,7 +142,7 @@ ${uniquenessRules(input)}
 {
   "title": "한국어 제목",
   "excerpt": "2~3문장 리드. 검색 스니펫으로도 읽히게. 첫 문장은 메인 키워드로 시작. 지역이 있으면 지역명을 자연스럽게 포함",
-  "bodyHtml": "HTML only. Use <h2>, <h3>, <p>, <blockquote>, <ul><li>. 본문 2000~2800자. h2 소제목 3~5개. 인용 박스 1~2개. 이미지 태그 금지",
+  "bodyHtml": "HTML only. Use <h2>, <h3>, <p>, <strong>, <blockquote>, <ul><li>. 본문 2000~2800자. h2 소제목 3~5개. 인용 박스 1~2개. 이미지 태그 금지",
   "tags": ["태그1", "태그2", "태그3"],
   "slugHint": "english-kebab-case-slug",
   "regionInfo": "공식 지명과 그 동네 랜드마크로 시작하는 2~3문장",
@@ -156,6 +156,7 @@ ${uniquenessRules(input)}
 본문 HTML 규칙:
 - <html>, <body> 없이 본문 조각만
 - 지역 소개 문단은 regionInfo에만 넣고 본문에서 반복하지 말 것
+- 중요한 기준·숫자·조건·결론은 <strong>으로 강조한다. 한 문단에 한 곳, 글 전체 4~8회. 문장 전체를 굵게 하지 말 것.
 - <img>, <figure>, 이미지 URL 금지
 - 연락처·URL은 본문에 넣지 않기`;
 

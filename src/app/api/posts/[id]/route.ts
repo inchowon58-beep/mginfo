@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { isAdminSession } from "@/lib/auth";
 import { getPostById, getCategories, getSettings, updateStore } from "@/lib/db";
+import { extraImageLimit, parsePostImages } from "@/lib/post-images";
 import { checkCanPublish } from "@/lib/publish-limits";
 import { ensureCategorySlug } from "@/lib/categories";
 import { notifyPostIndexed } from "@/lib/indexnow";
@@ -57,6 +58,14 @@ export async function PUT(
                 .filter(Boolean)
             : s.posts[idx].tags,
         coverImage: body.coverImage != null ? String(body.coverImage) || undefined : s.posts[idx].coverImage,
+        coverCaption:
+          body.coverCaption !== undefined
+            ? String(body.coverCaption || "").trim() || undefined
+            : s.posts[idx].coverCaption,
+        extraImages:
+          body.extraImages !== undefined
+            ? parsePostImages(body.extraImages, extraImageLimit(s.settings.extraImagesEnabled))
+            : s.posts[idx].extraImages,
         focusKeyword:
           body.focusKeyword != null
             ? String(body.focusKeyword).trim() || undefined

@@ -48,6 +48,7 @@ export default function SettingsPage() {
   const [usableUntil, setUsableUntil] = useState("");
   const [dailyPostLimit, setDailyPostLimit] = useState("0");
   const [naverRankWork, setNaverRankWork] = useState(false);
+  const [extraImagesEnabled, setExtraImagesEnabled] = useState(false);
 
   useEffect(() => {
     fetch("/api/settings")
@@ -83,6 +84,7 @@ export default function SettingsPage() {
         if (typeof s.usableUntil === "string") setUsableUntil(s.usableUntil);
         if (s.dailyPostLimit != null) setDailyPostLimit(String(s.dailyPostLimit));
         setNaverRankWork(Boolean(s.naverRankWork));
+        setExtraImagesEnabled(Boolean(s.extraImagesEnabled));
       })
       .catch(() => setError("설정을 불러오지 못했습니다."));
     fetch("/api/auth/master")
@@ -150,6 +152,7 @@ export default function SettingsPage() {
       usableUntil,
       dailyPostLimit,
       naverRankWork,
+      extraImagesEnabled,
     });
     if (geminiApiKey && !geminiApiKey.includes("•")) setHasKey(true);
   }
@@ -178,6 +181,7 @@ export default function SettingsPage() {
       if (typeof s.usableUntil === "string") setUsableUntil(s.usableUntil);
       if (s.dailyPostLimit != null) setDailyPostLimit(String(s.dailyPostLimit));
       setNaverRankWork(Boolean(s.naverRankWork));
+      setExtraImagesEnabled(Boolean(s.extraImagesEnabled));
     } catch (err) {
       setError(err instanceof Error ? err.message : "확인 실패");
     } finally {
@@ -445,6 +449,18 @@ export default function SettingsPage() {
             네이버 상위노출 작업 진행 중으로 표시
           </label>
           <p className="field-hint">체크하면 대시보드 맨 위에 “네이버상위노출작업진행중”이 뜹니다.</p>
+          <h3 className="admin-subhead">추가사진사용설정</h3>
+          <label className="admin-check-all">
+            <input
+              type="checkbox"
+              checked={extraImagesEnabled}
+              onChange={(e) => setExtraImagesEnabled(e.target.checked)}
+            />
+            글에 사진을 최대 7장까지 추가
+          </label>
+          <p className="field-hint">
+            기본은 대표 이미지 1장입니다. 체크하면 글 작성에서 사진을 더 넣고, 소제목 앞과 하단 갤러리에 배치합니다.
+          </p>
           <h3 className="admin-subhead">제미나이</h3>
           <p style={{ color: "#94a3b8", fontSize: 14, marginTop: 0 }}>
             Google AI Studio에서 발급한 API 키를 저장하면 글 작성 화면에서 초안을 만들 수 있습니다.

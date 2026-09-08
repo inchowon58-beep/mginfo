@@ -8,6 +8,7 @@ import { persistFail } from "@/lib/persist-api";
 import { cleanHtml } from "@/lib/sanitize";
 import { slugify, uid } from "@/lib/slug";
 import { parseFaqItems } from "@/lib/faq";
+import { extraImageLimit, parsePostImages } from "@/lib/post-images";
 import { parseNameList } from "@/lib/region-geo";
 import { parseVendorFields } from "@/lib/vendor";
 import type { PostStatus } from "@/lib/types";
@@ -56,6 +57,8 @@ export async function POST(request: Request) {
           .map((t: string) => t.trim())
           .filter(Boolean),
     coverImage: String(body.coverImage || "") || undefined,
+    coverCaption: String(body.coverCaption || "").trim() || undefined,
+    extraImages: parsePostImages(body.extraImages, extraImageLimit(store.settings.extraImagesEnabled)),
     focusKeyword: String(body.focusKeyword || "").trim() || undefined,
     faqItems: parseFaqItems(body.faqItems),
     regionInfo: String(body.regionInfo || "").trim() || undefined,

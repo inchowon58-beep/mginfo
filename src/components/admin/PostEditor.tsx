@@ -3,7 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { DEFAULT_GEMINI_NOTES, resolveGeminiNotes } from "@/lib/gemini-notes";
-import type { Category, CategorySlug, FaqItem, Post, PostStatus } from "@/lib/types";
+import { extraImageLimit } from "@/lib/post-images";
+import type { Category, CategorySlug, FaqItem, Post, PostImage, PostStatus } from "@/lib/types";
 
 const EMPTY_FAQ: FaqItem = { question: "", answer: "" };
 
@@ -22,6 +23,9 @@ export function PostEditor({ post }: { post?: Post }) {
   const [category, setCategory] = useState<CategorySlug>(post?.category || "life");
   const [tags, setTags] = useState(post?.tags.join(", ") || "");
   const [coverImage, setCoverImage] = useState(post?.coverImage || "");
+  const [coverCaption, setCoverCaption] = useState(post?.coverCaption || "");
+  const [extraImages, setExtraImages] = useState<PostImage[]>(post?.extraImages || []);
+  const [extraImagesEnabled, setExtraImagesEnabled] = useState(false);
   const [focusKeyword, setFocusKeyword] = useState(post?.focusKeyword || "");
   const [faqItems, setFaqItems] = useState<FaqItem[]>(padFaqs(post?.faqItems));
   const [status, setStatus] = useState<PostStatus>(post?.status || "draft");
@@ -51,6 +55,10 @@ export function PostEditor({ post }: { post?: Post }) {
   const notesForCategory = useRef("");
 
   useEffect(() => {
+    fetch("/api/settings")
+      .then((r) => r.json())
+      .then((data) => setExtraImagesEnabled(Boolean(data.settings?.extraImagesEnabled)))
+      .catch(() => undefined);
     fetch("/api/categories")
       .then((r) => r.json())
       .then((data) => {
@@ -116,18 +124,37 @@ export function PostEditor({ post }: { post?: Post }) {
     }
   }
 
+  async function uploadImage(file: File) {
+    const form = new FormData();
+    form.append("file", file);
+    const res = await fetch("/api/upload", { method: "POST", body: form });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "업로드 실패");
+    return String(data.url || "");
+  }
+
   async function uploadCover(file: File) {
     setError("");
     setMessage("");
     setUploading(true);
     try {
-      const form = new FormData();
-      form.append("file", file);
-      const res = await fetch("/api/upload", { method: "POST", body: form });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "업로드 실패");
-      setCoverImage(data.url);
+      setCoverImage(await uploadImage(file));
       setMessage("대표 이미지를 올렸습니다.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "업로드 실패");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  async function uploadExtra(index: number, file: File) {
+    setError("");
+    setMessage("");
+    setUploading(true);
+    try {
+      const url = await uploadImage(file);
+      setExtraImages((rows) => rows.map((row, i) => (i === index ? { ...row, url } : row)));
+      setMessage("사진을 올렸습니다.");
     } catch (err) {
       setError(err instanceof Error ? err.message : "업로드 실패");
     } finally {
@@ -160,6 +187,8 @@ export function PostEditor({ post }: { post?: Post }) {
         category,
         tags,
         coverImage,
+        coverCaption,
+        extraImages: extraImagesEnabled ? extraImages.filter((item) => item.url.trim()) : [],
         focusKeyword,
         faqItems: faqItems.filter((item) => item.question.trim() && item.answer.trim()),
         status,
@@ -336,12 +365,83 @@ export function PostEditor({ post }: { post?: Post }) {
           onChange={(e) => setCoverImage(e.target.value)}
           placeholder="또는 이미지 주소 https://..."
         />
+        <input
+          value={coverCaption}
+          onChange={(e) => setCoverCaption(e.target.value)}
+          placeholder="사진 아래 짧은 설명 (예: 오래된 구획은 실측부터 합니다)"
+        />
         <p className="field-hint">
-          파일을 올리거나 주소를 넣으면 됩니다. 이 이미지가 글 상단과 네이버 검색 썸네일로 쓰입니다.
+          파일을 올리거나 주소를 넣으면 됩니다. 이 이미지가 글 상단과 네이버 검색 썸네일로 쓰입니다. 설명은 사진 아래에
+          작게 나갑니다.
         </p>
         {coverImage ? (
           <img className="cover-preview" src={coverImage} alt="대표 이미지 미리보기" />
         ) : null}
+        {extraImagesEnabled ? (
+          <div className="extra-images">
+            <h3 className="admin-subhead">추가 사진</h3>
+            <p className="field-hint" style={{ marginTop: 0 }}>
+              대표 포함 최대 7장입니다. 추가 사진은 소제목 앞에 들어가고, 남는 장은 하단 갤러리에 모입니다.
+            </p>
+            {extraImages.map((image, index) => (
+              <div className="extra-image-row" key={`extra-${index}`}>
+                <label>추가 사진 {index + 2}</label>
+                <div className="cover-upload">
+                  <label className="btn btn-ghost cover-file-btn">
+                    {uploading ? "올리는 중…" : "올리기"}
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp,image/gif"
+                      disabled={uploading}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        e.target.value = "";
+                        if (file) void uploadExtra(index, file);
+                      }}
+                    />
+                  </label>
+                  <button
+                    className="btn btn-ghost"
+                    type="button"
+                    onClick={() => setExtraImages((rows) => rows.filter((_, i) => i !== index))}
+                  >
+                    빼기
+                  </button>
+                </div>
+                <input
+                  value={image.url}
+                  onChange={(e) =>
+                    setExtraImages((rows) =>
+                      rows.map((row, i) => (i === index ? { ...row, url: e.target.value } : row))
+                    )
+                  }
+                  placeholder="이미지 주소 https://..."
+                />
+                <input
+                  value={image.caption || ""}
+                  onChange={(e) =>
+                    setExtraImages((rows) =>
+                      rows.map((row, i) => (i === index ? { ...row, caption: e.target.value } : row))
+                    )
+                  }
+                  placeholder="사진 아래 짧은 설명"
+                />
+                {image.url ? <img className="cover-preview" src={image.url} alt={`추가 사진 ${index + 2}`} /> : null}
+              </div>
+            ))}
+            {extraImages.length < extraImageLimit(true) ? (
+              <button
+                className="btn btn-ghost"
+                type="button"
+                onClick={() => setExtraImages((rows) => [...rows, { url: "", caption: "" }])}
+              >
+                사진 추가 ({extraImages.length + 1}/7)
+              </button>
+            ) : null}
+          </div>
+        ) : (
+          <p className="field-hint">추가 사진은 마스터설정에서 ‘추가사진사용설정’을 켠 뒤 최대 7장까지 넣을 수 있습니다.</p>
+        )}
         <label>본문 테마</label>
         <select value={theme} onChange={(e) => setTheme(e.target.value)}>
           <option value="art-v1">뉴스형</option>

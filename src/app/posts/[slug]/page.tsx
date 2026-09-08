@@ -19,7 +19,9 @@ import {
   resolveFaqItems,
 } from "@/lib/post-seo";
 import { buildBreadcrumbJsonLd, buildFaqPageJsonLd } from "@/lib/site-jsonld";
+import { ArticleGallery, ArticlePhoto } from "@/components/ArticlePhoto";
 import { resolveRegionContext, seedNumber } from "@/lib/region-intro";
+import { placeInlineImages } from "@/lib/post-images";
 import { getPlaceWeather, weatherSentence } from "@/lib/weather";
 import { hasVendorCta } from "@/lib/vendor";
 
@@ -103,6 +105,8 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
       ? weatherSentence(geoBase.place, weather, seedNumber(post.id, post.slug, post.publishedAt))
       : "",
   });
+  const extras = settings.extraImagesEnabled ? post.extraImages || [] : [];
+  const placed = placeInlineImages(post.bodyHtml, extras, keyword);
   const showVendor = hasVendorCta(post);
   const crumbs = [
     { name: "홈", path: "/" },
@@ -150,12 +154,14 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
           {post.tags.length > 0 && <span>· {post.tags.join(" · ")}</span>}
         </div>
         {geo?.regionInfo ? <p className="article-region">{geo.regionInfo}</p> : null}
-        {post.coverImage && (
-          <figure>
-            <img src={post.coverImage} alt={post.focusKeyword || post.title} />
-          </figure>
-        )}
-        <div className="article-body" dangerouslySetInnerHTML={{ __html: post.bodyHtml }} />
+        {post.coverImage ? (
+          <ArticlePhoto
+            image={{ url: post.coverImage, caption: post.coverCaption }}
+            alt={post.focusKeyword || post.title}
+          />
+        ) : null}
+        <div className="article-body" dangerouslySetInnerHTML={{ __html: placed.html }} />
+        <ArticleGallery images={placed.leftover} alt={keyword} />
         <VendorCta post={post} />
         {faqs.length > 0 && (
           <section className="article-faq">

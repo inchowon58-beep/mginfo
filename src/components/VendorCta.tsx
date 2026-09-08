@@ -68,17 +68,20 @@ export function VendorCta({ post }: { post: Post }) {
         <Buttons links={links} className="vendor-cta-actions" />
       </aside>
       <div className="vendor-cta-bar" aria-label={name ? `${name} 바로가기` : "업체 바로가기"}>
-        {name ? (
-          <p className="vendor-cta-bar-pick">
-            <span>이 글이 고른 곳</span>
-            <strong>{name}</strong>
+        <div className="vendor-cta-bar-pick">
+          <span className="vendor-cta-bar-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path
+                fill="currentColor"
+                d="M12 3.2l2.1 6.4H21l-5.4 3.9 2.1 6.5L12 16.9 6.3 20l2.1-6.5L3 9.6h6.9L12 3.2z"
+              />
+            </svg>
+          </span>
+          <p>
+            <em>에디터 추천</em>
+            <strong>{name || "이 글에서 소개한 곳"}</strong>
           </p>
-        ) : (
-          <p className="vendor-cta-bar-pick">
-            <span>이 글에서 소개한 곳</span>
-            <strong>바로 문의하기</strong>
-          </p>
-        )}
+        </div>
         <Buttons links={links} className="vendor-cta-actions" />
       </div>
     </>

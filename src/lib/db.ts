@@ -38,6 +38,7 @@ function defaultSettings(): Settings {
     usableUntil: "",
     dailyPostLimit: 0,
     naverRankWork: false,
+    extraImagesEnabled: false,
     company: SITE.company,
     ceo: SITE.ceo,
     bizNo: SITE.bizNo,
