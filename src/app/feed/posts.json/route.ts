@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getPublishedPosts } from "@/lib/db";
+import { buildPostSeoDescription, buildPostSeoTitle, pageKeyword } from "@/lib/post-seo";
 import { postUrl, SITE_ORIGIN } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
@@ -11,10 +12,13 @@ export async function GET() {
   const posts = published.slice(0, MAX_POSTS).map((post) => ({
     id: post.id,
     url: postUrl(post.slug),
-    title: post.title,
+    title: buildPostSeoTitle(post),
+    keyword: pageKeyword(post),
+    description: buildPostSeoDescription(post),
     publishedAt: post.publishedAt || post.createdAt,
     updatedAt: post.updatedAt,
     category: post.category,
+    region: post.region || "",
   }));
 
   return NextResponse.json(

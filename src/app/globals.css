@@ -799,6 +799,106 @@ body {
   overflow: hidden;
 }
 
+.magazine-root .article.container-narrow {
+  width: 100%;
+  max-width: 720px;
+  margin-left: auto;
+  margin-right: auto;
+  padding: 40px 24px 80px;
+  box-sizing: border-box;
+}
+
+.magazine-root .article-crumb {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  margin: 0 0 14px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.magazine-root .article-crumb a {
+  color: var(--text-muted);
+}
+
+.magazine-root .article-kicker {
+  margin: 0 0 8px;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--accent);
+}
+
+.magazine-root .article-region {
+  margin: 18px 0 0;
+  padding: 16px 18px;
+  background: var(--bg-soft, #fafafa);
+  border-radius: 12px;
+  line-height: 1.7;
+}
+
+.magazine-root .article-geo {
+  display: grid;
+  gap: 28px;
+  margin: 40px 0 8px;
+}
+
+.magazine-root .article-geo h2 {
+  margin: 0 0 8px;
+  font-size: 20px;
+}
+
+.magazine-root .article-geo p {
+  margin: 0 0 12px;
+  color: var(--text-muted);
+}
+
+.magazine-root .article-geo ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.magazine-root .article-faq {
+  margin: 40px 0 8px;
+}
+
+.magazine-root .article-faq h2 {
+  margin: 0 0 12px;
+  font-size: 22px;
+}
+
+.magazine-root .article-faq details {
+  border-bottom: 1px solid var(--border);
+  padding: 12px 0;
+}
+
+.magazine-root .article-faq summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.magazine-root .article-faq p {
+  margin: 10px 0 0;
+  color: var(--text-muted);
+}
+
+.magazine-root .related-cluster + .related-cluster {
+  margin-top: 28px;
+}
+
+.magazine-root .related-hub {
+  margin: 18px 0 0;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.faq-admin-row {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
 .magazine-root.editorial .article.container-narrow {
   padding-left: 24px;
   padding-right: 24px;
@@ -817,8 +917,17 @@ body {
     flex-direction: column;
     gap: 6px;
   }
+  .magazine-root .article.container-narrow {
+    padding: 28px 24px 96px;
+  }
   .magazine-root.editorial .article.container-narrow {
-    padding: 28px 20px 96px;
+    padding: 28px 24px 96px;
+  }
+  .magazine-root .article-body,
+  .magazine-root .article-body p,
+  .magazine-root .article-body li {
+    overflow-wrap: anywhere;
+    word-break: keep-all;
   }
   .magazine-root.editorial .article h1 {
     overflow-wrap: anywhere;
@@ -845,6 +954,11 @@ body {
   font-family: Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   overflow-x: hidden;
   -webkit-text-size-adjust: 100%;
+}
+
+.admin-body,
+.admin-body * {
+  box-sizing: border-box;
 }
 
 .admin-shell {
@@ -883,6 +997,7 @@ body {
   background: transparent;
   border: 0;
   width: 100%;
+  max-width: 100%;
   text-align: left;
   cursor: pointer;
 }
@@ -1726,23 +1841,36 @@ body {
     font-size: 11px;
   }
   .admin-side-nav {
-    display: flex;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 6px;
   }
   .admin-side a,
   .admin-side button.linkish {
-    width: auto;
-    flex: 0 0 auto;
+    width: 100%;
+    max-width: none;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     margin: 0;
-    padding: 8px 12px;
-    font-size: 13px;
-    white-space: nowrap;
+    padding: 9px 6px;
+    font-size: 12px;
+    line-height: 1.25;
+    white-space: normal;
+    text-align: center;
     min-height: 40px;
-    box-sizing: border-box;
+  }
+  .admin-tabs {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+  }
+  .admin-tab {
+    width: 100%;
+    min-width: 0;
+    padding: 9px 6px;
+    font-size: 12px;
+    text-align: center;
   }
   .admin-main {
     padding: 16px 14px calc(28px + env(safe-area-inset-bottom, 0px));

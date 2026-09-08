@@ -92,6 +92,16 @@ export const SITE_THEMES: SiteTheme[] = [
     accent: "#ff6f0f",
     paper: "#f7f8fa",
   },
+  {
+    id: "studio",
+    number: 9,
+    name: "클래스룸",
+    nameEn: "Classroom",
+    description: "강의형 랜딩. 큰 히어로, 카드형 가이드, 입장 팝업. 상세뚝딱 마켓과 비슷한 톤.",
+    rootClass: "magazine-root theme-studio",
+    accent: "#5b4dff",
+    paper: "#f6f3ee",
+  },
 ];
 
 export const DEFAULT_SITE_THEME: SiteThemeId = "press";

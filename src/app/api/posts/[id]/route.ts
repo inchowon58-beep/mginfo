@@ -6,6 +6,8 @@ import { notifyPostIndexed } from "@/lib/indexnow";
 import { persistFail } from "@/lib/persist-api";
 import { cleanHtml } from "@/lib/sanitize";
 import { slugify } from "@/lib/slug";
+import { parseFaqItems } from "@/lib/faq";
+import { parseNameList } from "@/lib/region-geo";
 import { parseVendorFields } from "@/lib/vendor";
 import type { PostStatus } from "@/lib/types";
 
@@ -54,6 +56,12 @@ export async function PUT(
           body.focusKeyword != null
             ? String(body.focusKeyword).trim() || undefined
             : s.posts[idx].focusKeyword,
+        faqItems: body.faqItems !== undefined ? parseFaqItems(body.faqItems) : s.posts[idx].faqItems,
+        regionInfo:
+          body.regionInfo !== undefined ? String(body.regionInfo || "").trim() || undefined : s.posts[idx].regionInfo,
+        nearbyAreas: body.nearbyAreas !== undefined ? parseNameList(body.nearbyAreas) : s.posts[idx].nearbyAreas,
+        nearbyStations:
+          body.nearbyStations !== undefined ? parseNameList(body.nearbyStations) : s.posts[idx].nearbyStations,
         status,
         publishedAt:
           status === "published"

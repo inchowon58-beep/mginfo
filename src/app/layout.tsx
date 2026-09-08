@@ -8,6 +8,7 @@ import "./theme-qna.css";
 import "./theme-talk.css";
 import "./theme-portal.css";
 import "./theme-carrot.css";
+import "./theme-studio.css";
 import { SITE, displaySiteName } from "@/lib/categories";
 import { getSettings } from "@/lib/db";
 import { NAVER_VERIFICATION, SITE_ORIGIN } from "@/lib/seo";
@@ -31,6 +32,7 @@ export async function generateMetadata(): Promise<Metadata> {
     },
     description: SITE.description,
     metadataBase: new URL(SITE_ORIGIN),
+    robots: { index: true, follow: true },
     other: {
       "naver-site-verification": NAVER_VERIFICATION,
     },

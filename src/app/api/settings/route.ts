@@ -61,6 +61,11 @@ export async function POST(request: Request) {
         "phone",
         "email",
         "carrotKeywords",
+        "popupTitle",
+        "popupBody",
+        "popupCta",
+        "popupHref",
+        "popupImage",
       ] as const;
       for (const key of textKeys) {
         if (typeof body[key] === "string") {
@@ -69,6 +74,13 @@ export async function POST(request: Request) {
       }
       if (isSiteThemeId(body.siteTheme)) {
         s.settings.siteTheme = body.siteTheme;
+      }
+      if (typeof body.popupEnabled === "boolean") {
+        s.settings.popupEnabled = body.popupEnabled;
+      } else if (body.popupEnabled === "true" || body.popupEnabled === "1") {
+        s.settings.popupEnabled = true;
+      } else if (body.popupEnabled === "false" || body.popupEnabled === "0") {
+        s.settings.popupEnabled = false;
       }
       if (body.likeCountMin != null || body.likeCountMax != null) {
         const likes = orderedRange(

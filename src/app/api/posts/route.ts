@@ -6,6 +6,8 @@ import { notifyPostIndexed } from "@/lib/indexnow";
 import { persistFail } from "@/lib/persist-api";
 import { cleanHtml } from "@/lib/sanitize";
 import { slugify, uid } from "@/lib/slug";
+import { parseFaqItems } from "@/lib/faq";
+import { parseNameList } from "@/lib/region-geo";
 import { parseVendorFields } from "@/lib/vendor";
 import type { PostStatus } from "@/lib/types";
 
@@ -48,6 +50,10 @@ export async function POST(request: Request) {
           .filter(Boolean),
     coverImage: String(body.coverImage || "") || undefined,
     focusKeyword: String(body.focusKeyword || "").trim() || undefined,
+    faqItems: parseFaqItems(body.faqItems),
+    regionInfo: String(body.regionInfo || "").trim() || undefined,
+    nearbyAreas: parseNameList(body.nearbyAreas),
+    nearbyStations: parseNameList(body.nearbyStations),
     status,
     publishedAt: status === "published" ? now : null,
     createdAt: now,

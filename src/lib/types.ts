@@ -10,6 +10,11 @@ export type Category = {
 
 export type PostStatus = "draft" | "published";
 
+export type FaqItem = {
+  question: string;
+  answer: string;
+};
+
 export type Post = {
   id: string;
   slug: string;
@@ -20,6 +25,10 @@ export type Post = {
   tags: string[];
   coverImage?: string;
   focusKeyword?: string;
+  faqItems?: FaqItem[];
+  regionInfo?: string;
+  nearbyAreas?: string[];
+  nearbyStations?: string[];
   status: PostStatus;
   publishedAt: string | null;
   createdAt: string;
@@ -70,7 +79,16 @@ export type Banner = {
   updatedAt: string;
 };
 
-export type SiteThemeId = "folio" | "press" | "night" | "journal" | "qna" | "talk" | "portal" | "carrot";
+export type SiteThemeId =
+  | "folio"
+  | "press"
+  | "night"
+  | "journal"
+  | "qna"
+  | "talk"
+  | "portal"
+  | "carrot"
+  | "studio";
 
 export type Settings = {
   geminiApiKey: string;
@@ -79,6 +97,12 @@ export type Settings = {
   siteTagline: string;
   siteTheme: SiteThemeId;
   carrotKeywords: string;
+  popupEnabled: boolean;
+  popupTitle: string;
+  popupBody: string;
+  popupCta: string;
+  popupHref: string;
+  popupImage: string;
   likeCountMin: number;
   likeCountMax: number;
   commentCountMin: number;

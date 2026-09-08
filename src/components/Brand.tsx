@@ -72,6 +72,14 @@ export function BrandMark({
       </Link>
     );
   }
+  if (themeId === "studio") {
+    return (
+      <Link className="site-logo studio-logo" href={href}>
+        <span className="studio-mark" aria-hidden />
+        {label}
+      </Link>
+    );
+  }
   return (
     <Link className="site-logo" href={href}>
       {label}
@@ -103,6 +111,14 @@ export function BrandText({ themeId = "folio", name }: { themeId?: SiteThemeId; 
     return (
       <span className="carrot-logo">
         <span className="carrot-mark" aria-hidden />
+        {label}
+      </span>
+    );
+  }
+  if (themeId === "studio") {
+    return (
+      <span className="studio-logo">
+        <span className="studio-mark" aria-hidden />
         {label}
       </span>
     );

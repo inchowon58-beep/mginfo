@@ -21,6 +21,12 @@ export default function SettingsPage() {
   const [geminiModel, setGeminiModel] = useState(DEFAULT_GEMINI_MODEL);
   const [siteTheme, setSiteTheme] = useState<SiteThemeId>("press");
   const [carrotKeywords, setCarrotKeywords] = useState("");
+  const [popupEnabled, setPopupEnabled] = useState(false);
+  const [popupTitle, setPopupTitle] = useState("");
+  const [popupBody, setPopupBody] = useState("");
+  const [popupCta, setPopupCta] = useState("");
+  const [popupHref, setPopupHref] = useState("/posts");
+  const [popupImage, setPopupImage] = useState("");
   const [likeCountMin, setLikeCountMin] = useState("20");
   const [likeCountMax, setLikeCountMax] = useState("200");
   const [commentCountMin, setCommentCountMin] = useState("5");
@@ -50,6 +56,12 @@ export default function SettingsPage() {
         if (s.geminiApiKey) setGeminiApiKey(s.geminiApiKey);
         if (s.siteTheme) setSiteTheme(s.siteTheme);
         if (typeof s.carrotKeywords === "string") setCarrotKeywords(s.carrotKeywords);
+        setPopupEnabled(Boolean(s.popupEnabled));
+        if (typeof s.popupTitle === "string") setPopupTitle(s.popupTitle);
+        if (typeof s.popupBody === "string") setPopupBody(s.popupBody);
+        if (typeof s.popupCta === "string") setPopupCta(s.popupCta);
+        if (typeof s.popupHref === "string") setPopupHref(s.popupHref);
+        if (typeof s.popupImage === "string") setPopupImage(s.popupImage);
         if (s.likeCountMin != null) setLikeCountMin(String(s.likeCountMin));
         if (s.likeCountMax != null) setLikeCountMax(String(s.likeCountMax));
         if (s.commentCountMin != null) setCommentCountMin(String(s.commentCountMin));
@@ -81,7 +93,7 @@ export default function SettingsPage() {
     setMessage("");
   }
 
-  async function save(payload: Record<string, string | number>) {
+  async function save(payload: Record<string, string | number | boolean>) {
     setBusy(true);
     setError("");
     setMessage("");
@@ -111,6 +123,12 @@ export default function SettingsPage() {
     await save({
       siteTheme,
       carrotKeywords,
+      popupEnabled,
+      popupTitle,
+      popupBody,
+      popupCta,
+      popupHref,
+      popupImage,
       likeCountMin,
       likeCountMax,
       commentCountMin,
@@ -228,7 +246,7 @@ export default function SettingsPage() {
         <form className="admin-card admin-form" onSubmit={saveSite}>
           <h2>사이트 설정</h2>
           <p style={{ color: "#94a3b8", fontSize: 14 }}>
-            고른 디자인이 로고, 색, 홈 구성까지 한꺼번에 바뀝니다. 지금은 1~8번입니다.
+            고른 디자인이 로고, 색, 홈 구성까지 한꺼번에 바뀝니다. 지금은 1~9번입니다.
           </p>
           <div className="theme-picker">
             {SITE_THEMES.map((theme) => (
@@ -249,6 +267,45 @@ export default function SettingsPage() {
               </button>
             ))}
           </div>
+          {siteTheme === "studio" ? (
+            <div className="admin-engage-fields">
+              <h3 className="admin-subhead">입장 팝업</h3>
+              <p className="field-hint" style={{ marginTop: 0 }}>
+                9번 클래스룸에서만 홈·글 화면에 뜹니다. 제목이나 내용을 비우면 팝업을 숨깁니다.
+              </p>
+              <label className="admin-check-all">
+                <input
+                  type="checkbox"
+                  checked={popupEnabled}
+                  onChange={(e) => setPopupEnabled(e.target.checked)}
+                />
+                팝업 사용
+              </label>
+              <label>제목</label>
+              <input
+                value={popupTitle}
+                onChange={(e) => setPopupTitle(e.target.value)}
+                placeholder="지금 바로 시작해 보세요"
+              />
+              <label>내용</label>
+              <textarea
+                value={popupBody}
+                onChange={(e) => setPopupBody(e.target.value)}
+                placeholder="필요한 이야기만 골라 읽고, 실생활에 바로 쓰는 가이드를 확인하세요."
+                style={{ minHeight: 90 }}
+              />
+              <label>버튼 문구</label>
+              <input value={popupCta} onChange={(e) => setPopupCta(e.target.value)} placeholder="글 보러가기" />
+              <label>버튼 링크</label>
+              <input value={popupHref} onChange={(e) => setPopupHref(e.target.value)} placeholder="/posts" />
+              <label>이미지 주소 (선택)</label>
+              <input
+                value={popupImage}
+                onChange={(e) => setPopupImage(e.target.value)}
+                placeholder="https://..."
+              />
+            </div>
+          ) : null}
           {siteTheme === "carrot" ? (
             <>
               <label>인기 검색어</label>
@@ -263,7 +320,7 @@ export default function SettingsPage() {
               </p>
             </>
           ) : null}
-          {siteTheme === "journal" || siteTheme === "talk" ? (
+          {siteTheme === "journal" || siteTheme === "talk" || siteTheme === "studio" ? (
             <div className="admin-engage-fields">
               <h3 className="admin-subhead">좋아요 · 댓글 표시</h3>
               <p className="field-hint" style={{ marginTop: 0 }}>

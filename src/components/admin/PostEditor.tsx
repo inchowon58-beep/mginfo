@@ -3,7 +3,15 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { DEFAULT_GEMINI_NOTES, resolveGeminiNotes } from "@/lib/gemini-notes";
-import type { Category, CategorySlug, Post, PostStatus } from "@/lib/types";
+import type { Category, CategorySlug, FaqItem, Post, PostStatus } from "@/lib/types";
+
+const EMPTY_FAQ: FaqItem = { question: "", answer: "" };
+
+function padFaqs(items?: FaqItem[]): FaqItem[] {
+  const next = (items || []).slice(0, 5);
+  while (next.length < 4) next.push({ ...EMPTY_FAQ });
+  return next;
+}
 
 export function PostEditor({ post }: { post?: Post }) {
   const router = useRouter();
@@ -15,9 +23,13 @@ export function PostEditor({ post }: { post?: Post }) {
   const [tags, setTags] = useState(post?.tags.join(", ") || "");
   const [coverImage, setCoverImage] = useState(post?.coverImage || "");
   const [focusKeyword, setFocusKeyword] = useState(post?.focusKeyword || "");
+  const [faqItems, setFaqItems] = useState<FaqItem[]>(padFaqs(post?.faqItems));
   const [status, setStatus] = useState<PostStatus>(post?.status || "draft");
   const [theme, setTheme] = useState(post?.theme || "art-v2");
   const [region, setRegion] = useState(post?.region || "");
+  const [regionInfo, setRegionInfo] = useState(post?.regionInfo || "");
+  const [nearbyAreas, setNearbyAreas] = useState((post?.nearbyAreas || []).join(", "));
+  const [nearbyStations, setNearbyStations] = useState((post?.nearbyStations || []).join(", "));
   const [vendorName, setVendorName] = useState(post?.vendorName || "");
   const [vendorPhone, setVendorPhone] = useState(post?.vendorPhone || "");
   const [vendorWebsite, setVendorWebsite] = useState(post?.vendorWebsite || "");
@@ -91,6 +103,10 @@ export function PostEditor({ post }: { post?: Post }) {
       setExcerpt(data.article.excerpt || "");
       setBodyHtml(data.article.bodyHtml || "");
       setTags((data.article.tags || []).join(", "));
+      if (data.article.faqItems) setFaqItems(padFaqs(data.article.faqItems));
+      if (data.article.regionInfo) setRegionInfo(data.article.regionInfo);
+      if (data.article.nearbyAreas) setNearbyAreas(data.article.nearbyAreas.join(", "));
+      if (data.article.nearbyStations) setNearbyStations(data.article.nearbyStations.join(", "));
       if (!slug && data.article.slugHint) setSlug(data.article.slugHint);
       setMessage("제미나이 초안을 넣었습니다. 확인하고 발행하세요.");
     } catch (err) {
@@ -145,9 +161,13 @@ export function PostEditor({ post }: { post?: Post }) {
         tags,
         coverImage,
         focusKeyword,
+        faqItems: faqItems.filter((item) => item.question.trim() && item.answer.trim()),
         status,
         theme,
         region,
+        regionInfo,
+        nearbyAreas,
+        nearbyStations,
         vendorName,
         vendorPhone,
         vendorWebsite,
@@ -215,7 +235,23 @@ export function PostEditor({ post }: { post?: Post }) {
           onChange={(e) => setRegion(e.target.value)}
           placeholder="예: 경기 부천시 중동"
         />
-        <p className="field-hint">지역 업체 글일 때만 적으면 됩니다. 비워 둬도 초안은 만들어집니다.</p>
+        <p className="field-hint">예: 양재, 부천 중동. 이 값이 있으면 글 상단에 그 지역만의 소개 문단이 붙습니다.</p>
+        <label>지역 소개 문단 (유사문서 회피)</label>
+        <textarea
+          style={{ minHeight: 90 }}
+          value={regionInfo}
+          onChange={(e) => setRegionInfo(e.target.value)}
+          placeholder="예: 서울특별시 서초구 양재동은 양재시민의숲과 양재천이 있어 ..."
+        />
+        <p className="field-hint">비워 두면 지역명으로 자동 문단을 만들고, 제미나이 초안을 받으면 채워집니다.</p>
+        <label>근방 동·구</label>
+        <input value={nearbyAreas} onChange={(e) => setNearbyAreas(e.target.value)} placeholder="서초동, 도곡동, 개포동" />
+        <label>인근 지하철역</label>
+        <input
+          value={nearbyStations}
+          onChange={(e) => setNearbyStations(e.target.value)}
+          placeholder="양재역, 양재시민의숲역, 매봉역"
+        />
         <button className="vendor-toggle" type="button" onClick={() => setVendorOpen((open) => !open)}>
           {vendorOpen ? "소개 업체 닫기" : "소개 업체 작성"}
         </button>
@@ -245,6 +281,29 @@ export function PostEditor({ post }: { post?: Post }) {
         ) : null}
         <label>리드 / 요약</label>
         <textarea style={{ minHeight: 90 }} value={excerpt} onChange={(e) => setExcerpt(e.target.value)} />
+        <label>자주 묻는 질문 (SEO)</label>
+        <p className="field-hint" style={{ marginTop: 0 }}>
+          유아독존처럼 검색어가 들어간 질문 3~4개를 넣으면 글 하단과 FAQ 스키마에 같이 나갑니다. 제미나이 초안에도 채워집니다.
+        </p>
+        {faqItems.map((item, index) => (
+          <div className="faq-admin-row" key={`faq-${index}`}>
+            <input
+              value={item.question}
+              onChange={(e) =>
+                setFaqItems((rows) => rows.map((row, i) => (i === index ? { ...row, question: e.target.value } : row)))
+              }
+              placeholder={`질문 ${index + 1} (메인 키워드로 시작)`}
+            />
+            <textarea
+              style={{ minHeight: 72 }}
+              value={item.answer}
+              onChange={(e) =>
+                setFaqItems((rows) => rows.map((row, i) => (i === index ? { ...row, answer: e.target.value } : row)))
+              }
+              placeholder="답변"
+            />
+          </div>
+        ))}
         <label>
           본문 HTML <span className="req">*</span>
         </label>

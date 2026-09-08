@@ -1,20 +1,40 @@
+import type { Metadata } from "next";
 import { SiteFrame, getPublicTheme } from "@/components/SiteFrame";
 import { PageMast } from "@/components/PageMast";
 import { displaySiteName } from "@/lib/categories";
 import { getPartners, getSettings } from "@/lib/db";
+import { siteUrl } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
 
-export const metadata = {
-  title: "제휴 업체",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const settings = await getSettings();
+  const name = displaySiteName(settings.siteName);
+  const description = `${name}과 함께하는 제휴 업체 안내입니다.`;
+  return {
+    title: "제휴 업체",
+    description,
+    alternates: { canonical: siteUrl("/partners") },
+    robots: { index: true, follow: true },
+    openGraph: {
+      title: "제휴 업체",
+      description,
+      url: siteUrl("/partners"),
+      siteName: name,
+      locale: "ko_KR",
+      type: "website",
+    },
+  };
+}
 
 export default async function PartnersPage() {
   const theme = await getPublicTheme();
   const partners = await getPartners();
   const siteName = displaySiteName((await getSettings()).siteName);
   const kicker =
-    theme.id === "carrot"
+    theme.id === "studio"
+      ? "Community"
+      : theme.id === "carrot"
       ? "Nearby"
       : theme.id === "portal"
       ? "Partners"

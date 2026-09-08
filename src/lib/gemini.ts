@@ -1,5 +1,9 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { parseFaqItems, type FaqItem } from "./faq";
 import { DEFAULT_GEMINI_MODEL } from "./gemini-models";
+import { fallbackFaqItems } from "./post-seo";
+import { extractPlaceName, getNearbyDistricts, getNearbyStations, getRegionFact, parseNameList } from "./region-geo";
+import { composeRegionInfo } from "./region-intro";
 import { stripGeneratedImages } from "./sanitize";
 import type { CategorySlug } from "./types";
 
@@ -24,6 +28,10 @@ export type GenerateResult = {
   bodyHtml: string;
   tags: string[];
   slugHint?: string;
+  faqItems?: FaqItem[];
+  regionInfo?: string;
+  nearbyAreas?: string[];
+  nearbyStations?: string[];
 };
 
 function extractJson(text: string): string {
@@ -40,6 +48,23 @@ function uniquenessRules(input: GenerateInput): string {
   const localNotes = (input.localNotes || "").trim();
   const experienceNotes = (input.experienceNotes || "").trim();
   const vendorName = (input.vendorName || "").trim();
+  const place = extractPlaceName(region, input.focusKeyword, input.topic) || region;
+  const fact = place ? getRegionFact(place) : undefined;
+  const nearby = place ? getNearbyDistricts(place) : [];
+  const stations = place ? getNearbyStations(place) : [];
+  const factLines = fact
+    ? `- 공식 지명: ${fact.official}
+- 이 지역만의 랜드마크(사실): ${fact.landmarks.join(", ")}
+- 근방 동·구: ${nearby.join(", ") || "(없음)"}
+- 인근 역: ${stations.join(", ") || "(없음)"}
+- regionInfo는 반드시 "${fact.official}은 ${fact.landmarks.slice(0, 2).join("과 ")}가 있어 ..."처럼 그 동네만의 지명으로 시작하라.
+- 다른 지역에 그대로 붙여 넣을 수 있는 첫 문장은 금지.`
+    : place
+      ? `- 지역명: ${place}
+- 근방: ${nearby.join(", ") || "(없음)"}
+- 인근 역: ${stations.join(", ") || "(없음)"}
+- regionInfo는 ${place}의 실존 공원·역·도로·상권만 써서 2~3문장.`
+      : `- 주제에 시·구·동이 있으면 그 지명을 regionInfo와 첫 문단에 구체화하라.`;
 
   return `유사문서 회피(네이버가 복제·유사 문서로 보지 않게):
 - 흔한 총정리/완벽가이드 제목과 똑같은 목차를 쓰지 마라. 이 글만의 각도(지역 동선, 선택 기준, 현장 관찰)로 구성한다.
@@ -48,9 +73,9 @@ function uniquenessRules(input: GenerateInput): string {
 - 제목은 검색 의도를 담되, 다른 블로그와 겹치지 않는 표현을 고른다.
 
 지역 정보:
-- 지역: ${region || "(없음 — 주제에 지역이 있으면 시·구·동 단위로 구체화)"}
+- 지역 입력값: ${region || "(없음)"}
 - 현장·지역 메모: ${localNotes || "(없음)"}
-${region || localNotes ? "- 위 지역/메모를 본문 곳곳에 사실처럼 배치해, 검색이 ‘해당 지역 정보 문서’로 읽히게 한다." : ""}
+${factLines}
 
 매거진 문체:
 - 너는 전문 매거진 에디터다. 독자에게 도움이 되는 특집 톤으로 쓴다.
@@ -78,9 +103,10 @@ function seoRules(focusKeyword: string): string {
 네이버 SEO 규칙(반드시 지킬 것):
 - 제목 앞쪽에 메인 키워드를 자연스럽게 넣는다. 제목은 검색 의도에 맞게 28~48자.
 - 리드(excerpt) 첫 문장에 메인 키워드를 포함한다.
-- 본문 첫 <p>에도 메인 키워드를 한 번 넣는다.
+- 본문 첫 <p>는 regionInfo를 반복하지 말고, 그 다음 선택 기준부터 시작한다.
 - h2 소제목 3~5개 중 1~2개에 메인 키워드 또는 핵심 의미의 자연스러운 변형을 넣는다.
 - 본문 전체에 메인 키워드를 6~10회, 문맥에 맞게 분산해서 쓴다. 한 문장에 두 번 넣지 않는다.
+- faqItems 질문 3~4개 중 최소 2개는 메인 키워드로 시작하고, 지역이 있으면 1개는 지역명을 넣는다.
 - 키워드 나열, 숨은 텍스트, 의미 없는 반복, 광고 문구는 금지한다.
 - 지역·서비스명이 키워드에 있으면 실제 선택 기준, 절차, 주의점을 정보로 풀어 쓴다.`;
 }
@@ -115,15 +141,21 @@ ${uniquenessRules(input)}
 형식:
 {
   "title": "한국어 제목",
-  "excerpt": "2~3문장 리드. 검색 스니펫으로도 읽히게. 지역이 있으면 지역명을 자연스럽게 포함",
+  "excerpt": "2~3문장 리드. 검색 스니펫으로도 읽히게. 첫 문장은 메인 키워드로 시작. 지역이 있으면 지역명을 자연스럽게 포함",
   "bodyHtml": "HTML only. Use <h2>, <h3>, <p>, <blockquote>, <ul><li>. 본문 2000~2800자. h2 소제목 3~5개. 인용 박스 1~2개. 이미지 태그 금지",
   "tags": ["태그1", "태그2", "태그3"],
-  "slugHint": "english-kebab-case-slug"
+  "slugHint": "english-kebab-case-slug",
+  "regionInfo": "공식 지명과 그 동네 랜드마크로 시작하는 2~3문장",
+  "nearbyAreas": ["근방동1", "근방동2", "근방동3", "근방동4", "근방동5"],
+  "nearbyStations": ["역1", "역2", "역3", "역4", "역5"],
+  "faqItems": [
+    { "question": "메인 키워드로 시작하는 질문", "answer": "2~3문장 답변" }
+  ]
 }
 
 본문 HTML 규칙:
 - <html>, <body> 없이 본문 조각만
-- 첫 문단에 이 글의 결론과 지역 맥락을 먼저 보여 주기
+- 지역 소개 문단은 regionInfo에만 넣고 본문에서 반복하지 말 것
 - <img>, <figure>, 이미지 URL 금지
 - 연락처·URL은 본문에 넣지 않기`;
 
@@ -142,11 +174,47 @@ ${uniquenessRules(input)}
   if (focusKeyword && !tags.includes(focusKeyword)) {
     tags.unshift(focusKeyword);
   }
+  const faqItems =
+    parseFaqItems((parsed as GenerateResult).faqItems) ||
+    fallbackFaqItems(
+      {
+        id: "",
+        slug: "",
+        title: parsed.title,
+        excerpt: parsed.excerpt || "",
+        bodyHtml: parsed.bodyHtml,
+        category: input.category,
+        tags,
+        focusKeyword: focusKeyword || undefined,
+        region: (input.region || "").trim() || undefined,
+        status: "draft",
+        publishedAt: null,
+        createdAt: "",
+        updatedAt: "",
+      },
+      input.categoryName
+    );
+  const place = extractPlaceName(input.region, focusKeyword, input.topic, parsed.title) || (input.region || "").trim();
+  const regionInfo =
+    String((parsed as GenerateResult).regionInfo || "").trim() ||
+    composeRegionInfo({
+      place,
+      keyword: focusKeyword || parsed.title,
+      categoryName: input.categoryName,
+      localNotes: input.localNotes,
+    });
+  const nearbyAreas = parseNameList((parsed as GenerateResult).nearbyAreas) || (place ? getNearbyDistricts(place) : undefined);
+  const nearbyStations =
+    parseNameList((parsed as GenerateResult).nearbyStations) || (place ? getNearbyStations(place) : undefined);
   return {
     title: parsed.title,
     excerpt: parsed.excerpt || "",
     bodyHtml: stripGeneratedImages(parsed.bodyHtml),
     tags: tags.slice(0, 8),
     slugHint: parsed.slugHint,
+    faqItems: faqItems.length ? faqItems : undefined,
+    regionInfo: regionInfo || undefined,
+    nearbyAreas,
+    nearbyStations,
   };
 }

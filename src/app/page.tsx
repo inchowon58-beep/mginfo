@@ -10,11 +10,36 @@ import { QnaHome } from "@/components/themes/QnaHome";
 import { TalkHome } from "@/components/themes/TalkHome";
 import { PortalHome } from "@/components/themes/PortalHome";
 import { CarrotHome } from "@/components/themes/CarrotHome";
+import { StudioHome } from "@/components/themes/StudioHome";
 import { SITE, displaySiteName, parseCarrotKeywords } from "@/lib/categories";
 import { pickRandomBanner } from "@/lib/banners";
 import { getEnabledBanners, getPartners, getPublishedPosts, getSettings } from "@/lib/db";
+import { siteUrl } from "@/lib/seo";
+import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata(): Promise<Metadata> {
+  const settings = await getSettings();
+  const name = displaySiteName(settings.siteName);
+  const tagline = (settings.siteTagline || "").trim() || SITE.tagline;
+  const description = `${tagline}. ${SITE.description}`;
+  return {
+    title: { absolute: `${name} — ${tagline}` },
+    description,
+    keywords: [name, tagline, "매거진", "가이드"],
+    alternates: { canonical: siteUrl("/") },
+    robots: { index: true, follow: true },
+    openGraph: {
+      title: `${name} — ${tagline}`,
+      description,
+      url: siteUrl("/"),
+      siteName: name,
+      locale: "ko_KR",
+      type: "website",
+    },
+  };
+}
 
 export default async function HomePage() {
   const theme = await getPublicTheme();
@@ -23,6 +48,21 @@ export default async function HomePage() {
   const rest = posts.slice(1, 7);
   const partners = await getPartners();
   const banner = pickRandomBanner(await getEnabledBanners());
+
+  if (theme.id === "studio") {
+    const settings = await getSettings();
+    return (
+      <SiteFrame active="home">
+        <StudioHome
+          posts={posts}
+          partners={partners}
+          banner={banner}
+          siteName={displaySiteName(settings.siteName)}
+          tagline={settings.siteTagline}
+        />
+      </SiteFrame>
+    );
+  }
 
   if (theme.id === "carrot") {
     const settings = await getSettings();

@@ -10,12 +10,50 @@ import { QnaList } from "@/components/themes/QnaList";
 import { TalkThread } from "@/components/themes/TalkThread";
 import { PortalRank } from "@/components/themes/PortalRank";
 import { CarrotList } from "@/components/themes/CarrotList";
+import { StudioList } from "@/components/themes/StudioList";
 import { getPartners, getPublishedPosts, getSettings } from "@/lib/db";
 import { displaySiteName } from "@/lib/categories";
 import { stripHtml } from "@/lib/format";
+import { siteUrl } from "@/lib/seo";
+import { buildCollectionPageJsonLd } from "@/lib/site-jsonld";
 import { getThemeChrome } from "@/lib/theme-chrome";
+import { JsonLd } from "@/components/seo/JsonLd";
+import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string; page?: string }>;
+}): Promise<Metadata> {
+  const sp = await searchParams;
+  const q = (sp.q || "").trim();
+  const settings = await getSettings();
+  const name = displaySiteName(settings.siteName);
+  if (q) {
+    return {
+      title: `"${q}" 검색`,
+      robots: { index: false, follow: true },
+    };
+  }
+  const description = `${name}에 발행된 전체 가이드를 한곳에서 봅니다. 분야별 선택 기준과 현장 정보를 이어서 확인하세요.`;
+  return {
+    title: "전체 글",
+    description,
+    keywords: [name, "매거진", "전체 글", "가이드"],
+    alternates: { canonical: siteUrl("/posts") },
+    robots: { index: true, follow: true },
+    openGraph: {
+      title: "전체 글",
+      description,
+      url: siteUrl("/posts"),
+      siteName: name,
+      locale: "ko_KR",
+      type: "website",
+    },
+  };
+}
 
 export default async function PostsPage({
   searchParams,
@@ -37,9 +75,12 @@ export default async function PostsPage({
   const totalPages = Math.max(1, Math.ceil(all.length / perPage));
   const slice = all.slice((page - 1) * perPage, page * perPage);
   const partners = theme.id === "journal" ? await getPartners() : [];
-  const siteName = theme.id === "journal" ? displaySiteName((await getSettings()).siteName) : undefined;
+  const settings = await getSettings();
+  const siteName = displaySiteName(settings.siteName);
   const kicker =
-    theme.id === "carrot"
+    theme.id === "studio"
+      ? "Classroom"
+      : theme.id === "carrot"
       ? "Town"
       : theme.id === "portal"
       ? "News"
@@ -57,6 +98,18 @@ export default async function PostsPage({
 
   return (
     <SiteFrame active="posts">
+      {q ? null : (
+        <JsonLd
+          data={buildCollectionPageJsonLd({
+            name: "전체 글",
+            description: `${siteName}에 발행된 전체 가이드`,
+            path: "/posts",
+            keywords: [siteName, "전체 글", "가이드"],
+            count: published.length,
+            siteName,
+          })}
+        />
+      )}
       <PageMast
         themeId={theme.id}
         kicker={kicker}
@@ -68,7 +121,9 @@ export default async function PostsPage({
               : `검색어와 맞는 이야기 ${all.length}편입니다.`
             : theme.id === "portal"
               ? "분야와 키워드로 뉴스를 찾아보세요."
-              : theme.id === "carrot"
+              : theme.id === "studio"
+              ? "단계별 가이드를 골라 바로 시작해 보세요."
+            : theme.id === "carrot"
               ? "근처 동네 소식을 검색해 보세요."
               : theme.id === "talk"
               ? "피드에 올라온 글을 이어서 보세요."
@@ -92,6 +147,8 @@ export default async function PostsPage({
             <PortalRank posts={slice} start={(page - 1) * perPage + 1} />
           ) : theme.id === "carrot" ? (
             <CarrotList posts={slice} />
+          ) : theme.id === "studio" ? (
+            <StudioList posts={slice} />
           ) : theme.id === "journal" ? (
             <div className="blog-shell">
               <div className="blog-main">

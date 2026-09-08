@@ -24,8 +24,9 @@ export function AdminNav() {
   function isActive(href: string) {
     if (href === "/admin") return pathname === "/admin";
     if (href === "/admin/settings") return pathname.startsWith("/admin/settings");
+    if (href === "/admin/posts/new") return pathname === "/admin/posts/new";
     if (href === "/admin/posts") {
-      return pathname === "/admin/posts" || /^\/admin\/posts\/[^/]+$/.test(pathname);
+      return pathname === "/admin/posts" || (pathname.startsWith("/admin/posts/") && pathname !== "/admin/posts/new");
     }
     return pathname === href;
   }

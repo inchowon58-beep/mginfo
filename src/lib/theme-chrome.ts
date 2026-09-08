@@ -73,6 +73,15 @@ export function getThemeChrome(themeId: SiteThemeId = "folio"): ThemeChrome {
       tagline: "당신 근처의 생활 정보",
     };
   }
+  if (themeId === "studio") {
+    return {
+      home: "홈",
+      posts: "전체리스트",
+      partners: "파트너",
+      admin: "관리",
+      tagline: "영상처럼 쉽고, 바로 써먹는 생활 가이드",
+    };
+  }
   return {
     home: "Home",
     posts: "Stories",
@@ -103,6 +112,9 @@ export function getPageMastClass(themeId: SiteThemeId) {
   }
   if (themeId === "carrot") {
     return { wrap: "carrot-mast is-page", kicker: "carrot-kicker", dek: "carrot-dek" };
+  }
+  if (themeId === "studio") {
+    return { wrap: "studio-mast is-page", kicker: "studio-kicker", dek: "studio-dek" };
   }
   return { wrap: "edit-hero is-page", kicker: "edit-kicker", dek: "edit-dek" };
 }
