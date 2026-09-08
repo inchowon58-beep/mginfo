@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { AdminIcon } from "@/components/admin/AdminIcons";
 import { PersistNotice } from "@/components/admin/PersistNotice";
+import { bulkStats, defaultBulkPublish } from "@/lib/bulk-publish";
 import { getCategory } from "@/lib/categories";
 import { readStore } from "@/lib/db";
 import { formatDate } from "@/lib/format";
@@ -165,6 +166,15 @@ export default async function AdminHome() {
                 <small>초안을 만들고 발행합니다</small>
               </span>
             </Link>
+            <Link href="/admin/bulk" className="admin-quick-link">
+              <span className="admin-kpi-ico is-amber">
+                <AdminIcon name="queue" />
+              </span>
+              <span>
+                <b>대량발행예약</b>
+                <small>키워드를 쌓아 두고 나눠 발행합니다</small>
+              </span>
+            </Link>
             <Link href="/admin/banners" className="admin-quick-link">
               <span className="admin-kpi-ico is-violet">
                 <AdminIcon name="banner" />
@@ -199,6 +209,8 @@ export default async function AdminHome() {
         </section>
       </div>
 
+      <BulkDashPanel stats={bulkStats(store.bulkPublish || defaultBulkPublish(), store.categories || [])} />
+
       <section className="admin-card">
         <div className="admin-card-head">
           <h2>최근 업데이트</h2>
@@ -228,5 +240,72 @@ export default async function AdminHome() {
         )}
       </section>
     </>
+  );
+}
+
+function BulkDashPanel({
+  stats,
+}: {
+  stats: ReturnType<typeof bulkStats>;
+}) {
+  return (
+    <section className="admin-card">
+      <div className="admin-card-head">
+        <h2>예약발행 현황</h2>
+        <Link className="admin-more" href="/admin/bulk">
+          예약 관리
+        </Link>
+      </div>
+      <div className="bulk-progress">
+        <div className="bulk-progress-head">
+          <div>
+            <span>완료 현황</span>
+            <b>
+              {stats.published} / {stats.total || 0}
+            </b>
+          </div>
+          <em>{stats.enabled ? `${stats.percent}%` : "자동발행 꺼짐"}</em>
+        </div>
+        <i className="admin-meter" aria-hidden="true">
+          <i style={{ width: `${stats.percent}%` }} />
+        </i>
+        <div className="bulk-progress-meta">
+          <span>남은 키워드 {stats.remaining}개</span>
+          <span>
+            {stats.remaining
+              ? stats.dailyCapacity > 0
+                ? `전부 발행까지 약 ${stats.daysLeft}일`
+                : "하루발행수량을 지정하세요"
+              : "대기 중인 예약 없음"}
+          </span>
+          <span>
+            오늘 발행 {stats.todayPublished}편
+            {stats.todayScheduled ? ` · 오늘 예약 ${stats.todayScheduled}편` : ""}
+          </span>
+        </div>
+        {stats.groups.length ? (
+          <div className="bulk-cat-bars">
+            {stats.groups.map((group) => (
+              <div key={group.id}>
+                <div className="bulk-cat-label">
+                  <b>
+                    {group.name}
+                    {group.vendorName ? ` · ${group.vendorName}` : ""}
+                  </b>
+                  <span>
+                    {group.done}/{group.total} · 하루 {group.dailyLimit}편 · 남음 {group.remaining}
+                  </span>
+                </div>
+                <i className="admin-meter" aria-hidden="true">
+                  <i style={{ width: `${group.percent}%` }} />
+                </i>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="admin-empty">대량발행예약에서 키워드를 넣으면 진행률이 표시됩니다.</p>
+        )}
+      </div>
+    </section>
   );
 }

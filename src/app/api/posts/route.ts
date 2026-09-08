@@ -9,7 +9,7 @@ import { cleanHtml } from "@/lib/sanitize";
 import { slugify, uid } from "@/lib/slug";
 import { parseFaqItems } from "@/lib/faq";
 import { extraImageLimit, parsePostImages } from "@/lib/post-images";
-import { parseNameList } from "@/lib/region-geo";
+import { extractPlaceName, parseNameList } from "@/lib/region-geo";
 import { parseVendorFields } from "@/lib/vendor";
 import type { PostStatus } from "@/lib/types";
 
@@ -70,6 +70,10 @@ export async function POST(request: Request) {
     updatedAt: now,
     theme: String(body.theme || "art-v1"),
     ...parseVendorFields(body),
+    region:
+      String(body.region || "").trim() ||
+      extractPlaceName(title, String(body.focusKeyword || "")) ||
+      undefined,
   };
 
   try {

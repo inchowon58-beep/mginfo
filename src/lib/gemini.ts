@@ -1,4 +1,5 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { articleStyleRole, articleStyleRules, articleStyleTemperature, type ArticleStyle } from "./article-style";
 import { parseFaqItems, type FaqItem } from "./faq";
 import { DEFAULT_GEMINI_MODEL } from "./gemini-models";
 import { fallbackFaqItems } from "./post-seo";
@@ -9,6 +10,7 @@ import type { CategorySlug } from "./types";
 
 export type GenerateInput = {
   topic?: string;
+  writingStyle?: ArticleStyle;
   category: CategorySlug;
   categoryName?: string;
   keywords?: string;
@@ -77,11 +79,10 @@ function uniquenessRules(input: GenerateInput): string {
 - 현장·지역 메모: ${localNotes || "(없음)"}
 ${factLines}
 
-매거진 문체:
-- 너는 전문 매거진 에디터다. 독자에게 도움이 되는 특집 톤으로 쓴다.
-- 고객 경험은 ‘실명 가짜 후기’가 아니라, 현장에서 반복되는 질문·방문 동선·선택 이유 같은 관찰로 쓴다.
+공통 문체:
+- 과장 광고, 이모지, 영어 해시태그, ‘지금 클릭’ 식 문장은 쓰지 않는다.
+- 고객 경험은 실명 가짜 후기가 아니라, 현장에서 반복되는 질문·방문 동선·선택 이유 같은 관찰로 쓴다.
 - 경험·후기 메모: ${experienceNotes || "(없음 — 있으면 취재 근거로 쓰고, 없으면 과장된 체험담을 만들지 말 것)"}
-- 인용 박스(<blockquote>)는 에디터의 현장 메모나 손님이 자주 하는 말의 요지로 1~2개.
 
 업체 소개:
 - 업체명: ${vendorName || "(없음)"}
@@ -114,28 +115,30 @@ function seoRules(focusKeyword: string): string {
 export async function generateArticle(input: GenerateInput): Promise<GenerateResult> {
   const categoryName = input.categoryName || input.category;
   const focusKeyword = (input.focusKeyword || "").trim();
+  const writingStyle = input.writingStyle || "magazine";
+  const subject = focusKeyword || (input.topic || "").trim();
   const genAI = new GoogleGenerativeAI(input.apiKey);
   const model = genAI.getGenerativeModel({
     model: input.model || DEFAULT_GEMINI_MODEL,
     generationConfig: {
-      temperature: 0.82,
+      temperature: articleStyleTemperature(writingStyle),
       maxOutputTokens: 8192,
     },
   });
 
-  const prompt = `너는 한국어 라이프스타일 매거진의 전문 에디터다.
-독자가 실제로 도움이 되는 특집 기사를 쓴다. 뉴스 속보가 아니라, 현장을 보고 온 매거진 톤이다.
-과장 광고, 이모지, 영어 해시태그, ‘지금 클릭’ 식 문장은 쓰지 않는다.
+  const prompt = `${articleStyleRole(writingStyle)}
 
 카테고리: ${categoryName}
+작성 대상(메인 키워드): ${subject || "(없음)"}
 보조 키워드: ${input.keywords || "(없음)"}
 추가 지시: ${input.notes || "(없음)"}
 ${seoRules(focusKeyword)}
 
+${articleStyleRules(writingStyle)}
+
 ${uniquenessRules(input)}
 
-작업: 주제와 키워드로 매거진 정보글을 새로 작성한다.
-주제: ${input.topic || "(없음)"}
+작업: 메인 키워드를 대상으로, 선택한 글 형태의 골격·말투·소제목 순서대로 새로 작성한다. 형태를 무시하고 평범한 정보글로 바꾸지 마라.
 
 반드시 JSON만 출력한다. 설명 문장이나 마크다운 울타리는 넣지 않는다.
 형식:

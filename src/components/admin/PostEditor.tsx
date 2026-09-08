@@ -2,8 +2,15 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import {
+  ARTICLE_STYLE_GROUPS,
+  ARTICLE_STYLE_OPTIONS,
+  randomStyleHint,
+  type ArticleStyleChoice,
+} from "@/lib/article-style";
 import { DEFAULT_GEMINI_NOTES, resolveGeminiNotes } from "@/lib/gemini-notes";
 import { extraImageLimit } from "@/lib/post-images";
+import { extractPlaceName } from "@/lib/region-geo";
 import type { Category, CategorySlug, FaqItem, Post, PostImage, PostStatus } from "@/lib/types";
 
 const EMPTY_FAQ: FaqItem = { question: "", answer: "" };
@@ -29,7 +36,7 @@ export function PostEditor({ post }: { post?: Post }) {
   const [focusKeyword, setFocusKeyword] = useState(post?.focusKeyword || "");
   const [faqItems, setFaqItems] = useState<FaqItem[]>(padFaqs(post?.faqItems));
   const [status, setStatus] = useState<PostStatus>(post?.status || "draft");
-  const [theme, setTheme] = useState(post?.theme || "art-v2");
+  const [theme, setTheme] = useState(post?.theme || "art-blog");
   const [region, setRegion] = useState(post?.region || "");
   const [regionInfo, setRegionInfo] = useState(post?.regionInfo || "");
   const [nearbyAreas, setNearbyAreas] = useState((post?.nearbyAreas || []).join(", "));
@@ -38,11 +45,9 @@ export function PostEditor({ post }: { post?: Post }) {
   const [vendorPhone, setVendorPhone] = useState(post?.vendorPhone || "");
   const [vendorWebsite, setVendorWebsite] = useState(post?.vendorWebsite || "");
   const [vendorKakao, setVendorKakao] = useState(post?.vendorKakao || "");
-  const [topic, setTopic] = useState("");
+  const [writingStyle, setWritingStyle] = useState<ArticleStyleChoice>("info");
   const [keywords, setKeywords] = useState("");
   const [notes, setNotes] = useState(DEFAULT_GEMINI_NOTES);
-  const [localNotes, setLocalNotes] = useState("");
-  const [experienceNotes, setExperienceNotes] = useState("");
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [genBusy, setGenBusy] = useState(false);
@@ -52,6 +57,7 @@ export function PostEditor({ post }: { post?: Post }) {
   const [vendorOpen, setVendorOpen] = useState(
     Boolean(post?.vendorName || post?.vendorPhone || post?.vendorWebsite || post?.vendorKakao)
   );
+  const [faqOpen, setFaqOpen] = useState(Boolean(post?.faqItems?.some((item) => item.question && item.answer)));
   const notesForCategory = useRef("");
 
   useEffect(() => {
@@ -81,11 +87,17 @@ export function PostEditor({ post }: { post?: Post }) {
     setNotes(resolveGeminiNotes("", cat?.geminiNotes));
   }, [category, categories]);
 
+  useEffect(() => {
+    if (region.trim()) return;
+    const found = extractPlaceName(focusKeyword, title, keywords);
+    if (found) setRegion(found);
+  }, [focusKeyword, title, keywords, region]);
+
   async function runGenerate() {
     setError("");
     setMessage("");
-    if (!topic.trim()) {
-      setError("제미나이로 쓰려면 주제를 입력하세요.");
+    if (!focusKeyword.trim()) {
+      setError("제미나이로 쓰려면 메인 키워드를 입력하세요.");
       return;
     }
     setGenBusy(true);
@@ -94,14 +106,12 @@ export function PostEditor({ post }: { post?: Post }) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          topic,
+          writingStyle,
           category,
           keywords,
           notes,
           focusKeyword,
-          region,
-          localNotes,
-          experienceNotes,
+          region: region.trim() || extractPlaceName(focusKeyword, title, keywords),
           vendorName,
         }),
       });
@@ -116,7 +126,13 @@ export function PostEditor({ post }: { post?: Post }) {
       if (data.article.nearbyAreas) setNearbyAreas(data.article.nearbyAreas.join(", "));
       if (data.article.nearbyStations) setNearbyStations(data.article.nearbyStations.join(", "));
       if (!slug && data.article.slugHint) setSlug(data.article.slugHint);
-      setMessage("제미나이 초안을 넣었습니다. 확인하고 발행하세요.");
+      if (!region.trim() && data.region) setRegion(data.region);
+      if (!region.trim()) {
+        const found = extractPlaceName(data.article.title, focusKeyword, keywords);
+        if (found) setRegion(found);
+      }
+      const styleNote = data.writingStyleLabel ? ` ${data.writingStyleLabel}으로 작성했습니다.` : "";
+      setMessage(`제미나이 초안을 넣었습니다.${styleNote} 확인하고 발행하세요.`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "생성 실패");
     } finally {
@@ -165,8 +181,9 @@ export function PostEditor({ post }: { post?: Post }) {
   async function save() {
     setError("");
     setMessage("");
-    if (!title.trim()) {
-      setError("제목을 입력하세요.");
+    const resolvedTitle = title.trim() || focusKeyword.trim();
+    if (!resolvedTitle) {
+      setError("제목을 쓰거나, 메인 키워드를 넣고 초안을 만드세요.");
       return;
     }
     if (!category) {
@@ -180,7 +197,7 @@ export function PostEditor({ post }: { post?: Post }) {
     setBusy(true);
     try {
       const payload = {
-        title,
+        title: resolvedTitle,
         slug,
         excerpt,
         bodyHtml,
@@ -193,7 +210,7 @@ export function PostEditor({ post }: { post?: Post }) {
         faqItems: faqItems.filter((item) => item.question.trim() && item.answer.trim()),
         status,
         theme,
-        region,
+        region: region.trim() || extractPlaceName(resolvedTitle, focusKeyword, keywords),
         regionInfo,
         nearbyAreas,
         nearbyStations,
@@ -232,12 +249,12 @@ export function PostEditor({ post }: { post?: Post }) {
         <p className="field-hint" style={{ marginTop: 0 }}>
           <span className="req">*</span> 표시는 필수입니다.
         </p>
-        <label>
-          제목 <span className="req">*</span>
-        </label>
-        <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="매거진 기사 제목" />
-        <label>슬러그 (URL)</label>
-        <input value={slug} onChange={(e) => setSlug(e.target.value)} placeholder="비워 두면 제목에서 생성" />
+        <label>제목</label>
+        <input
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="원하는 제목이 있을 때만 작성하세요. 메인 키워드로 초안을 만들면 제목이 자동으로 만들어집니다."
+        />
         <label>
           카테고리 <span className="req">*</span>
         </label>
@@ -251,38 +268,17 @@ export function PostEditor({ post }: { post?: Post }) {
             <option value={category}>{category}</option>
           ) : null}
         </select>
-        <label>메인 키워드 (SEO)</label>
+        <label>
+          메인 키워드 (SEO) <span className="req">*</span>
+        </label>
         <input
           value={focusKeyword}
           onChange={(e) => setFocusKeyword(e.target.value)}
           placeholder="예: 부천강아지분양"
         />
-        <p className="field-hint">제목·리드·본문이 이 키워드에 맞춰 검색되도록 작성됩니다.</p>
-        <label>지역 (선택)</label>
-        <input
-          value={region}
-          onChange={(e) => setRegion(e.target.value)}
-          placeholder="예: 경기 부천시 중동"
-        />
-        <p className="field-hint">예: 양재, 부천 중동. 이 값이 있으면 글 상단에 그 지역만의 소개 문단이 붙습니다.</p>
-        <label>지역 소개 문단 (유사문서 회피)</label>
-        <textarea
-          style={{ minHeight: 90 }}
-          value={regionInfo}
-          onChange={(e) => setRegionInfo(e.target.value)}
-          placeholder="예: 서울특별시 서초구 양재동은 양재시민의숲과 양재천이 있어 ..."
-        />
-        <p className="field-hint">비워 두면 지역명으로 자동 문단을 만들고, 제미나이 초안을 받으면 채워집니다.</p>
-        <label>근방 동·구</label>
-        <input value={nearbyAreas} onChange={(e) => setNearbyAreas(e.target.value)} placeholder="서초동, 도곡동, 개포동" />
-        <label>인근 지하철역</label>
-        <input
-          value={nearbyStations}
-          onChange={(e) => setNearbyStations(e.target.value)}
-          placeholder="양재역, 양재시민의숲역, 매봉역"
-        />
-        <button className="vendor-toggle" type="button" onClick={() => setVendorOpen((open) => !open)}>
-          {vendorOpen ? "소개 업체 닫기" : "소개 업체 작성"}
+        <button className="editor-fold" type="button" onClick={() => setVendorOpen((open) => !open)}>
+          <span>소개 업체 작성</span>
+          <small>{vendorOpen ? "접기" : "펼침"}</small>
         </button>
         {vendorOpen ? (
           <div className="vendor-admin">
@@ -308,31 +304,38 @@ export function PostEditor({ post }: { post?: Post }) {
             />
           </div>
         ) : null}
-        <label>리드 / 요약</label>
-        <textarea style={{ minHeight: 90 }} value={excerpt} onChange={(e) => setExcerpt(e.target.value)} />
-        <label>자주 묻는 질문 (SEO)</label>
-        <p className="field-hint" style={{ marginTop: 0 }}>
-          유아독존처럼 검색어가 들어간 질문 3~4개를 넣으면 글 하단과 FAQ 스키마에 같이 나갑니다. 제미나이 초안에도 채워집니다.
-        </p>
-        {faqItems.map((item, index) => (
-          <div className="faq-admin-row" key={`faq-${index}`}>
-            <input
-              value={item.question}
-              onChange={(e) =>
-                setFaqItems((rows) => rows.map((row, i) => (i === index ? { ...row, question: e.target.value } : row)))
-              }
-              placeholder={`질문 ${index + 1} (메인 키워드로 시작)`}
-            />
-            <textarea
-              style={{ minHeight: 72 }}
-              value={item.answer}
-              onChange={(e) =>
-                setFaqItems((rows) => rows.map((row, i) => (i === index ? { ...row, answer: e.target.value } : row)))
-              }
-              placeholder="답변"
-            />
+        <button className="editor-fold" type="button" onClick={() => setFaqOpen((open) => !open)}>
+          <span>자주 묻는 질문</span>
+          <small>{faqOpen ? "접기" : "펼침"}</small>
+        </button>
+        {faqOpen ? (
+          <div className="vendor-admin">
+            <p className="field-hint" style={{ marginTop: 0 }}>
+              비워 두면 키워드·지역으로 자동 질문이 붙습니다. 직접 쓸 때만 열어서 수정하세요.
+            </p>
+            {faqItems.map((item, index) => (
+              <div className="faq-admin-row" key={`faq-${index}`}>
+                <input
+                  value={item.question}
+                  onChange={(e) =>
+                    setFaqItems((rows) =>
+                      rows.map((row, i) => (i === index ? { ...row, question: e.target.value } : row))
+                    )
+                  }
+                  placeholder={`질문 ${index + 1}`}
+                />
+                <textarea
+                  style={{ minHeight: 72 }}
+                  value={item.answer}
+                  onChange={(e) =>
+                    setFaqItems((rows) => rows.map((row, i) => (i === index ? { ...row, answer: e.target.value } : row)))
+                  }
+                  placeholder="답변"
+                />
+              </div>
+            ))}
           </div>
-        ))}
+        ) : null}
         <label>
           본문 HTML <span className="req">*</span>
         </label>
@@ -439,11 +442,10 @@ export function PostEditor({ post }: { post?: Post }) {
               </button>
             ) : null}
           </div>
-        ) : (
-          <p className="field-hint">추가 사진은 마스터설정에서 ‘추가사진사용설정’을 켠 뒤 최대 7장까지 넣을 수 있습니다.</p>
-        )}
+        ) : null}
         <label>본문 테마</label>
         <select value={theme} onChange={(e) => setTheme(e.target.value)}>
+          <option value="art-blog">블로그형</option>
           <option value="art-v1">뉴스형</option>
           <option value="art-v2">매거진형</option>
           <option value="art-v3">리포트형</option>
@@ -466,42 +468,48 @@ export function PostEditor({ post }: { post?: Post }) {
       <div className="admin-card admin-form">
         <h2>제미나이로 작성</h2>
         <p style={{ color: "#94a3b8", fontSize: 13, marginTop: 0 }}>
-          빨간 * 표시가 있는 항목만 채우면 초안을 만들 수 있습니다. 추가 지시는 카테고리에 넣어 둔 내용이 기본으로 들어갑니다.
+          메인 키워드로 글을 씁니다. 고른 형태 그대로 목차와 말투가 갈립니다.
         </p>
-        <label>메인 키워드 (SEO)</label>
-        <input
-          value={focusKeyword}
-          onChange={(e) => setFocusKeyword(e.target.value)}
-          placeholder="예: 부천강아지분양"
-        />
         <label>
-          주제 <span className="req">*</span>
+          글 방향 <span className="req">*</span>
         </label>
-        <input value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="예: 부천 전세 계약 전 체크리스트" />
+        <div className="article-style-groups">
+          <div className="article-style-group">
+            <div className="article-style-row">
+              <button
+                type="button"
+                className={writingStyle === "random" ? "on" : ""}
+                onClick={() => setWritingStyle("random")}
+              >
+                랜덤
+              </button>
+            </div>
+          </div>
+          {ARTICLE_STYLE_GROUPS.map((group) => (
+            <div key={group.id} className="article-style-group">
+              <strong>{group.label}</strong>
+              <div className="article-style-row">
+                {ARTICLE_STYLE_OPTIONS.filter((item) => item.group === group.id).map((item) => (
+                  <button
+                    key={item.value}
+                    type="button"
+                    className={writingStyle === item.value ? "on" : ""}
+                    onClick={() => setWritingStyle(item.value)}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+        <p className="field-hint">
+          {writingStyle === "random"
+            ? randomStyleHint(focusKeyword, keywords, title)
+            : ARTICLE_STYLE_OPTIONS.find((item) => item.value === writingStyle)?.hint}
+        </p>
         <label>보조 키워드</label>
         <input value={keywords} onChange={(e) => setKeywords(e.target.value)} placeholder="예: 등기부, 확정일자, 보증금" />
-        <label>현장·지역 메모 (선택)</label>
-        <textarea
-          style={{ minHeight: 90 }}
-          value={localNotes}
-          onChange={(e) => setLocalNotes(e.target.value)}
-          placeholder="알고 있는 동네 정보만. 예: 중동역 도보 8분, 공영주차장"
-        />
-        <label>경험·후기 메모 (선택)</label>
-        <textarea
-          style={{ minHeight: 90 }}
-          value={experienceNotes}
-          onChange={(e) => setExperienceNotes(e.target.value)}
-          placeholder="실제로 들은 손님 질문, 동선만. 없으면 비워 두세요."
-        />
-        <label>추가 지시</label>
-        <textarea
-          style={{ minHeight: 100 }}
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-          placeholder={DEFAULT_GEMINI_NOTES}
-        />
-        <p className="field-hint">비워 두면 이 카테고리의 기본 지시, 그것도 없으면 공통 기본 지시가 쓰입니다.</p>
         <div className="admin-actions">
           <button className="btn btn-primary" type="button" onClick={() => runGenerate()} disabled={genBusy}>
             {genBusy ? "작성 중…" : "초안 생성"}

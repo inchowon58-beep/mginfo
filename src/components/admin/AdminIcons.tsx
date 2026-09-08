@@ -13,7 +13,8 @@ export function AdminIcon({
     | "naver"
     | "write"
     | "settings"
-    | "spark";
+    | "spark"
+    | "queue";
   className?: string;
 }) {
   const path = {
@@ -28,6 +29,7 @@ export function AdminIcon({
     write: "M5 19h14M6 13l9-9 3 3-9 9H6z",
     settings: "M12 8.5a3.5 3.5 0 100 7 3.5 3.5 0 000-7zM12 3v2M12 19v2M4.9 7l1.7 1M17.4 16l1.7 1M4.9 17l1.7-1M17.4 8l1.7-1",
     spark: "M12 3l1.2 6.2L19 12l-5.8 2.8L12 21l-1.2-6.2L5 12l5.8-2.8z",
+    queue: "M4 6h16M4 12h10M4 18h16M18 10l3 2-3 2",
   }[name];
 
   return (

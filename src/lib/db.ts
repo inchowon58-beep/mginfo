@@ -6,6 +6,7 @@ import { blobGetJson, blobSetJson, hasBlobStore } from "./blob-store";
 import { hasRemoteStore, kvGetJson, kvSetJson } from "./kv";
 import { seedPartners, seedPosts } from "./seed";
 import { DEFAULT_SITE_THEME, getSiteTheme, isSiteThemeId } from "./site-theme";
+import { defaultBulkPublish, normalizeBulkPublish } from "./bulk-publish";
 import type { AdminPostRow, Banner, Category, Partner, Post, Settings, Store } from "./types";
 import { DEFAULT_CATEGORIES, SITE } from "./categories";
 import {
@@ -56,6 +57,7 @@ function defaultStore(): Store {
       banners: seedBanners,
       categories: DEFAULT_CATEGORIES,
       settings: defaultSettings(),
+      bulkPublish: defaultBulkPublish(),
     })
   ) as Store;
 }
@@ -67,6 +69,7 @@ function normalize(parsed: Store): Store {
   parsed.categories = parsed.categories?.length ? parsed.categories : DEFAULT_CATEGORIES.map((c) => ({ ...c }));
   parsed.categories = parsed.categories.map((c) => ({ ...c, geminiNotes: c.geminiNotes || "" }));
   parsed.settings = { ...defaultSettings(), ...parsed.settings };
+  parsed.bulkPublish = normalizeBulkPublish(parsed.bulkPublish);
   return parsed;
 }
 

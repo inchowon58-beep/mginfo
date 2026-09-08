@@ -8,6 +8,7 @@ const NAV = [
   { href: "/admin/settings", label: "설정" },
   { href: "/admin/posts", label: "글 목록" },
   { href: "/admin/posts/new", label: "새 글 작성" },
+  { href: "/admin/bulk", label: "대량발행예약" },
   { href: "/admin/banners", label: "메인 배너" },
 ];
 

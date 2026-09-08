@@ -132,9 +132,14 @@ export function PostTable({
             전체 {allCount}편 · 이 목록 {total}편 · {from}–{to}번째 · 페이지당 {pageSize}편
           </p>
         </div>
-        <Link className="btn btn-primary" href="/admin/posts/new">
-          새 글
-        </Link>
+        <div className="admin-head-actions">
+          <Link className="btn" href="/admin/bulk">
+            대량발행예약
+          </Link>
+          <Link className="btn btn-primary" href="/admin/posts/new">
+            새 글
+          </Link>
+        </div>
       </div>
 
       <div className="admin-list-tools">

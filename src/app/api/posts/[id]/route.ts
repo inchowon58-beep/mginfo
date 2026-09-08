@@ -9,7 +9,7 @@ import { persistFail } from "@/lib/persist-api";
 import { cleanHtml } from "@/lib/sanitize";
 import { slugify } from "@/lib/slug";
 import { parseFaqItems } from "@/lib/faq";
-import { parseNameList } from "@/lib/region-geo";
+import { extractPlaceName, parseNameList } from "@/lib/region-geo";
 import { parseVendorFields } from "@/lib/vendor";
 import type { PostStatus } from "@/lib/types";
 
@@ -86,6 +86,13 @@ export async function PUT(
         updatedAt: now,
         theme: body.theme != null ? String(body.theme) : s.posts[idx].theme,
         ...parseVendorFields(body),
+        region:
+          String(body.region ?? s.posts[idx].region ?? "").trim() ||
+          extractPlaceName(
+            String(body.title ?? s.posts[idx].title),
+            String(body.focusKeyword ?? s.posts[idx].focusKeyword ?? "")
+          ) ||
+          undefined,
       };
     });
   } catch (err) {

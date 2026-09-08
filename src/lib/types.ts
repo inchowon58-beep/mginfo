@@ -126,10 +126,47 @@ export type Settings = {
   email: string;
 };
 
+export type BulkKeywordStatus = "queued" | "scheduled" | "processing" | "published" | "failed";
+
+export type BulkKeyword = {
+  id: string;
+  keyword: string;
+  status: BulkKeywordStatus;
+  postId?: string;
+  scheduledAt?: string;
+  publishedAt?: string;
+  error?: string;
+};
+
+export type BulkGroup = {
+  id: string;
+  category: CategorySlug;
+  dailyLimit: number;
+  vendorName?: string;
+  vendorPhone?: string;
+  vendorWebsite?: string;
+  vendorKakao?: string;
+  writingStyle?: string;
+  keywords: BulkKeyword[];
+};
+
+export type BulkSchedule = {
+  enabled: boolean;
+  startHour: number;
+  endHour: number;
+  planDate: string;
+};
+
+export type BulkPublishState = {
+  schedule: BulkSchedule;
+  groups: BulkGroup[];
+};
+
 export type Store = {
   posts: Post[];
   partners: Partner[];
   banners: Banner[];
   categories: Category[];
   settings: Settings;
+  bulkPublish: BulkPublishState;
 };
