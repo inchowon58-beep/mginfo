@@ -74,6 +74,9 @@ export function BulkPlanner({
   const [stats, setStats] = useState(initialStats);
   const [busy, setBusy] = useState(false);
   const [tickBusy, setTickBusy] = useState(false);
+  const [nowId, setNowId] = useState("");
+  const [tickMessage, setTickMessage] = useState("");
+  const [tickError, setTickError] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
@@ -86,6 +89,8 @@ export function BulkPlanner({
     setBusy(true);
     setError("");
     setMessage("");
+    setTickMessage("");
+    setTickError("");
     try {
       const res = await fetch("/api/admin/bulk", {
         method: "PUT",
@@ -129,6 +134,8 @@ export function BulkPlanner({
 
   async function runTick() {
     setTickBusy(true);
+    setTickError("");
+    setTickMessage("");
     setError("");
     setMessage("");
     try {
@@ -137,12 +144,12 @@ export function BulkPlanner({
       if (!res.ok) throw new Error(data.error || "실행 실패");
       if (data.stats) setStats(data.stats);
       if (data.skipped) {
-        setMessage("매일 자동발행이 꺼져 있습니다. 스케줄에서 켜 주세요.");
+        setTickMessage("매일 자동발행이 꺼져 있습니다. 스케줄에서 켜 주세요.");
         return;
       }
       const done = (data.results || []).filter((row: { ok: boolean }) => row.ok).length;
       const fail = (data.results || []).filter((row: { ok: boolean }) => !row.ok).length;
-      setMessage(
+      setTickMessage(
         data.processed
           ? `대기 발행 ${data.processed}건 처리 · 성공 ${done} · 실패 ${fail}`
           : "지금은 발행 시각이 된 키워드가 없습니다. 오늘 분량이 예약되어 있으면 시간이 되면 나갑니다."
@@ -155,9 +162,36 @@ export function BulkPlanner({
         setSchedule(body.bulk.schedule);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "실행 실패");
+      setTickError(err instanceof Error ? err.message : "실행 실패");
     } finally {
       setTickBusy(false);
+    }
+  }
+
+  async function publishNow(keywordId: string) {
+    setNowId(keywordId);
+    setError("");
+    setMessage("");
+    setTickMessage("");
+    setTickError("");
+    try {
+      const res = await fetch("/api/admin/bulk/publish", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ keywordId }),
+      });
+      const data = await res.json();
+      if (!res.ok || data.ok === false) throw new Error(data.error || "즉시 발행 실패");
+      if (data.stats) setStats(data.stats);
+      if (data.bulk?.groups) {
+        setGroups(data.bulk.groups.map((g: BulkGroup) => ({ ...g, text: "" })));
+        setSchedule(data.bulk.schedule);
+      }
+      setMessage(`「${data.keyword}」을 바로 발행했습니다.`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "즉시 발행 실패");
+    } finally {
+      setNowId("");
     }
   }
 
@@ -252,6 +286,8 @@ export function BulkPlanner({
             {tickBusy ? "확인 중…" : "지금 대기분 처리"}
           </button>
         </div>
+        {tickError ? <p className="notice bulk-tick-note">{tickError}</p> : null}
+        {tickMessage ? <p className="notice ok bulk-tick-note">{tickMessage}</p> : null}
       </section>
 
       <section className="admin-card">
@@ -395,11 +431,26 @@ export function BulkPlanner({
                   {group.keywords.map((item) => (
                     <li key={item.id} className={`is-${item.status}`}>
                       <b>{item.keyword}</b>
-                      <span>{statusLabel(item.status)}</span>
+                      <span className="bulk-key-status">
+                        {statusLabel(item.status)}
+                        {item.scheduledAt && (item.status === "scheduled" || item.status === "queued")
+                          ? ` ${formatScheduleTime(item.scheduledAt)}`
+                          : ""}
+                      </span>
                       {item.status !== "published" && item.status !== "processing" ? (
-                        <button type="button" onClick={() => removeKeyword(group.id, item.id)}>
-                          빼기
-                        </button>
+                        <span className="bulk-key-actions">
+                          <button
+                            type="button"
+                            className="is-now"
+                            disabled={Boolean(nowId) || tickBusy}
+                            onClick={() => void publishNow(item.id)}
+                          >
+                            {nowId === item.id ? "발행 중…" : "즉시발행"}
+                          </button>
+                          <button type="button" onClick={() => removeKeyword(group.id, item.id)}>
+                            빼기
+                          </button>
+                        </span>
                       ) : null}
                     </li>
                   ))}
@@ -596,6 +647,15 @@ function GroupImagePool({
       ) : null}
     </div>
   );
+}
+
+function formatScheduleTime(iso: string) {
+  return new Intl.DateTimeFormat("ko-KR", {
+    timeZone: "Asia/Seoul",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).format(new Date(iso));
 }
 
 function statusLabel(status: string) {

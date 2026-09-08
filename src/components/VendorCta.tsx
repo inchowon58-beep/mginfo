@@ -73,13 +73,13 @@ export function VendorCta({ post }: { post: Post }) {
             <svg viewBox="0 0 24 24">
               <path
                 fill="currentColor"
-                d="M12 3.2l2.1 6.4H21l-5.4 3.9 2.1 6.5L12 16.9 6.3 20l2.1-6.5L3 9.6h6.9L12 3.2z"
+                d="M12 2.4l7.6 3.2v6.6c0 4.8-3.2 9.2-7.6 10.6C7.6 21.4 4.4 17 4.4 12.2V5.6L12 2.4zm-1.15 13.15 5.4-5.4-1.4-1.4-4 4-1.85-1.85-1.4 1.4 3.25 3.25z"
               />
             </svg>
           </span>
           <p>
-            <em>에디터 추천</em>
-            <strong>{name || "이 글에서 소개한 곳"}</strong>
+            <em>알아보면 좋은 업체</em>
+            <strong>{`"${name || "이 글에서 소개한 곳"}"`}</strong>
           </p>
         </div>
         <Buttons links={links} className="vendor-cta-actions" />

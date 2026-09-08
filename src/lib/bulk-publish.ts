@@ -294,6 +294,53 @@ export async function publishDueBulk(store: Store, opts: { mutator: typeof impor
   return { processed: results.length, results };
 }
 
+export async function publishBulkKeyword(
+  store: Store,
+  keywordId: string,
+  opts: { mutator: typeof import("./db").updateStore }
+) {
+  const found = findKeyword(store, keywordId);
+  if (!found) return { ok: false, error: "키워드를 찾을 수 없습니다." };
+  if (found.keyword.status === "published") return { ok: false, error: "이미 발행된 키워드입니다." };
+  if (found.keyword.status === "processing") return { ok: false, error: "이미 작성 중입니다." };
+  const createBlock = checkCanCreatePost(store.settings, store.posts);
+  if (createBlock) return { ok: false, error: createBlock };
+  const publishBlock = checkCanPublish(store.settings);
+  if (publishBlock) return { ok: false, error: publishBlock };
+
+  await opts.mutator((s) => {
+    const row = findKeyword(s, keywordId);
+    if (!row) return;
+    row.keyword.status = "processing";
+  });
+  try {
+    const post = await generateAndSave(store, found.group, found.keyword);
+    store.posts.unshift(post);
+    await opts.mutator((s) => {
+      if (!s.posts.some((row) => row.id === post.id)) s.posts.unshift(post);
+      const row = findKeyword(s, keywordId);
+      if (row) {
+        row.keyword.status = "published";
+        row.keyword.postId = post.id;
+        row.keyword.publishedAt = post.publishedAt || new Date().toISOString();
+        row.keyword.error = undefined;
+      }
+    });
+    await notifyPostIndexed(post.slug);
+    return { ok: true, keyword: found.keyword.keyword };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "발행 실패";
+    await opts.mutator((s) => {
+      const row = findKeyword(s, keywordId);
+      if (row) {
+        row.keyword.status = "failed";
+        row.keyword.error = message;
+      }
+    });
+    return { ok: false, keyword: found.keyword.keyword, error: message };
+  }
+}
+
 function findKeyword(store: Store, id: string) {
   for (const group of store.bulkPublish.groups) {
     const keyword = group.keywords.find((item) => item.id === id);
