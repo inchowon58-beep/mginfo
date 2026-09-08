@@ -163,38 +163,20 @@ async function getProjectDomain(token, teamId, projectId, domain) {
   return rows.find((row) => String(row.name || "").toLowerCase() === domain) || null;
 }
 
-function conflictProjectId(err) {
-  const data = err?.data || {};
-  const error = data.error || data;
-  return (
-    error.projectId ||
-    error.project?.id ||
-    error.meta?.projectId ||
-    error.meta?.project?.id ||
-    null
-  );
+function domainAlreadyTaken(err) {
+  const msg = String(err?.message || "");
+  return /already in use|already assigned|exists|connected/i.test(msg);
 }
 
-async function findProjectWithDomain(token, teamId, domain) {
-  const list = await vercel(token, "/v9/projects?limit=100", { teamId });
-  const projects = list.projects || [];
-  for (const project of projects) {
-    try {
-      const hit = await getProjectDomain(token, teamId, project.id, domain);
-      if (hit) return { project, domain: hit };
-    } catch {
-      /* skip projects we cannot read */
+async function findProjectByName(token, teamId, projectName) {
+  try {
+    return await getProject(token, teamId, projectName);
+  } catch (err) {
+    if (err.status === 404 || /not found|couldn't find|cannot find|does not exist/i.test(String(err.message || ""))) {
+      return null;
     }
+    throw err;
   }
-  return null;
-}
-
-async function moveDomain(token, teamId, fromProjectId, toProjectId, domain) {
-  return vercel(token, `/v1/projects/${fromProjectId}/domains/${encodeURIComponent(domain)}/move`, {
-    method: "POST",
-    teamId,
-    body: { projectId: toProjectId },
-  });
 }
 
 async function dnsGuidance(token, teamId, projectId, domain, domainInfo) {
@@ -266,22 +248,20 @@ async function attachDomain(token, teamId, projectId, domain, onLog) {
       });
       onLog("도메인을 이 프로젝트에 등록했습니다.");
     } catch (err) {
-      const msg = String(err.message || "");
-      const otherId = conflictProjectId(err);
-      if (otherId && otherId !== projectId) {
-        onLog("다른 프로젝트에 묶여 있어 이쪽으로 옮깁니다.");
-        info = await moveDomain(token, teamId, otherId, projectId, domain);
-      } else if (/already in use|already assigned|exists/i.test(msg)) {
-        onLog("다른 프로젝트에 있는지 확인합니다.");
-        const found = await findProjectWithDomain(token, teamId, domain);
-        if (found?.project?.id && found.project.id !== projectId) {
-          onLog(`기존 프로젝트(${found.project.name})에서 옮깁니다.`);
-          info = await moveDomain(token, teamId, found.project.id, projectId, domain);
-        } else {
-          info = found?.domain || (await getProjectDomain(token, teamId, projectId, domain));
-        }
+      const mine = await getProjectDomain(token, teamId, projectId, domain);
+      if (mine) {
+        info = mine;
+        onLog("도메인이 이 프로젝트에 이미 등록되어 있습니다.");
+      } else if (domainAlreadyTaken(err)) {
+        onLog("도메인이 이미 다른 곳에 연결되어 있어 이동하지 않습니다.");
+        return {
+          name: domain,
+          verified: false,
+          dns: [],
+          alreadyConnected: true,
+        };
       } else {
-        throw new Error(`도메인을 Vercel 프로젝트에 연결하지 못했습니다. ${msg}`);
+        throw new Error(`도메인을 Vercel 프로젝트에 연결하지 못했습니다. ${err.message}`);
       }
     }
   }
@@ -290,7 +270,7 @@ async function attachDomain(token, teamId, projectId, domain, onLog) {
     info = await getProjectDomain(token, teamId, projectId, domain);
   }
   if (!info?.name) {
-    throw new Error("도메인이 이 프로젝트에 붙지 않았습니다. Vercel 도메인 화면을 확인해 주세요.");
+    return { name: domain, verified: false, dns: [], alreadyConnected: true };
   }
 
   if (!info.verified) {
@@ -312,7 +292,7 @@ async function attachDomain(token, teamId, projectId, domain, onLog) {
   const dns = await dnsGuidance(token, teamId, projectId, domain, info);
   if (dns.verified) onLog("도메인 연결이 완료되었습니다.");
   else onLog("Vercel에는 연결했습니다. 도메인 업체에서 아래 DNS만 맞추면 열립니다.");
-  return { ...info, dns: dns.rows, misconfigured: dns.misconfigured };
+  return { ...info, dns: dns.rows, misconfigured: dns.misconfigured, alreadyConnected: false };
 }
 
 async function assignDomainAlias(token, teamId, deploymentId, domain, onLog) {
@@ -329,10 +309,14 @@ async function assignDomainAlias(token, teamId, deploymentId, domain, onLog) {
   }
 }
 
-async function startOrWaitDeploy(token, teamId, project, projectName, repo, onLog) {
+async function startOrWaitDeploy(token, teamId, project, projectName, repo, onLog, { reuseExisting } = {}) {
   const projectId = project.id || projectName;
   await sleep(2000);
   let current = await latestDeployment(token, teamId, projectId);
+  if (reuseExisting && current?.readyState === "READY") {
+    onLog("기존 배포를 그대로 사용합니다.");
+    return current;
+  }
   if (current && current.readyState !== "ERROR" && current.readyState !== "CANCELED") {
     onLog("이미 시작된 배포를 기다립니다…");
     return waitForDeployment(token, teamId, current.uid || current.id, onLog);
@@ -378,95 +362,110 @@ async function provisionSite(input, onLog = () => {}) {
   if (!teamId && account.defaultTeamId) teamId = account.defaultTeamId;
 
   const projectName = projectNameFromDomain(domain);
-  const authSecret = crypto.randomBytes(32).toString("hex");
-  const env = [
-    { key: "AUTH_SECRET", value: authSecret, type: "encrypted", target: ["production", "preview", "development"] },
-    { key: "SITE_NAME", value: blogName, type: "plain", target: ["production", "preview", "development"] },
-    { key: "SITE_DOMAIN", value: domain, type: "plain", target: ["production", "preview", "development"] },
-  ];
-
-  onLog(`프로젝트 생성: ${projectName}`);
-  let project;
-  try {
-    project = await vercel(token, "/v11/projects", {
-      method: "POST",
-      teamId,
-      body: {
-        name: projectName,
-        framework: "nextjs",
-        gitRepository: { type: "github", repo },
-        environmentVariables: env,
-      },
-    });
-  } catch (err) {
-    const msg = String(err.message || "");
-    if (err.status === 409 || /already exists|conflict|taken|duplicate|이미/i.test(msg)) {
-      onLog("이미 있는 프로젝트입니다. 배포를 이어서 진행합니다.");
-      project = await getProject(token, teamId, projectName);
-    } else if (msg.includes("GitHub")) {
-      throw new Error("GitHub 연동이 필요합니다. Vercel에 GitHub 앱을 연결한 뒤 다시 시도하세요.");
-    } else {
+  onLog(`프로젝트 확인: ${projectName}`);
+  let reused = false;
+  let project = await findProjectByName(token, teamId, projectName);
+  if (project) {
+    onLog("이미 프로젝트가 있습니다.");
+    const confirm = input.confirmExistingProject;
+    const go = typeof confirm === "function" ? await confirm(projectName) : false;
+    if (!go) {
+      throw new Error("생성을 중지했습니다. 기존 프로젝트는 그대로 두었습니다.");
+    }
+    reused = true;
+    onLog("기존 프로젝트를 유지합니다. 덮어쓰지 않습니다.");
+  } else {
+    const authSecret = crypto.randomBytes(32).toString("hex");
+    onLog(`프로젝트 생성: ${projectName}`);
+    try {
+      project = await vercel(token, "/v11/projects", {
+        method: "POST",
+        teamId,
+        body: {
+          name: projectName,
+          framework: "nextjs",
+          gitRepository: { type: "github", repo },
+          environmentVariables: [
+            { key: "AUTH_SECRET", value: authSecret, type: "encrypted", target: ["production", "preview", "development"] },
+            { key: "SITE_NAME", value: blogName, type: "plain", target: ["production", "preview", "development"] },
+            { key: "SITE_DOMAIN", value: domain, type: "plain", target: ["production", "preview", "development"] },
+          ],
+        },
+      });
+    } catch (err) {
+      const msg = String(err.message || "");
+      if (msg.includes("GitHub")) {
+        throw new Error("GitHub 연동이 필요합니다. Vercel에 GitHub 앱을 연결한 뒤 다시 시도하세요.");
+      }
       throw err;
     }
   }
   project = await getProject(token, teamId, project.id || projectName);
   const projectId = project.id || projectName;
 
-  onLog("Blob 저장소 생성 중…");
-  const storeName = `blob-${projectName}`.slice(0, 70);
-  let blob = { store: {} };
-  try {
-    blob = await vercel(token, "/v1/storage/stores/blob", {
-      method: "POST",
-      teamId,
-      body: {
-        name: storeName,
-        region: "icn1",
-        access: "public",
-        projectId,
-        version: "2",
-      },
-    });
-  } catch (first) {
+  if (reused) {
+    onLog("기존 Blob·환경변수는 그대로 둡니다.");
+  } else {
+    onLog("Blob 저장소 생성 중…");
+    const storeName = `blob-${projectName}`.slice(0, 70);
+    let blob = { store: {} };
     try {
       blob = await vercel(token, "/v1/storage/stores/blob", {
         method: "POST",
         teamId,
         body: {
           name: storeName,
+          region: "icn1",
           access: "public",
           projectId,
           version: "2",
         },
       });
-    } catch (err) {
-      onLog(`Blob 안내: ${err.message || first.message}`);
+    } catch (first) {
+      try {
+        blob = await vercel(token, "/v1/storage/stores/blob", {
+          method: "POST",
+          teamId,
+          body: {
+            name: storeName,
+            access: "public",
+            projectId,
+            version: "2",
+          },
+        });
+      } catch (err) {
+        onLog(`Blob 안내: ${err.message || first.message}`);
+      }
     }
-  }
-  const store = blob.store || blob;
-  const storeId = store.id;
-  if (storeId) {
-    try {
-      onLog("Blob을 프로젝트에 연결 중…");
-      await vercel(token, `/v1/storage/stores/${storeId}/connections`, {
-        method: "POST",
-        teamId,
-        body: {
-          projectId,
-          type: "integration",
-          envVarEnvironments: ["production", "preview", "development"],
-        },
-      });
-    } catch (err) {
-      onLog(`Blob 연결 안내: ${err.message}`);
+    const store = blob.store || blob;
+    const storeId = store.id;
+    if (storeId) {
+      try {
+        onLog("Blob을 프로젝트에 연결 중…");
+        await vercel(token, `/v1/storage/stores/${storeId}/connections`, {
+          method: "POST",
+          teamId,
+          body: {
+            projectId,
+            type: "integration",
+            envVarEnvironments: ["production", "preview", "development"],
+          },
+        });
+      } catch (err) {
+        onLog(`Blob 연결 안내: ${err.message}`);
+      }
     }
   }
 
   const domainInfo = await attachDomain(token, teamId, projectId, domain, onLog);
 
-  onLog("프로덕션 배포 시작…");
-  const ready = await startOrWaitDeploy(token, teamId, project, projectName, repo, onLog);
-  await assignDomainAlias(token, teamId, ready.id || ready.uid, domain, onLog);
+  onLog(reused ? "기존 배포를 확인합니다…" : "프로덕션 배포 시작…");
+  const ready = await startOrWaitDeploy(token, teamId, project, projectName, repo, onLog, {
+    reuseExisting: reused,
+  });
+  if (!domainInfo.alreadyConnected) {
+    await assignDomainAlias(token, teamId, ready.id || ready.uid, domain, onLog);
+  }
 
   const vercelHost = ready.url ? `https://${ready.url}` : `https://${projectName}.vercel.app`;
   onLog("완료되었습니다.");
@@ -479,6 +478,8 @@ async function provisionSite(input, onLog = () => {}) {
     siteUrl: `https://${domain}`,
     adminUrl: domainInfo.verified ? `https://${domain}/admin` : `${vercelHost}/admin`,
     verified: Boolean(domainInfo.verified),
+    alreadyConnected: Boolean(domainInfo.alreadyConnected),
+    reused,
     dns: domainInfo.dns || [],
     createdAt: new Date().toISOString(),
   };

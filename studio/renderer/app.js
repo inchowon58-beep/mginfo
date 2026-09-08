@@ -79,9 +79,11 @@ function renderResult(row) {
         `<div>${escapeHtml(item.type)} · 호스트 <b>${escapeHtml(item.name)}</b> → <b>${escapeHtml(item.value)}</b></div>`
     )
     .join("");
-  const domainStatus = row.verified
-    ? "도메인이 이 사이트에 연결되었습니다."
-    : "도메인은 Vercel 프로젝트에 등록했습니다. 아래 DNS를 도메인 업체에 넣으면 주소가 열립니다.";
+  const domainStatus = row.alreadyConnected
+    ? "해당 도메인은 이미 연결 상태이므로 추가 도메인 설정을 하세요."
+    : row.verified
+      ? "도메인이 이 사이트에 연결되었습니다."
+      : "도메인은 Vercel 프로젝트에 등록했습니다. 아래 DNS를 도메인 업체에 넣으면 주소가 열립니다.";
   resultEl.hidden = false;
   resultEl.innerHTML = `
     <div>${domainStatus}</div>

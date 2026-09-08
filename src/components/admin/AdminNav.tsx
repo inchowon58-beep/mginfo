@@ -49,7 +49,7 @@ export function AdminNav() {
           사이트 보기
         </Link>
         <Link href="/admin/password" className={isActive("/admin/password") ? "active" : ""}>
-          비밀번호설정
+          아이디/비밀번호설정
         </Link>
         <button className="linkish" type="button" onClick={logout}>
           로그아웃

@@ -3,7 +3,8 @@ import {
   canConfirmSiteAccount,
   isAdminSession,
   siteAccountFrom,
-  validateSiteAccount,
+  validateSitePassword,
+  validateSiteUsername,
 } from "@/lib/auth";
 import { getSettings, updateStore } from "@/lib/db";
 import { persistFail } from "@/lib/persist-api";
@@ -29,20 +30,32 @@ export async function POST(request: Request) {
   if (!canConfirmSiteAccount(currentPassword, settings)) {
     return NextResponse.json({ error: "현재 비밀번호가 올바르지 않습니다." }, { status: 401 });
   }
-  if (password !== passwordConfirm) {
-    return NextResponse.json({ error: "새 비밀번호가 서로 다릅니다." }, { status: 400 });
+  const current = siteAccountFrom(settings);
+  const nextUsername = username || current.username;
+  const nextPassword = password || current.password;
+  const userError = validateSiteUsername(nextUsername);
+  if (userError) {
+    return NextResponse.json({ error: userError }, { status: 400 });
   }
-  const invalid = validateSiteAccount(username, password);
-  if (invalid) {
-    return NextResponse.json({ error: invalid }, { status: 400 });
+  if (password) {
+    if (password !== passwordConfirm) {
+      return NextResponse.json({ error: "새 비밀번호가 서로 다릅니다." }, { status: 400 });
+    }
+    const passError = validateSitePassword(nextPassword);
+    if (passError) {
+      return NextResponse.json({ error: passError }, { status: 400 });
+    }
+  }
+  if (nextUsername === current.username && nextPassword === current.password) {
+    return NextResponse.json({ error: "바꿀 아이디 또는 비밀번호를 입력하세요." }, { status: 400 });
   }
   try {
     await updateStore((store) => {
-      store.settings.siteUsername = username;
-      store.settings.sitePassword = password;
+      store.settings.siteUsername = nextUsername;
+      store.settings.sitePassword = nextPassword;
     });
   } catch (err) {
     return persistFail(err);
   }
-  return NextResponse.json({ ok: true, username });
+  return NextResponse.json({ ok: true, username: nextUsername });
 }

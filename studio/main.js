@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, shell } = require("electron");
+const { app, BrowserWindow, ipcMain, shell, dialog } = require("electron");
 const fs = require("fs");
 const path = require("path");
 const { DEFAULT_REPO, provisionSite, verifyToken } = require("./lib/provision");
@@ -71,6 +71,7 @@ ipcMain.handle("studio:open", (_event, url) => {
 ipcMain.handle("studio:create", async (event, payload) => {
   const cfg = readConfig();
   if (!cfg.token) throw new Error("설정에서 Vercel 토큰을 먼저 저장하세요.");
+  const win = BrowserWindow.fromWebContents(event.sender);
   try {
     const result = await provisionSite(
       {
@@ -79,11 +80,34 @@ ipcMain.handle("studio:create", async (event, payload) => {
         repo: cfg.repo || DEFAULT_REPO,
         blogName: payload.blogName,
         domain: payload.domain,
+        confirmExistingProject: async (projectName) => {
+          const { response } = await dialog.showMessageBox(win, {
+            type: "warning",
+            title: "이미 프로젝트가 있습니다",
+            message: "이미 프로젝트가 있습니다.",
+            detail: `${projectName}\n\n기존 프로젝트·도메인·저장소는 덮어쓰지 않습니다.\n계속 진행하면 기존 것을 유지한 채 확인만 합니다.`,
+            buttons: ["계속 진행", "중지"],
+            defaultId: 1,
+            cancelId: 1,
+            noLink: true,
+          });
+          return response === 0;
+        },
       },
       (line) => event.sender.send("studio:log", line)
     );
     cfg.history = [result, ...(cfg.history || [])].slice(0, 30);
     writeConfig(cfg);
+    if (result.alreadyConnected) {
+      await dialog.showMessageBox(win, {
+        type: "info",
+        title: "도메인 안내",
+        message: "해당 도메인은 이미 연결 상태이므로 추가 도메인 설정을 하세요.",
+        buttons: ["확인"],
+        defaultId: 0,
+        noLink: true,
+      });
+    }
     return result;
   } catch (err) {
     throw new Error(err instanceof Error ? err.message : "사이트 생성에 실패했습니다.");

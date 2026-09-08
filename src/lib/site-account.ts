@@ -37,13 +37,21 @@ export function canConfirmSiteAccount(
   return currentPassword === siteAccountFrom(settings).password;
 }
 
-export function validateSiteAccount(username: string, password: string): string | null {
+export function validateSiteUsername(username: string): string | null {
   const user = String(username || "").trim();
   if (user.length < 2 || user.length > 40) return "아이디는 2~40자로 입력하세요.";
   if (/\s/.test(user)) return "아이디에 공백은 사용할 수 없습니다.";
   if (user.toLowerCase() === masterLoginUsername().toLowerCase()) {
     return "이 아이디는 사용할 수 없습니다.";
   }
+  return null;
+}
+
+export function validateSitePassword(password: string): string | null {
   if (password.length < 4 || password.length > 80) return "비밀번호는 4~80자로 입력하세요.";
   return null;
+}
+
+export function validateSiteAccount(username: string, password: string): string | null {
+  return validateSiteUsername(username) || validateSitePassword(password);
 }

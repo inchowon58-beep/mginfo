@@ -1,6 +1,6 @@
 {
   "name": "infocs-studio",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "private": true,
   "description": "Infocs magazine site provisioner",
   "author": "Infocs",
@@ -20,7 +20,7 @@
       "lib/**"
     ],
     "directories": {
-      "output": "release"
+      "output": "../사이트만들기"
     },
     "win": {
       "signAndEditExecutable": false,
