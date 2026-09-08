@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { CategoryManager } from "@/components/admin/CategoryManager";
 import { DEFAULT_GEMINI_MODEL, GEMINI_MODELS } from "@/lib/gemini-models";
 import { SITE_THEMES } from "@/lib/site-theme";
+import { DEFAULT_WRITING_TONE, WRITING_TONES } from "@/lib/writing-tone";
 import type { SiteThemeId } from "@/lib/types";
 
 type SettingsTab = "basic" | "category" | "site" | "master";
@@ -39,6 +40,8 @@ export default function SettingsPage() {
   const [address, setAddress] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
+  const [writingTone, setWritingTone] = useState(DEFAULT_WRITING_TONE);
+  const [writingPersona, setWritingPersona] = useState("");
   const [naverSiteVerification, setNaverSiteVerification] = useState("");
   const [hasKey, setHasKey] = useState(false);
   const [message, setMessage] = useState("");
@@ -91,6 +94,8 @@ export default function SettingsPage() {
         if (typeof s.naverSiteVerification === "string") setNaverSiteVerification(s.naverSiteVerification);
         if (typeof s.siteUsername === "string" && s.siteUsername) setSiteUsername(s.siteUsername);
         if (typeof s.sitePassword === "string" && s.sitePassword) setSitePassword(s.sitePassword);
+        if (typeof s.writingTone === "string" && s.writingTone) setWritingTone(s.writingTone);
+        if (typeof s.writingPersona === "string") setWritingPersona(s.writingPersona);
       })
       .catch(() => setError("설정을 불러오지 못했습니다."));
     fetch("/api/auth/master")
@@ -129,7 +134,7 @@ export default function SettingsPage() {
 
   async function saveBasics(e: FormEvent) {
     e.preventDefault();
-    await save({ siteName, siteTagline, company, ceo, bizNo, address, phone, email });
+    await save({ siteName, siteTagline, company, ceo, bizNo, address, phone, email, writingTone, writingPersona });
   }
 
   async function saveSite(e: FormEvent) {
@@ -261,6 +266,30 @@ export default function SettingsPage() {
           <input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="비워 두면 표시하지 않음" />
           <label>이메일</label>
           <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="비워 두면 표시하지 않음" />
+          <h3 className="admin-subhead">작성 톤 · 나의 상황</h3>
+          <p className="field-hint" style={{ marginTop: 0 }}>
+            글방향(정보성, 뉴스형, 매거진형 등)은 글의 뼈대입니다. 여기서는 말투만 고릅니다. 사이트마다 다르게 두면
+            같은 키워드라도 문장이 덜 닮습니다. 글방향이 뉴스형이면 그 글만 뉴스 단정으로 씁니다.
+          </p>
+          <label>기본 말투</label>
+          <select value={writingTone} onChange={(e) => setWritingTone(e.target.value)}>
+            {WRITING_TONES.map((tone) => (
+              <option key={tone.id} value={tone.id}>
+                {tone.label} · {tone.hint}
+              </option>
+            ))}
+          </select>
+          <label>나의 상황 (선택)</label>
+          <textarea
+            value={writingPersona}
+            onChange={(e) => setWritingPersona(e.target.value)}
+            placeholder="예: 50대, 강아지 쪽을 오래 봤음. 포메라니안을 키움. 자녀 3명. 부천 거주."
+            style={{ minHeight: 90 }}
+          />
+          <p className="field-hint">
+            나이대, 관심사, 사는 곳처럼 글을 쓰는 사람 배경입니다. 말투와 비유에만 쓰입니다. 그 업체·분양장에 다녀온
+            이야기나 가짜 후기는 만들지 않습니다.
+          </p>
           {error ? <p className="notice">{error}</p> : null}
           {message ? <p className="notice ok">{message}</p> : null}
           <div className="admin-actions">

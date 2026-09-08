@@ -7,6 +7,7 @@ import { extractPlaceName, getNearbyDistricts, getNearbyStations, getRegionFact,
 import { composeRegionInfo } from "./region-intro";
 import { stripGeneratedImages } from "./sanitize";
 import type { CategorySlug } from "./types";
+import { resolveWritingTone, writingTonePrompt } from "./writing-tone";
 
 export type GenerateInput = {
   topic?: string;
@@ -20,6 +21,8 @@ export type GenerateInput = {
   localNotes?: string;
   experienceNotes?: string;
   vendorName?: string;
+  writingTone?: string;
+  writingPersona?: string;
   apiKey: string;
   model: string;
 };
@@ -135,6 +138,10 @@ export async function generateArticle(input: GenerateInput): Promise<GenerateRes
 ${seoRules(focusKeyword)}
 
 ${articleStyleRules(writingStyle)}
+
+말투 우선순위: 글방향이 뉴스형이면 뉴스 단정. 그 외에는 사이트 기본 작성 톤. 글 형태 설명의 말투와 작성 톤이 다르면 작성 톤의 종결 어미를 따른다.
+
+${writingTonePrompt(resolveWritingTone(writingStyle, input.writingTone), input.writingPersona)}
 
 ${uniquenessRules(input)}
 

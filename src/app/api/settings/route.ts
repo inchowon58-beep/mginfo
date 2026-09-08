@@ -16,6 +16,7 @@ import {
 } from "@/lib/publish-limits";
 import { parseNaverVerification } from "@/lib/seo";
 import { isSiteThemeId } from "@/lib/site-theme";
+import { isWritingToneId } from "@/lib/writing-tone";
 
 export async function GET() {
   if (!(await isAdminSession())) {
@@ -120,6 +121,7 @@ export async function POST(request: Request) {
         "popupCta",
         "popupHref",
         "popupImage",
+        "writingPersona",
       ] as const;
       for (const key of textKeys) {
         if (typeof body[key] === "string") {
@@ -128,6 +130,9 @@ export async function POST(request: Request) {
       }
       if (isSiteThemeId(body.siteTheme)) {
         s.settings.siteTheme = body.siteTheme;
+      }
+      if (isWritingToneId(body.writingTone)) {
+        s.settings.writingTone = body.writingTone;
       }
       if (typeof body.popupEnabled === "boolean") {
         s.settings.popupEnabled = body.popupEnabled;

@@ -365,6 +365,8 @@ async function generateAndSave(store: Store, group: BulkGroup, item: BulkKeyword
     focusKeyword: item.keyword,
     region: extractPlaceName(item.keyword) || "",
     vendorName: group.vendorName,
+    writingTone: store.settings.writingTone,
+    writingPersona: store.settings.writingPersona,
     apiKey,
     model: store.settings.geminiModel || DEFAULT_GEMINI_MODEL,
   });

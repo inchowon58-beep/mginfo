@@ -6,6 +6,7 @@ import { blobGetJson, blobSetJson, hasBlobStore } from "./blob-store";
 import { hasRemoteStore, kvGetJson, kvSetJson } from "./kv";
 import { seedPartners, seedPosts } from "./seed";
 import { siteAccountFrom, DEFAULT_SITE_PASSWORD, DEFAULT_SITE_USERNAME } from "./site-account";
+import { DEFAULT_WRITING_TONE, isWritingToneId } from "./writing-tone";
 import { DEFAULT_SITE_THEME, getSiteTheme, isSiteThemeId } from "./site-theme";
 import { defaultBulkPublish, normalizeBulkPublish } from "./bulk-publish";
 import type { AdminPostRow, Banner, Category, Partner, Post, Settings, Store } from "./types";
@@ -45,6 +46,8 @@ function defaultSettings(): Settings {
     naverRankWork: false,
     naverSiteVerification: "",
     extraImagesEnabled: false,
+    writingTone: DEFAULT_WRITING_TONE,
+    writingPersona: "",
     siteUsername: DEFAULT_SITE_USERNAME,
     sitePassword: DEFAULT_SITE_PASSWORD,
     company: branded ? "" : SITE.company,
@@ -79,6 +82,10 @@ function normalize(parsed: Store): Store {
   const account = siteAccountFrom(parsed.settings);
   parsed.settings.siteUsername = account.username;
   parsed.settings.sitePassword = account.password;
+  parsed.settings.writingTone = isWritingToneId(parsed.settings.writingTone)
+    ? parsed.settings.writingTone
+    : DEFAULT_WRITING_TONE;
+  parsed.settings.writingPersona = String(parsed.settings.writingPersona || "");
   parsed.bulkPublish = normalizeBulkPublish(parsed.bulkPublish);
   return parsed;
 }

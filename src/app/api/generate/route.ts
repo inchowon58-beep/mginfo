@@ -52,6 +52,8 @@ export async function POST(request: Request) {
       localNotes: String(body.localNotes || ""),
       experienceNotes: String(body.experienceNotes || ""),
       vendorName: String(body.vendorName || ""),
+      writingTone: settings.writingTone,
+      writingPersona: settings.writingPersona,
       apiKey,
       model: settings.geminiModel || DEFAULT_GEMINI_MODEL,
     });

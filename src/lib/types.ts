@@ -119,6 +119,8 @@ export type Settings = {
   naverRankWork: boolean;
   naverSiteVerification: string;
   extraImagesEnabled: boolean;
+  writingTone: string;
+  writingPersona: string;
   siteUsername: string;
   sitePassword: string;
   company: string;

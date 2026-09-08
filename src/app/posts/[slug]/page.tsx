@@ -19,7 +19,7 @@ import {
   resolveFaqItems,
 } from "@/lib/post-seo";
 import { buildBreadcrumbJsonLd, buildFaqPageJsonLd } from "@/lib/site-jsonld";
-import { ArticleGallery, ArticlePhoto } from "@/components/ArticlePhoto";
+import { ArticlePhoto } from "@/components/ArticlePhoto";
 import { resolveRegionContext, seedNumber } from "@/lib/region-intro";
 import { placeInlineImages } from "@/lib/post-images";
 import { getPlaceWeather, weatherSentence } from "@/lib/weather";
@@ -106,7 +106,7 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
       : "",
   });
   const extras = post.extraImages || [];
-  const placed = placeInlineImages(post.bodyHtml, extras, keyword);
+  const placed = placeInlineImages(post.bodyHtml, extras, keyword, { hasCover: Boolean(post.coverImage) });
   const showVendor = hasVendorCta(post);
   const crumbs = [
     { name: "홈", path: "/" },
@@ -161,7 +161,6 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
           />
         ) : null}
         <div className="article-body" dangerouslySetInnerHTML={{ __html: placed.html }} />
-        <ArticleGallery images={placed.leftover} alt={keyword} />
         <VendorCta post={post} />
         {faqs.length > 0 && (
           <section className="article-faq">
