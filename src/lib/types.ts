@@ -67,6 +67,17 @@ export type Partner = {
   phone?: string;
 };
 
+export type AdVendor = {
+  id: string;
+  name: string;
+  phone?: string;
+  website?: string;
+  kakao?: string;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type BannerKind = "text" | "image";
 
 export type BannerTheme = "bronze" | "ink" | "ivory" | "forest" | "wine";
@@ -174,6 +185,7 @@ export type BulkPublishState = {
 export type Store = {
   posts: Post[];
   partners: Partner[];
+  adVendors: AdVendor[];
   banners: Banner[];
   categories: Category[];
   settings: Settings;

@@ -9,7 +9,7 @@ import { siteAccountFrom, DEFAULT_SITE_PASSWORD, DEFAULT_SITE_USERNAME } from ".
 import { DEFAULT_WRITING_TONE, isWritingToneId } from "./writing-tone";
 import { DEFAULT_SITE_THEME, getSiteTheme, isSiteThemeId } from "./site-theme";
 import { defaultBulkPublish, normalizeBulkPublish } from "./bulk-publish";
-import type { AdminPostRow, Banner, Category, Partner, Post, Settings, Store } from "./types";
+import type { AdminPostRow, AdVendor, Banner, Category, Partner, Post, Settings, Store } from "./types";
 import { DEFAULT_CATEGORIES, SITE } from "./categories";
 import { decodeSlugParam } from "./slug";
 import {
@@ -64,6 +64,7 @@ function defaultStore(): Store {
     JSON.stringify({
       posts: seedPosts,
       partners: seedPartners,
+      adVendors: [],
       banners: seedBanners,
       categories: DEFAULT_CATEGORIES,
       settings: defaultSettings(),
@@ -75,6 +76,7 @@ function defaultStore(): Store {
 function normalize(parsed: Store): Store {
   parsed.posts ||= [];
   parsed.partners ||= [];
+  parsed.adVendors = Array.isArray(parsed.adVendors) ? parsed.adVendors : [];
   parsed.banners = parsed.banners?.length ? parsed.banners : seedBanners;
   parsed.categories = parsed.categories?.length ? parsed.categories : DEFAULT_CATEGORIES.map((c) => ({ ...c }));
   parsed.categories = parsed.categories.map((c) => ({ ...c, geminiNotes: c.geminiNotes || "" }));
@@ -257,6 +259,10 @@ export async function getCategories(): Promise<Category[]> {
 
 export async function getBanners(): Promise<Banner[]> {
   return (await readStore()).banners || [];
+}
+
+export async function getAdVendors(): Promise<AdVendor[]> {
+  return (await readStore()).adVendors || [];
 }
 
 export async function getEnabledBanners(): Promise<Banner[]> {

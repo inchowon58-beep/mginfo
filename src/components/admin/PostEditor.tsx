@@ -11,6 +11,7 @@ import {
 import { DEFAULT_GEMINI_NOTES, resolveGeminiNotes } from "@/lib/gemini-notes";
 import { extraImageLimit } from "@/lib/post-images";
 import { extractPlaceName } from "@/lib/region-geo";
+import { VendorPicker } from "@/components/admin/VendorPicker";
 import type { Category, CategorySlug, FaqItem, Post, PostImage, PostStatus } from "@/lib/types";
 
 const EMPTY_FAQ: FaqItem = { question: "", answer: "" };
@@ -276,15 +277,27 @@ export function PostEditor({ post }: { post?: Post }) {
           onChange={(e) => setFocusKeyword(e.target.value)}
           placeholder="예: 부천강아지분양"
         />
-        <button className="editor-fold" type="button" onClick={() => setVendorOpen((open) => !open)}>
-          <span>소개 업체 작성</span>
-          <small>{vendorOpen ? "접기" : "펼침"}</small>
-        </button>
+        <div className="editor-fold-row">
+          <button className="editor-fold" type="button" onClick={() => setVendorOpen((open) => !open)}>
+            <span>소개 업체 작성</span>
+            <small>{vendorOpen ? "접기" : "펼침"}</small>
+          </button>
+          <VendorPicker
+            onPick={(fields) => {
+              setVendorName(fields.vendorName);
+              setVendorPhone(fields.vendorPhone);
+              setVendorWebsite(fields.vendorWebsite);
+              setVendorKakao(fields.vendorKakao);
+              setVendorOpen(true);
+            }}
+          />
+        </div>
         {vendorOpen ? (
           <div className="vendor-admin">
             <h3>소개 업체</h3>
             <p className="field-hint" style={{ marginTop: 0 }}>
-              특정 업체를 소개할 때만 적으세요. 전화·홈페이지·카카오를 넣으면 글 하단에 버튼이 생깁니다.
+              저장된 업체를 고르거나, 이번 글만 직접 적을 수 있습니다. 전화·홈페이지·카카오를 넣으면 글 하단에 버튼이
+              생깁니다.
             </p>
             <label>업체명</label>
             <input value={vendorName} onChange={(e) => setVendorName(e.target.value)} placeholder="예: 인포씨에스" />

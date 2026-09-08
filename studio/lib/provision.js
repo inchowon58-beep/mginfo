@@ -376,6 +376,7 @@ async function provisionSite(input, onLog = () => {}) {
     onLog("기존 프로젝트를 유지합니다. 덮어쓰지 않습니다.");
   } else {
     const authSecret = crypto.randomBytes(32).toString("hex");
+    const iconSeed = crypto.randomBytes(8).toString("hex");
     onLog(`프로젝트 생성: ${projectName}`);
     try {
       project = await vercel(token, "/v11/projects", {
@@ -389,9 +390,11 @@ async function provisionSite(input, onLog = () => {}) {
             { key: "AUTH_SECRET", value: authSecret, type: "encrypted", target: ["production", "preview", "development"] },
             { key: "SITE_NAME", value: blogName, type: "plain", target: ["production", "preview", "development"] },
             { key: "SITE_DOMAIN", value: domain, type: "plain", target: ["production", "preview", "development"] },
+            { key: "SITE_ICON_SEED", value: iconSeed, type: "plain", target: ["production", "preview", "development"] },
           ],
         },
       });
+      onLog("이 사이트 전용 파비콘 시드를 등록했습니다.");
     } catch (err) {
       const msg = String(err.message || "");
       if (msg.includes("GitHub")) {

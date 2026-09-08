@@ -5,6 +5,7 @@ import { ARTICLE_STYLE_OPTIONS, type ArticleStyleChoice } from "@/lib/article-st
 import { parseKeywordList } from "@/lib/bulk-keywords";
 import { mergeImageUrls } from "@/lib/image-pool";
 import { uid } from "@/lib/slug";
+import { VendorPicker } from "@/components/admin/VendorPicker";
 import type { BulkGroup, BulkPublishState, BulkSchedule, Category } from "@/lib/types";
 
 type Stats = {
@@ -365,6 +366,19 @@ export function BulkPlanner({
                 </label>
               </div>
               <div className="bulk-vendor-grid">
+                <div className="bulk-vendor-pick">
+                  <span>소개 업체</span>
+                  <VendorPicker
+                    onPick={(fields) =>
+                      updateGroup(group.id, {
+                        vendorName: fields.vendorName,
+                        vendorPhone: fields.vendorPhone,
+                        vendorWebsite: fields.vendorWebsite,
+                        vendorKakao: fields.vendorKakao,
+                      })
+                    }
+                  />
+                </div>
                 <label>
                   업체명
                   <input

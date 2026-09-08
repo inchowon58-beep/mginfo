@@ -2517,6 +2517,26 @@ body {
   color: #fff;
 }
 
+.editor-fold-row {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.editor-fold-row .editor-fold {
+  margin-top: 0;
+  flex: 1;
+}
+
+.editor-fold-row .vendor-picker {
+  display: flex;
+}
+
+.editor-fold-row .vendor-picker > .btn {
+  height: 100%;
+}
+
 .editor-fold {
   display: flex;
   align-items: center;
@@ -2561,6 +2581,127 @@ body {
 .vendor-admin h3 {
   margin: 0 0 8px;
   font-size: 15px;
+}
+
+.vendor-admin-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.vendor-admin-head h3 {
+  margin: 0;
+}
+
+.vendor-picker {
+  position: relative;
+}
+
+.vendor-picker-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: 20;
+  min-width: 220px;
+  max-height: 240px;
+  overflow: auto;
+  padding: 8px;
+  border: 1px solid #1f2937;
+  border-radius: 10px;
+  background: #0f172a;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+}
+
+.vendor-picker-menu p {
+  margin: 0;
+  padding: 8px;
+  color: #94a3b8;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.vendor-picker-menu button {
+  display: block;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: #e2e8f0;
+  text-align: left;
+  padding: 8px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.vendor-picker-menu button:hover {
+  background: #1e293b;
+}
+
+.vendor-book-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.vendor-book-form {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #1f2937;
+}
+
+.vendor-book-form h3 {
+  margin: 0 0 12px;
+  font-size: 16px;
+}
+
+.admin-form textarea.vendor-notes {
+  min-height: 96px;
+}
+
+.vendor-name-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.vendor-name-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid #1f2937;
+}
+
+.vendor-name-list li:last-child {
+  border-bottom: 0;
+}
+
+.vendor-name-list strong {
+  font-size: 15px;
+}
+
+.vendor-name-list span {
+  display: flex;
+  gap: 8px;
+}
+
+.bulk-vendor-pick {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  grid-column: 1 / -1;
+}
+
+.bulk-vendor-pick span {
+  font-size: 13px;
+  color: #94a3b8;
+  font-weight: 700;
 }
 
 .magazine-root .vendor-cta-card {
@@ -2991,6 +3132,12 @@ body {
   .settings-stack,
   .admin-narrow {
     max-width: none;
+  }
+  .vendor-book-head {
+    flex-direction: column;
+  }
+  .vendor-name-list li {
+    flex-wrap: wrap;
   }
 }
 
