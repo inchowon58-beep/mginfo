@@ -1,6 +1,19 @@
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 
+export {
+  DEFAULT_SITE_PASSWORD,
+  DEFAULT_SITE_USERNAME,
+  canConfirmSiteAccount,
+  checkMasterLogin,
+  checkSiteLogin,
+  masterLoginPassword,
+  masterLoginUsername,
+  siteAccountFrom,
+  validateSiteAccount,
+} from "./site-account";
+export { checkMasterLogin as checkAdminCredentials } from "./site-account";
+
 const COOKIE = "infocs_admin";
 const MASTER_COOKIE = "infocs_master";
 
@@ -83,12 +96,6 @@ export async function isMasterSession(): Promise<boolean> {
   } catch {
     return false;
   }
-}
-
-export function checkAdminCredentials(username: string, password: string): boolean {
-  const expectedUser = process.env.ADMIN_USERNAME || "admin";
-  const expectedPass = process.env.ADMIN_PASSWORD || "ybijour80";
-  return username === expectedUser && password === expectedPass;
 }
 
 export function checkMasterPassword(password: string): boolean {

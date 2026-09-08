@@ -5,6 +5,7 @@ import { DEFAULT_GEMINI_MODEL } from "./gemini-models";
 import { blobGetJson, blobSetJson, hasBlobStore } from "./blob-store";
 import { hasRemoteStore, kvGetJson, kvSetJson } from "./kv";
 import { seedPartners, seedPosts } from "./seed";
+import { siteAccountFrom, DEFAULT_SITE_PASSWORD, DEFAULT_SITE_USERNAME } from "./site-account";
 import { DEFAULT_SITE_THEME, getSiteTheme, isSiteThemeId } from "./site-theme";
 import { defaultBulkPublish, normalizeBulkPublish } from "./bulk-publish";
 import type { AdminPostRow, Banner, Category, Partner, Post, Settings, Store } from "./types";
@@ -44,6 +45,8 @@ function defaultSettings(): Settings {
     naverRankWork: false,
     naverSiteVerification: "",
     extraImagesEnabled: false,
+    siteUsername: DEFAULT_SITE_USERNAME,
+    sitePassword: DEFAULT_SITE_PASSWORD,
     company: branded ? "" : SITE.company,
     ceo: branded ? "" : SITE.ceo,
     bizNo: branded ? "" : SITE.bizNo,
@@ -73,6 +76,9 @@ function normalize(parsed: Store): Store {
   parsed.categories = parsed.categories?.length ? parsed.categories : DEFAULT_CATEGORIES.map((c) => ({ ...c }));
   parsed.categories = parsed.categories.map((c) => ({ ...c, geminiNotes: c.geminiNotes || "" }));
   parsed.settings = { ...defaultSettings(), ...parsed.settings };
+  const account = siteAccountFrom(parsed.settings);
+  parsed.settings.siteUsername = account.username;
+  parsed.settings.sitePassword = account.password;
   parsed.bulkPublish = normalizeBulkPublish(parsed.bulkPublish);
   return parsed;
 }

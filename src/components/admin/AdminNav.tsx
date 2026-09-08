@@ -29,6 +29,7 @@ export function AdminNav() {
     if (href === "/admin/posts") {
       return pathname === "/admin/posts" || (pathname.startsWith("/admin/posts/") && pathname !== "/admin/posts/new");
     }
+    if (href === "/admin/password") return pathname.startsWith("/admin/password");
     return pathname === href;
   }
 
@@ -46,6 +47,9 @@ export function AdminNav() {
         ))}
         <Link href="/" target="_blank">
           사이트 보기
+        </Link>
+        <Link href="/admin/password" className={isActive("/admin/password") ? "active" : ""}>
+          비밀번호설정
         </Link>
         <button className="linkish" type="button" onClick={logout}>
           로그아웃

@@ -6,7 +6,7 @@ import { FormEvent, Suspense, useState } from "react";
 function LoginForm() {
   const router = useRouter();
   const search = useSearchParams();
-  const [username, setUsername] = useState("admin");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -38,7 +38,12 @@ function LoginForm() {
         <h1>관리자 로그인</h1>
         <p>인포씨에스 매거진 글을 발행하려면 로그인하세요.</p>
         <label>아이디</label>
-        <input value={username} onChange={(e) => setUsername(e.target.value)} />
+        <input
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
+          placeholder="아이디"
+          autoComplete="username"
+        />
         <label>비밀번호</label>
         <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
         {error && <p className="notice">{error}</p>}

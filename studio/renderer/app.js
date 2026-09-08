@@ -74,14 +74,21 @@ function escapeHtml(value) {
 
 function renderResult(row) {
   const dns = (row.dns || [])
-    .map((item) => `<div>${escapeHtml(item.type)} · ${escapeHtml(item.name)} → ${escapeHtml(item.value)}</div>`)
+    .map(
+      (item) =>
+        `<div>${escapeHtml(item.type)} · 호스트 <b>${escapeHtml(item.name)}</b> → <b>${escapeHtml(item.value)}</b></div>`
+    )
     .join("");
+  const domainStatus = row.verified
+    ? "도메인이 이 사이트에 연결되었습니다."
+    : "도메인은 Vercel 프로젝트에 등록했습니다. 아래 DNS를 도메인 업체에 넣으면 주소가 열립니다.";
   resultEl.hidden = false;
   resultEl.innerHTML = `
-    <div>사이트: <a href="${row.siteUrl}" data-open-result>${escapeHtml(row.siteUrl)}</a></div>
-    <div>Vercel: <a href="${row.vercelHost}" data-open-result>${escapeHtml(row.vercelHost)}</a></div>
-    <div>관리자: <a href="${row.adminUrl}" data-open-result>${escapeHtml(row.adminUrl)}</a> · 아이디 admin</div>
-    ${dns ? `<div>DNS 안내<br>${dns}</div>` : "<div>도메인은 Vercel에 연결했습니다. 업체에서 네임서버 또는 A/CNAME만 맞추면 됩니다.</div>"}
+    <div>${domainStatus}</div>
+    <div>지금 열리는 주소: <a href="${row.vercelHost}" data-open-result>${escapeHtml(row.vercelHost)}</a></div>
+    <div>연결할 도메인: <a href="${row.siteUrl}" data-open-result>${escapeHtml(row.siteUrl)}</a></div>
+    <div>관리자: <a href="${row.adminUrl}" data-open-result>${escapeHtml(row.adminUrl)}</a> · blog / blog1234</div>
+    ${dns ? `<div>DNS 설정<br>${dns}</div>` : ""}
   `;
   resultEl.querySelectorAll("[data-open-result]").forEach((link) => {
     link.addEventListener("click", (event) => {

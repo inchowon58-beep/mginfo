@@ -128,6 +128,207 @@ function gitSourceFrom(project, repo) {
   };
 }
 
+function isApexDomain(domain) {
+  const parts = String(domain || "").split(".").filter(Boolean);
+  const last2 = parts.slice(-2).join(".");
+  if (["co.kr", "or.kr", "go.kr", "ne.kr", "re.kr", "ac.kr"].includes(last2)) {
+    return parts.length === 3;
+  }
+  return parts.length === 2;
+}
+
+function dnsHostLabel(domain) {
+  if (isApexDomain(domain)) return "@";
+  const parts = String(domain || "").split(".").filter(Boolean);
+  const last2 = parts.slice(-2).join(".");
+  if (["co.kr", "or.kr", "go.kr", "ne.kr", "re.kr", "ac.kr"].includes(last2)) {
+    return parts.slice(0, -2).join(".");
+  }
+  return parts.slice(0, -2).join(".") || parts[0];
+}
+
+function projectDomains(data) {
+  if (Array.isArray(data?.domains)) return data.domains;
+  if (Array.isArray(data)) return data;
+  return [];
+}
+
+async function listProjectDomains(token, teamId, projectId) {
+  const data = await vercel(token, `/v9/projects/${projectId}/domains?limit=100`, { teamId });
+  return projectDomains(data);
+}
+
+async function getProjectDomain(token, teamId, projectId, domain) {
+  const rows = await listProjectDomains(token, teamId, projectId);
+  return rows.find((row) => String(row.name || "").toLowerCase() === domain) || null;
+}
+
+function conflictProjectId(err) {
+  const data = err?.data || {};
+  const error = data.error || data;
+  return (
+    error.projectId ||
+    error.project?.id ||
+    error.meta?.projectId ||
+    error.meta?.project?.id ||
+    null
+  );
+}
+
+async function findProjectWithDomain(token, teamId, domain) {
+  const list = await vercel(token, "/v9/projects?limit=100", { teamId });
+  const projects = list.projects || [];
+  for (const project of projects) {
+    try {
+      const hit = await getProjectDomain(token, teamId, project.id, domain);
+      if (hit) return { project, domain: hit };
+    } catch {
+      /* skip projects we cannot read */
+    }
+  }
+  return null;
+}
+
+async function moveDomain(token, teamId, fromProjectId, toProjectId, domain) {
+  return vercel(token, `/v1/projects/${fromProjectId}/domains/${encodeURIComponent(domain)}/move`, {
+    method: "POST",
+    teamId,
+    body: { projectId: toProjectId },
+  });
+}
+
+async function dnsGuidance(token, teamId, projectId, domain, domainInfo) {
+  let config = {};
+  try {
+    config = await vercel(
+      token,
+      `/v6/domains/${encodeURIComponent(domain)}/config?projectIdOrName=${encodeURIComponent(projectId)}`,
+      { teamId }
+    );
+  } catch {
+    config = {};
+  }
+
+  const rows = [];
+  const cname = (config.recommendedCNAME || []).slice().sort((a, b) => (a.rank || 99) - (b.rank || 99))[0];
+  const ipv4 = (config.recommendedIPv4 || []).slice().sort((a, b) => (a.rank || 99) - (b.rank || 99))[0];
+  if (cname?.value) {
+    rows.push({
+      type: "CNAME",
+      name: dnsHostLabel(domain),
+      value: Array.isArray(cname.value) ? cname.value[0] : String(cname.value),
+      reason: "도메인 업체 DNS에 이 CNAME을 넣으면 연결됩니다.",
+    });
+  } else if (ipv4?.value) {
+    const ips = Array.isArray(ipv4.value) ? ipv4.value : [ipv4.value];
+    rows.push({
+      type: "A",
+      name: dnsHostLabel(domain),
+      value: ips.filter(Boolean).join(" / "),
+      reason: "루트 도메인은 A 레코드로 연결합니다.",
+    });
+  }
+  for (const row of domainInfo.verification || []) {
+    rows.push({
+      type: row.type || "TXT",
+      name: row.domain || row.name || domain,
+      value: row.value,
+      reason: row.reason || "소유 확인용 레코드",
+    });
+  }
+  if (!rows.length && !domainInfo.verified) {
+    rows.push({
+      type: isApexDomain(domain) ? "A" : "CNAME",
+      name: dnsHostLabel(domain),
+      value: isApexDomain(domain) ? "76.76.21.21" : "cname.vercel-dns.com",
+      reason: "도메인 업체 DNS에 이 값을 넣으면 Vercel이 인증합니다.",
+    });
+  }
+  return {
+    rows,
+    misconfigured: Boolean(config.misconfigured),
+    configuredBy: config.configuredBy || null,
+    verified: Boolean(domainInfo.verified),
+  };
+}
+
+async function attachDomain(token, teamId, projectId, domain, onLog) {
+  let info = await getProjectDomain(token, teamId, projectId, domain);
+  if (info) {
+    onLog(`도메인이 이 프로젝트에 있습니다. 인증 상태: ${info.verified ? "완료" : "대기"}`);
+  } else {
+    onLog(`도메인 연결: ${domain}`);
+    try {
+      info = await vercel(token, `/v10/projects/${projectId}/domains`, {
+        method: "POST",
+        teamId,
+        body: { name: domain },
+      });
+      onLog("도메인을 이 프로젝트에 등록했습니다.");
+    } catch (err) {
+      const msg = String(err.message || "");
+      const otherId = conflictProjectId(err);
+      if (otherId && otherId !== projectId) {
+        onLog("다른 프로젝트에 묶여 있어 이쪽으로 옮깁니다.");
+        info = await moveDomain(token, teamId, otherId, projectId, domain);
+      } else if (/already in use|already assigned|exists/i.test(msg)) {
+        onLog("다른 프로젝트에 있는지 확인합니다.");
+        const found = await findProjectWithDomain(token, teamId, domain);
+        if (found?.project?.id && found.project.id !== projectId) {
+          onLog(`기존 프로젝트(${found.project.name})에서 옮깁니다.`);
+          info = await moveDomain(token, teamId, found.project.id, projectId, domain);
+        } else {
+          info = found?.domain || (await getProjectDomain(token, teamId, projectId, domain));
+        }
+      } else {
+        throw new Error(`도메인을 Vercel 프로젝트에 연결하지 못했습니다. ${msg}`);
+      }
+    }
+  }
+
+  if (!info?.name) {
+    info = await getProjectDomain(token, teamId, projectId, domain);
+  }
+  if (!info?.name) {
+    throw new Error("도메인이 이 프로젝트에 붙지 않았습니다. Vercel 도메인 화면을 확인해 주세요.");
+  }
+
+  if (!info.verified) {
+    try {
+      const verified = await vercel(
+        token,
+        `/v9/projects/${projectId}/domains/${encodeURIComponent(domain)}/verify`,
+        { method: "POST", teamId }
+      );
+      if (verified?.verified) {
+        info = verified;
+        onLog("도메인 인증이 완료되었습니다.");
+      }
+    } catch {
+      onLog("도메인은 등록됐습니다. DNS가 맞으면 인증이 완료됩니다.");
+    }
+  }
+
+  const dns = await dnsGuidance(token, teamId, projectId, domain, info);
+  if (dns.verified) onLog("도메인 연결이 완료되었습니다.");
+  else onLog("Vercel에는 연결했습니다. 도메인 업체에서 아래 DNS만 맞추면 열립니다.");
+  return { ...info, dns: dns.rows, misconfigured: dns.misconfigured };
+}
+
+async function assignDomainAlias(token, teamId, deploymentId, domain, onLog) {
+  if (!deploymentId) return;
+  try {
+    await vercel(token, `/v2/deployments/${deploymentId}/aliases`, {
+      method: "POST",
+      teamId,
+      body: { alias: domain },
+    });
+    onLog(`배포에 도메인을 붙였습니다: ${domain}`);
+  } catch (err) {
+    onLog(`도메인 별칭 안내: ${err.message}`);
+  }
+}
+
 async function startOrWaitDeploy(token, teamId, project, projectName, repo, onLog) {
   const projectId = project.id || projectName;
   await sleep(2000);
@@ -261,52 +462,13 @@ async function provisionSite(input, onLog = () => {}) {
     }
   }
 
-  onLog(`도메인 연결: ${domain}`);
-  let domainInfo = {};
-  try {
-    domainInfo = await vercel(token, `/v10/projects/${projectId}/domains`, {
-      method: "POST",
-      teamId,
-      body: { name: domain },
-    });
-  } catch (err) {
-    const msg = String(err.message || "");
-    if (/already in use|already assigned|exists/i.test(msg)) {
-      onLog("도메인은 이미 연결되어 있습니다. 배포를 계속합니다.");
-      try {
-        domainInfo = await vercel(
-          token,
-          `/v9/projects/${projectId}/domains/${encodeURIComponent(domain)}`,
-          { teamId }
-        );
-      } catch {
-        domainInfo = { name: domain };
-      }
-    } else {
-      onLog(`도메인 연결 안내: ${msg}`);
-    }
-  }
+  const domainInfo = await attachDomain(token, teamId, projectId, domain, onLog);
 
   onLog("프로덕션 배포 시작…");
   const ready = await startOrWaitDeploy(token, teamId, project, projectName, repo, onLog);
+  await assignDomainAlias(token, teamId, ready.id || ready.uid, domain, onLog);
 
   const vercelHost = ready.url ? `https://${ready.url}` : `https://${projectName}.vercel.app`;
-  const verification = domainInfo.verification || [];
-  const dns = verification.map((row) => ({
-    type: row.type,
-    name: row.domain || row.name || domain,
-    value: row.value,
-    reason: row.reason,
-  }));
-  if (!dns.length && domainInfo.verified === false) {
-    dns.push({
-      type: "A / CNAME",
-      name: domain,
-      value: "Vercel이 안내하는 레코드",
-      reason: "도메인 업체에서 네임서버 또는 A/CNAME을 Vercel 값으로 바꾸세요.",
-    });
-  }
-
   onLog("완료되었습니다.");
   return {
     blogName,
@@ -315,9 +477,9 @@ async function provisionSite(input, onLog = () => {}) {
     projectId,
     vercelHost,
     siteUrl: `https://${domain}`,
-    adminUrl: `https://${domain}/admin`,
+    adminUrl: domainInfo.verified ? `https://${domain}/admin` : `${vercelHost}/admin`,
     verified: Boolean(domainInfo.verified),
-    dns,
+    dns: domainInfo.dns || [],
     createdAt: new Date().toISOString(),
   };
 }

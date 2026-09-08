@@ -50,6 +50,8 @@ export default function SettingsPage() {
   const [dailyPostLimit, setDailyPostLimit] = useState("0");
   const [naverRankWork, setNaverRankWork] = useState(false);
   const [extraImagesEnabled, setExtraImagesEnabled] = useState(false);
+  const [siteUsername, setSiteUsername] = useState("blog");
+  const [sitePassword, setSitePassword] = useState("blog1234");
 
   useEffect(() => {
     fetch("/api/settings")
@@ -87,6 +89,8 @@ export default function SettingsPage() {
         setNaverRankWork(Boolean(s.naverRankWork));
         setExtraImagesEnabled(Boolean(s.extraImagesEnabled));
         if (typeof s.naverSiteVerification === "string") setNaverSiteVerification(s.naverSiteVerification);
+        if (typeof s.siteUsername === "string" && s.siteUsername) setSiteUsername(s.siteUsername);
+        if (typeof s.sitePassword === "string" && s.sitePassword) setSitePassword(s.sitePassword);
       })
       .catch(() => setError("설정을 불러오지 못했습니다."));
     fetch("/api/auth/master")
@@ -156,6 +160,8 @@ export default function SettingsPage() {
       naverRankWork,
       extraImagesEnabled,
       naverSiteVerification,
+      siteUsername,
+      sitePassword,
     });
     if (geminiApiKey && !geminiApiKey.includes("•")) setHasKey(true);
   }
@@ -186,6 +192,8 @@ export default function SettingsPage() {
       setNaverRankWork(Boolean(s.naverRankWork));
       setExtraImagesEnabled(Boolean(s.extraImagesEnabled));
       if (typeof s.naverSiteVerification === "string") setNaverSiteVerification(s.naverSiteVerification);
+      if (typeof s.siteUsername === "string" && s.siteUsername) setSiteUsername(s.siteUsername);
+      if (typeof s.sitePassword === "string" && s.sitePassword) setSitePassword(s.sitePassword);
     } catch (err) {
       setError(err instanceof Error ? err.message : "확인 실패");
     } finally {
@@ -429,6 +437,15 @@ export default function SettingsPage() {
             사용가능일과 하루 작성 수량은 대시보드에도 표시됩니다. 날짜가 지나면 추가 발행이 멈추고, 수량에 닿으면 그날
             새 글을 더 만들 수 없습니다.
           </p>
+          <h3 className="admin-subhead">사이트 관리자 계정</h3>
+          <p className="field-hint" style={{ marginTop: 0 }}>
+            고객이 로그인하는 아이디와 비밀번호입니다. 분실하면 여기서 확인하고 알려 주면 됩니다. 마스터 계정
+            (admin)은 바뀌지 않습니다.
+          </p>
+          <label>사이트 아이디</label>
+          <input value={siteUsername} onChange={(e) => setSiteUsername(e.target.value)} autoComplete="off" />
+          <label>사이트 비밀번호</label>
+          <input value={sitePassword} onChange={(e) => setSitePassword(e.target.value)} autoComplete="off" />
           <h3 className="admin-subhead">사용가능일</h3>
           <label>사용 종료일</label>
           <input type="date" value={usableUntil} onChange={(e) => setUsableUntil(e.target.value)} />

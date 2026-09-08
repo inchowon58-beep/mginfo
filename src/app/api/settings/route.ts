@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { isAdminSession, isMasterSession } from "@/lib/auth";
+import { isAdminSession, isMasterSession, siteAccountFrom, validateSiteAccount } from "@/lib/auth";
 import { getSettings, updateStore } from "@/lib/db";
 import {
   DEFAULT_COMMENT_MAX,
@@ -23,7 +23,7 @@ export async function GET() {
   }
   const settings = await getSettings();
   const master = await isMasterSession();
-  const { geminiApiKey, geminiModel, naverSiteVerification, ...rest } = settings;
+  const { geminiApiKey, geminiModel, naverSiteVerification, sitePassword, ...rest } = settings;
   return NextResponse.json({
     settings: {
       ...rest,
@@ -31,6 +31,7 @@ export async function GET() {
       geminiModel: master ? geminiModel : undefined,
       hasKey: master ? Boolean(geminiApiKey) : undefined,
       naverSiteVerification: master ? naverSiteVerification || "" : undefined,
+      sitePassword: master ? sitePassword : undefined,
     },
   });
 }
@@ -49,12 +50,25 @@ export async function POST(request: Request) {
     body.dailyPostLimit !== undefined ||
     body.naverRankWork !== undefined ||
     body.naverSiteVerification !== undefined ||
-    body.extraImagesEnabled !== undefined;
+    body.extraImagesEnabled !== undefined ||
+    body.siteUsername !== undefined ||
+    body.sitePassword !== undefined;
   if (wantsMaster && !(await isMasterSession())) {
     return NextResponse.json(
       { error: "마스터 관리자만 마스터 설정을 바꿀 수 있습니다." },
       { status: 403 }
     );
+  }
+  let nextSiteUser = "";
+  let nextSitePass = "";
+  if (typeof body.siteUsername === "string" || typeof body.sitePassword === "string") {
+    const current = siteAccountFrom(await getSettings());
+    nextSiteUser = typeof body.siteUsername === "string" ? body.siteUsername.trim() : current.username;
+    nextSitePass = typeof body.sitePassword === "string" ? body.sitePassword : current.password;
+    const invalid = validateSiteAccount(nextSiteUser, nextSitePass);
+    if (invalid) {
+      return NextResponse.json({ error: invalid }, { status: 400 });
+    }
   }
   try {
     await updateStore((s) => {
@@ -86,6 +100,10 @@ export async function POST(request: Request) {
       }
       if (typeof body.naverSiteVerification === "string") {
         s.settings.naverSiteVerification = parseNaverVerification(body.naverSiteVerification);
+      }
+      if (nextSiteUser && nextSitePass) {
+        s.settings.siteUsername = nextSiteUser;
+        s.settings.sitePassword = nextSitePass;
       }
       const textKeys = [
         "siteName",
