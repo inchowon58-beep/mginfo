@@ -147,6 +147,10 @@ export type BulkGroup = {
   vendorWebsite?: string;
   vendorKakao?: string;
   writingStyle?: string;
+  imagePool?: string[];
+  imageCountMin?: number;
+  imageCountMax?: number;
+  imageCount?: number;
   keywords: BulkKeyword[];
 };
 

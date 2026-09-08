@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { ARTICLE_STYLE_OPTIONS, type ArticleStyleChoice } from "@/lib/article-style";
 import { parseKeywordList } from "@/lib/bulk-keywords";
+import { mergeImageUrls } from "@/lib/image-pool";
 import { uid } from "@/lib/slug";
 import type { BulkGroup, BulkPublishState, BulkSchedule, Category } from "@/lib/types";
 
@@ -45,6 +46,9 @@ function emptyGroup(category: string): GroupDraft {
     vendorWebsite: "",
     vendorKakao: "",
     writingStyle: "random" as ArticleStyleChoice,
+    imagePool: [],
+    imageCountMin: 1,
+    imageCountMax: 3,
     keywords: [],
     text: "",
   };
@@ -102,6 +106,9 @@ export function BulkPlanner({
             vendorWebsite: group.vendorWebsite,
             vendorKakao: group.vendorKakao,
             writingStyle: group.writingStyle || "random",
+            imagePool: group.imagePool || [],
+            imageCountMin: group.imageCountMin || 1,
+            imageCountMax: group.imageCountMax || 3,
             keywords: group.keywords,
             text: group.text,
           })),
@@ -355,6 +362,12 @@ export function BulkPlanner({
                   />
                 </label>
               </div>
+              <GroupImagePool
+                urls={group.imagePool || []}
+                minCount={group.imageCountMin || 1}
+                maxCount={group.imageCountMax || 3}
+                onChange={(patch) => updateGroup(group.id, patch)}
+              />
               <label>
                 키워드 작성
                 <textarea
@@ -415,6 +428,172 @@ export function BulkPlanner({
         </div>
         <BulkProgress stats={stats} />
       </section>
+    </div>
+  );
+}
+
+function GroupImagePool({
+  urls,
+  minCount,
+  maxCount,
+  onChange,
+}: {
+  urls: string[];
+  minCount: number;
+  maxCount: number;
+  onChange: (patch: { imagePool?: string[]; imageCountMin?: number; imageCountMax?: number }) => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [progress, setProgress] = useState("");
+  const [folderBase, setFolderBase] = useState("");
+
+  async function uploadFiles(files: FileList | File[]) {
+    const list = Array.from(files).filter((file) => file.type.startsWith("image/"));
+    if (!list.length) return;
+    setBusy(true);
+    const added: string[] = [];
+    try {
+      for (let i = 0; i < list.length; i += 1) {
+        setProgress(`${i + 1}/${list.length}`);
+        const form = new FormData();
+        form.append("file", list[i]);
+        const res = await fetch("/api/upload", { method: "POST", body: form });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "업로드 실패");
+        if (data.url) added.push(String(data.url));
+      }
+      onChange({ imagePool: mergeImageUrls(urls, added) });
+    } catch (err) {
+      if (added.length) onChange({ imagePool: mergeImageUrls(urls, added) });
+      alert(err instanceof Error ? err.message : "업로드 실패");
+    } finally {
+      setBusy(false);
+      setProgress("");
+    }
+  }
+
+  async function importFolder() {
+    if (!folderBase.trim()) {
+      alert("웹 폴더 주소를 넣으세요.");
+      return;
+    }
+    setBusy(true);
+    setProgress("폴더 확인 중");
+    try {
+      const res = await fetch("/api/admin/bulk/folder-images", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: folderBase }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "폴더를 읽지 못했습니다.");
+      onChange({ imagePool: mergeImageUrls(urls, data.urls || []) });
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "폴더를 읽지 못했습니다.");
+    } finally {
+      setBusy(false);
+      setProgress("");
+    }
+  }
+
+  function setRange(nextMin: number, nextMax: number) {
+    const max = Math.max(1, Math.min(7, nextMax));
+    const min = Math.max(1, Math.min(max, nextMin));
+    onChange({ imageCountMin: min, imageCountMax: max });
+  }
+
+  return (
+    <div className="bulk-images">
+      <div className="bulk-group-grid">
+        <label>
+          랜덤 최소
+          <input
+            type="number"
+            min={1}
+            max={7}
+            value={minCount}
+            onChange={(e) => setRange(Number(e.target.value) || 1, maxCount)}
+          />
+        </label>
+        <label>
+          랜덤 최대
+          <input
+            type="number"
+            min={1}
+            max={7}
+            value={maxCount}
+            onChange={(e) => setRange(minCount, Number(e.target.value) || 1)}
+          />
+        </label>
+        <p className="field-hint bulk-image-hint">
+          글마다 {minCount}~{maxCount}장 사이 무작위로 붙입니다. 등록 사진이 더 적으면 있는 장수만 씁니다. 지금 {urls.length}장.
+        </p>
+      </div>
+      <div className="cover-upload">
+        <label className="btn btn-ghost cover-file-btn">
+          {busy && progress.includes("/") ? `올리는 중 ${progress}` : "사진 올리기"}
+          <input
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/gif"
+            multiple
+            disabled={busy}
+            onChange={(e) => {
+              const files = e.target.files;
+              e.target.value = "";
+              if (files?.length) void uploadFiles(files);
+            }}
+          />
+        </label>
+        <label className="btn btn-ghost cover-file-btn">
+          {busy ? "처리 중…" : "폴더 올리기"}
+          <input
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/gif"
+            multiple
+            {...{ webkitdirectory: "", directory: "" }}
+            disabled={busy}
+            onChange={(e) => {
+              const files = e.target.files;
+              e.target.value = "";
+              if (files?.length) void uploadFiles(files);
+            }}
+          />
+        </label>
+        {urls.length ? (
+          <button className="btn btn-ghost" type="button" onClick={() => onChange({ imagePool: [] })}>
+            사진 비우기
+          </button>
+        ) : null}
+      </div>
+      <div className="bulk-folder-row">
+        <label>
+          웹 폴더 주소
+          <input
+            value={folderBase}
+            onChange={(e) => setFolderBase(e.target.value)}
+            placeholder="https://image.example.com/pome"
+            disabled={busy}
+          />
+        </label>
+        <button className="btn" type="button" onClick={() => void importFolder()} disabled={busy}>
+          {busy && progress === "폴더 확인 중" ? "가져오는 중…" : "폴더에서 가져오기"}
+        </button>
+      </div>
+      <p className="field-hint">
+        확장자·번호를 적을 필요 없습니다. 주소만 넣으면 목록이 열려 있거나 01.webp처럼 번호 파일이면 알아서 가져옵니다.
+      </p>
+      {urls.length ? (
+        <ul className="bulk-thumbs">
+          {urls.map((url) => (
+            <li key={url}>
+              <img src={url} alt="" />
+              <button type="button" onClick={() => onChange({ imagePool: urls.filter((item) => item !== url) })}>
+                빼기
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : null}
     </div>
   );
 }

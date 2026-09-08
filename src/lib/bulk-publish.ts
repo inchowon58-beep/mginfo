@@ -9,6 +9,7 @@ import { checkCanCreatePost, checkCanPublish, countPostsCreatedToday, seoulDateK
 import { extractPlaceName, parseNameList } from "./region-geo";
 import { cleanHtml } from "./sanitize";
 import { slugify, uid } from "./slug";
+import { mergeImageUrls, pickRandomPostImages } from "./image-pool";
 import { parseVendorFields } from "./vendor";
 import type {
   BulkGroup,
@@ -69,6 +70,8 @@ function normalizeGroup(raw: Partial<BulkGroup>): BulkGroup | null {
         .filter((item): item is BulkKeyword => Boolean(item))
     : [];
   const vendor = parseVendorFields(raw as Record<string, unknown>);
+  const max = Math.max(1, Math.min(7, Math.floor(Number(raw.imageCountMax ?? raw.imageCount) || 3)));
+  const min = Math.max(1, Math.min(max, Math.floor(Number(raw.imageCountMin) || 1)));
   return {
     id: String(raw.id || uid()),
     category: String(raw.category || "life"),
@@ -78,6 +81,9 @@ function normalizeGroup(raw: Partial<BulkGroup>): BulkGroup | null {
     vendorWebsite: vendor.vendorWebsite,
     vendorKakao: vendor.vendorKakao,
     writingStyle: String(raw.writingStyle || "random").trim() || "random",
+    imagePool: mergeImageUrls([], Array.isArray(raw.imagePool) ? raw.imagePool.map((item) => String(item || "")) : []),
+    imageCountMin: min,
+    imageCountMax: max,
     keywords,
   };
 }
@@ -318,6 +324,7 @@ async function generateAndSave(store: Store, group: BulkGroup, item: BulkKeyword
   const now = new Date().toISOString();
   let slug = slugify(article.slugHint || article.title || item.keyword);
   if (store.posts.some((p) => p.slug === slug)) slug = `${slug}-${Date.now().toString(36)}`;
+  const photos = pickRandomPostImages(group.imagePool || [], group.imageCountMin || 1, group.imageCountMax || 3);
   return {
     id: uid(),
     slug,
@@ -326,6 +333,8 @@ async function generateAndSave(store: Store, group: BulkGroup, item: BulkKeyword
     bodyHtml: cleanHtml(article.bodyHtml || ""),
     category,
     tags: article.tags || [],
+    coverImage: photos.cover,
+    extraImages: photos.extras,
     focusKeyword: item.keyword,
     faqItems: article.faqItems,
     regionInfo: article.regionInfo,

@@ -105,7 +105,7 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
       ? weatherSentence(geoBase.place, weather, seedNumber(post.id, post.slug, post.publishedAt))
       : "",
   });
-  const extras = settings.extraImagesEnabled ? post.extraImages || [] : [];
+  const extras = post.extraImages || [];
   const placed = placeInlineImages(post.bodyHtml, extras, keyword);
   const showVendor = hasVendorCta(post);
   const crumbs = [
