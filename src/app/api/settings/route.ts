@@ -14,6 +14,7 @@ import {
   normalizeDailyPostLimit,
   normalizeUsableUntil,
 } from "@/lib/publish-limits";
+import { parseNaverVerification } from "@/lib/seo";
 import { isSiteThemeId } from "@/lib/site-theme";
 
 export async function GET() {
@@ -22,13 +23,14 @@ export async function GET() {
   }
   const settings = await getSettings();
   const master = await isMasterSession();
-  const { geminiApiKey, geminiModel, ...rest } = settings;
+  const { geminiApiKey, geminiModel, naverSiteVerification, ...rest } = settings;
   return NextResponse.json({
     settings: {
       ...rest,
       geminiApiKey: master && geminiApiKey ? `${geminiApiKey.slice(0, 6)}••••${geminiApiKey.slice(-4)}` : "",
       geminiModel: master ? geminiModel : undefined,
       hasKey: master ? Boolean(geminiApiKey) : undefined,
+      naverSiteVerification: master ? naverSiteVerification || "" : undefined,
     },
   });
 }
@@ -46,6 +48,7 @@ export async function POST(request: Request) {
     body.usableUntil !== undefined ||
     body.dailyPostLimit !== undefined ||
     body.naverRankWork !== undefined ||
+    body.naverSiteVerification !== undefined ||
     body.extraImagesEnabled !== undefined;
   if (wantsMaster && !(await isMasterSession())) {
     return NextResponse.json(
@@ -80,6 +83,9 @@ export async function POST(request: Request) {
         s.settings.extraImagesEnabled = true;
       } else if (body.extraImagesEnabled === "false" || body.extraImagesEnabled === "0") {
         s.settings.extraImagesEnabled = false;
+      }
+      if (typeof body.naverSiteVerification === "string") {
+        s.settings.naverSiteVerification = parseNaverVerification(body.naverSiteVerification);
       }
       const textKeys = [
         "siteName",

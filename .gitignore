@@ -8,3 +8,6 @@ public/uploads
 *.log
 .DS_Store
 tsconfig.tsbuildinfo
+studio/node_modules
+studio/dist
+InfocsStudio.exe

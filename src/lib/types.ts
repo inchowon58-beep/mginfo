@@ -117,6 +117,7 @@ export type Settings = {
   usableUntil: string;
   dailyPostLimit: number;
   naverRankWork: boolean;
+  naverSiteVerification: string;
   extraImagesEnabled: boolean;
   company: string;
   ceo: string;

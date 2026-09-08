@@ -9,6 +9,7 @@ import { DEFAULT_SITE_THEME, getSiteTheme, isSiteThemeId } from "./site-theme";
 import { defaultBulkPublish, normalizeBulkPublish } from "./bulk-publish";
 import type { AdminPostRow, Banner, Category, Partner, Post, Settings, Store } from "./types";
 import { DEFAULT_CATEGORIES, SITE } from "./categories";
+import { decodeSlugParam } from "./slug";
 import {
   DEFAULT_COMMENT_MAX,
   DEFAULT_COMMENT_MIN,
@@ -19,10 +20,12 @@ import {
 const LOCAL_PATH = path.join(process.cwd(), "data", "store.json");
 
 function defaultSettings(): Settings {
+  const customName = String(process.env.SITE_NAME || "").trim();
+  const branded = Boolean(customName);
   return {
     geminiApiKey: process.env.GEMINI_API_KEY || "",
     geminiModel: process.env.GEMINI_MODEL || DEFAULT_GEMINI_MODEL,
-    siteName: SITE.name,
+    siteName: customName || SITE.name,
     siteTagline: "모든 생활 정보를 한눈에",
     siteTheme: DEFAULT_SITE_THEME,
     carrotKeywords: "",
@@ -39,13 +42,14 @@ function defaultSettings(): Settings {
     usableUntil: "",
     dailyPostLimit: 0,
     naverRankWork: false,
+    naverSiteVerification: "",
     extraImagesEnabled: false,
-    company: SITE.company,
-    ceo: SITE.ceo,
-    bizNo: SITE.bizNo,
-    address: SITE.address,
+    company: branded ? "" : SITE.company,
+    ceo: branded ? "" : SITE.ceo,
+    bizNo: branded ? "" : SITE.bizNo,
+    address: branded ? "" : SITE.address,
     phone: "",
-    email: SITE.email,
+    email: branded ? "" : SITE.email,
   };
 }
 
@@ -168,7 +172,8 @@ export async function getPublishedPosts(): Promise<Post[]> {
 
 export async function getPostBySlug(slug: string): Promise<Post | undefined> {
   const store = await readStore();
-  return store.posts.find((p) => p.slug === slug);
+  const wanted = decodeSlugParam(slug);
+  return store.posts.find((p) => decodeSlugParam(p.slug) === wanted);
 }
 
 export async function getPostById(id: string): Promise<Post | undefined> {

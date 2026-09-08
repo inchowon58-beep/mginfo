@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; script-src 'self'"
+    />
+    <title>Infocs Studio</title>
+    <link rel="stylesheet" href="./app.css" />
+  </head>
+  <body>
+    <div class="app">
+      <aside class="rail">
+        <div class="mark">
+          <i></i>
+          <div>
+            <em>INFOCS</em>
+            <strong>Studio</strong>
+          </div>
+        </div>
+        <p class="lede">도메인과 블로그 이름만 넣으면 Vercel 프로젝트, Blob, 배포까지 한 번에 준비합니다.</p>
+        <nav>
+          <button class="nav-btn active" data-view="create" type="button">새 사이트</button>
+          <button class="nav-btn" data-view="history" type="button">배포 기록</button>
+          <button class="nav-btn" data-view="settings" type="button">계정 설정</button>
+        </nav>
+        <div class="rail-foot">
+          <span id="account-label">토큰 미연결</span>
+          <small>DNS는 도메인 업체에서 직접 연결하세요.</small>
+        </div>
+      </aside>
+
+      <main>
+        <section class="view show" id="view-create">
+          <header class="page-head">
+            <p>New property</p>
+            <h1>사이트 만들기</h1>
+          </header>
+          <form class="panel" id="create-form">
+            <label>
+              블로그 이름
+              <input id="blogName" maxlength="60" placeholder="예: 부천 라이프 매거진" required />
+            </label>
+            <label>
+              도메인
+              <input id="domain" maxlength="80" placeholder="예: magazine.example.co.kr" required />
+            </label>
+            <p class="hint">제미나이 키와 네이버 메타태그는 사이트 관리자에서 직접 넣으면 됩니다.</p>
+            <button class="gold" id="create-btn" type="submit">사이트 생성하고 배포</button>
+          </form>
+          <div class="panel log-card" id="progress-card" hidden>
+            <div class="progress-head">
+              <b id="progress-title">준비 중</b>
+              <span id="progress-state">대기</span>
+            </div>
+            <ol id="log"></ol>
+            <div class="result" id="result" hidden></div>
+          </div>
+        </section>
+
+        <section class="view" id="view-history">
+          <header class="page-head">
+            <p>Archive</p>
+            <h1>배포 기록</h1>
+          </header>
+          <div class="panel" id="history-list"></div>
+        </section>
+
+        <section class="view" id="view-settings">
+          <header class="page-head">
+            <p>Credentials</p>
+            <h1>계정 설정</h1>
+          </header>
+          <form class="panel" id="settings-form">
+            <label>
+              Vercel 토큰
+              <input id="token" type="password" autocomplete="off" placeholder="vercel_ 로 시작하는 토큰" />
+            </label>
+            <p class="hint">
+              <a href="https://vercel.com/account/tokens" data-open>vercel.com/account/tokens</a>
+              에서 Full Account 토큰을 만든 뒤 붙여 넣으세요. 이 컴퓨터에만 저장됩니다.
+            </p>
+            <label>
+              GitHub 저장소
+              <input id="repo" placeholder="inchowon58-beep/mginfo" />
+            </label>
+            <label>
+              팀 ID (선택)
+              <input id="teamId" placeholder="비우면 개인 계정" />
+            </label>
+            <button class="gold" type="submit">설정 저장</button>
+            <p class="status" id="settings-status"></p>
+          </form>
+        </section>
+      </main>
+    </div>
+    <script src="./app.js"></script>
+  </body>
+</html>

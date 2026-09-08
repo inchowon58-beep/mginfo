@@ -8,7 +8,7 @@ import { notifyPostIndexed } from "./indexnow";
 import { checkCanCreatePost, checkCanPublish, countPostsCreatedToday, seoulDateKey } from "./publish-limits";
 import { extractPlaceName, parseNameList } from "./region-geo";
 import { cleanHtml } from "./sanitize";
-import { slugify, uid } from "./slug";
+import { articleSlug, uid } from "./slug";
 import { mergeImageUrls, pickRandomPostImages } from "./image-pool";
 import { parseVendorFields } from "./vendor";
 import type {
@@ -369,7 +369,7 @@ async function generateAndSave(store: Store, group: BulkGroup, item: BulkKeyword
     model: store.settings.geminiModel || DEFAULT_GEMINI_MODEL,
   });
   const now = new Date().toISOString();
-  let slug = slugify(article.slugHint || article.title || item.keyword);
+  let slug = articleSlug(article.slugHint, item.keyword);
   if (store.posts.some((p) => p.slug === slug)) slug = `${slug}-${Date.now().toString(36)}`;
   const photos = pickRandomPostImages(group.imagePool || [], group.imageCountMin || 1, group.imageCountMax || 3);
   return {

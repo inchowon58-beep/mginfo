@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { displaySiteName, SITE } from "@/lib/categories";
 import { getPublishedPosts, getSettings } from "@/lib/db";
 import { buildPostSeoDescription, buildPostSeoTitle } from "@/lib/post-seo";
-import { SITE_ORIGIN } from "@/lib/seo";
+import { postUrl, SITE_ORIGIN } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
 
@@ -21,7 +21,7 @@ export async function GET() {
   const siteName = displaySiteName(settings.siteName);
   const items = posts
     .map((post) => {
-      const url = `${SITE_ORIGIN}/posts/${post.slug}`;
+      const url = xmlEscape(postUrl(post.slug));
       const description = xmlEscape(buildPostSeoDescription(post));
       const pub = new Date(post.publishedAt || post.createdAt).toUTCString();
       const enclosure = post.coverImage

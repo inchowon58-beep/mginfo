@@ -39,6 +39,7 @@ export default function SettingsPage() {
   const [address, setAddress] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
+  const [naverSiteVerification, setNaverSiteVerification] = useState("");
   const [hasKey, setHasKey] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -85,6 +86,7 @@ export default function SettingsPage() {
         if (s.dailyPostLimit != null) setDailyPostLimit(String(s.dailyPostLimit));
         setNaverRankWork(Boolean(s.naverRankWork));
         setExtraImagesEnabled(Boolean(s.extraImagesEnabled));
+        if (typeof s.naverSiteVerification === "string") setNaverSiteVerification(s.naverSiteVerification);
       })
       .catch(() => setError("설정을 불러오지 못했습니다."));
     fetch("/api/auth/master")
@@ -153,6 +155,7 @@ export default function SettingsPage() {
       dailyPostLimit,
       naverRankWork,
       extraImagesEnabled,
+      naverSiteVerification,
     });
     if (geminiApiKey && !geminiApiKey.includes("•")) setHasKey(true);
   }
@@ -182,6 +185,7 @@ export default function SettingsPage() {
       if (s.dailyPostLimit != null) setDailyPostLimit(String(s.dailyPostLimit));
       setNaverRankWork(Boolean(s.naverRankWork));
       setExtraImagesEnabled(Boolean(s.extraImagesEnabled));
+      if (typeof s.naverSiteVerification === "string") setNaverSiteVerification(s.naverSiteVerification);
     } catch (err) {
       setError(err instanceof Error ? err.message : "확인 실패");
     } finally {
@@ -449,6 +453,18 @@ export default function SettingsPage() {
             네이버 상위노출 작업 진행 중으로 표시
           </label>
           <p className="field-hint">체크하면 대시보드 맨 위에 “네이버상위노출작업진행중”이 뜹니다.</p>
+          <h3 className="admin-subhead">네이버 서치어드바이저</h3>
+          <label>네이버 메타태그</label>
+          <textarea
+            value={naverSiteVerification}
+            onChange={(e) => setNaverSiteVerification(e.target.value)}
+            placeholder={'<meta name="naver-site-verification" content="여기에_코드" />'}
+            style={{ minHeight: 88 }}
+          />
+          <p className="field-hint">
+            네이버 서치어드바이저에서 받은 메타 태그를 그대로 붙여 넣으면 됩니다. 저장하면 모든 페이지 헤드에
+            들어가서 사이트 등록 확인에 쓰입니다. 코드만 넣어도 됩니다.
+          </p>
           <h3 className="admin-subhead">추가사진사용설정</h3>
           <label className="admin-check-all">
             <input
