@@ -84,3 +84,35 @@ export function getSiteIconSpec(seed = siteIconSeed()): SiteIconSpec {
     mark: MARKS[Math.floor(hash / 7) % MARKS.length],
   };
 }
+
+export function siteIconSvg(size = 32, seed = siteIconSeed()) {
+  const spec = getSiteIconSpec(seed);
+  const radius = spec.mark === "circle" ? size / 2 : (spec.radius / 32) * size;
+  const fontSize = Math.round(size * (spec.letters.length > 1 ? 0.42 : 0.5));
+  const inset = Math.max(3, Math.round(size * 0.12));
+  const barW = Math.max(3, Math.round(size * 0.1));
+  const dot = Math.max(5, Math.round(size * 0.18));
+  const extras =
+    spec.mark === "split"
+      ? `<rect x="0" y="0" width="${size * 0.58}" height="${size}" fill="${spec.bg}"/>`
+      : spec.mark === "bar"
+        ? `<rect x="${inset}" y="${inset}" width="${barW}" height="${size - inset * 2}" rx="${barW}" fill="${spec.accent}"/>`
+        : spec.mark === "dot"
+          ? `<circle cx="${size - inset - dot / 2}" cy="${inset + dot / 2}" r="${dot / 2}" fill="${spec.accent}"/>`
+          : "";
+  const bg = spec.mark === "split" ? spec.accent : spec.bg;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${size} ${size}" width="${size}" height="${size}">
+  <rect width="${size}" height="${size}" rx="${radius}" fill="${bg}"/>
+  ${extras}
+  <text x="${size / 2}" y="${size / 2 + fontSize * 0.35}" text-anchor="middle" font-size="${fontSize}" font-family="Arial,sans-serif" font-weight="700" fill="${spec.fg}">${spec.letters}</text>
+</svg>`;
+}
+
+export function siteIconResponse(size = 32) {
+  return new Response(siteIconSvg(size), {
+    headers: {
+      "Content-Type": "image/svg+xml; charset=utf-8",
+      "Cache-Control": "public, max-age=86400",
+    },
+  });
+}

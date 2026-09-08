@@ -4,7 +4,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { CategoryManager } from "@/components/admin/CategoryManager";
 import { DEFAULT_GEMINI_MODEL, GEMINI_MODELS } from "@/lib/gemini-models";
 import { SITE_THEMES } from "@/lib/site-theme";
-import { DEFAULT_WRITING_TONE, WRITING_TONES } from "@/lib/writing-tone";
+import { DEFAULT_WRITING_TONE, WRITING_TONES, isWritingToneId, type WritingToneId } from "@/lib/writing-tone";
 import type { SiteThemeId } from "@/lib/types";
 
 type SettingsTab = "basic" | "category" | "site" | "master";
@@ -40,7 +40,7 @@ export default function SettingsPage() {
   const [address, setAddress] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
-  const [writingTone, setWritingTone] = useState(DEFAULT_WRITING_TONE);
+  const [writingTone, setWritingTone] = useState<WritingToneId>(DEFAULT_WRITING_TONE);
   const [writingPersona, setWritingPersona] = useState("");
   const [naverSiteVerification, setNaverSiteVerification] = useState("");
   const [hasKey, setHasKey] = useState(false);
@@ -94,7 +94,7 @@ export default function SettingsPage() {
         if (typeof s.naverSiteVerification === "string") setNaverSiteVerification(s.naverSiteVerification);
         if (typeof s.siteUsername === "string" && s.siteUsername) setSiteUsername(s.siteUsername);
         if (typeof s.sitePassword === "string" && s.sitePassword) setSitePassword(s.sitePassword);
-        if (typeof s.writingTone === "string" && s.writingTone) setWritingTone(s.writingTone);
+        if (isWritingToneId(s.writingTone)) setWritingTone(s.writingTone);
         if (typeof s.writingPersona === "string") setWritingPersona(s.writingPersona);
       })
       .catch(() => setError("설정을 불러오지 못했습니다."));
@@ -272,7 +272,12 @@ export default function SettingsPage() {
             같은 키워드라도 문장이 덜 닮습니다. 글방향이 뉴스형이면 그 글만 뉴스 단정으로 씁니다.
           </p>
           <label>기본 말투</label>
-          <select value={writingTone} onChange={(e) => setWritingTone(e.target.value)}>
+          <select
+            value={writingTone}
+            onChange={(e) => {
+              if (isWritingToneId(e.target.value)) setWritingTone(e.target.value);
+            }}
+          >
             {WRITING_TONES.map((tone) => (
               <option key={tone.id} value={tone.id}>
                 {tone.label} · {tone.hint}
