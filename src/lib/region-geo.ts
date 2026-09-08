@@ -1,4 +1,33 @@
-export const REGION_NEARBY_DISTRICTS: Record<string, string[]> = {
+import { REGION_CATALOG } from "./region-catalog";
+
+export type RegionFact = {
+  official: string;
+  landmarks: string[];
+  hook: string;
+  hooks?: string[];
+};
+
+const catalogFacts: Record<string, RegionFact> = {};
+const catalogDistricts: Record<string, string[]> = {};
+const catalogStations: Record<string, string[]> = {};
+const catalogCoords: Record<string, { lat: number; lng: number }> = {};
+
+for (const row of REGION_CATALOG) {
+  const fact: RegionFact = {
+    official: row.official,
+    landmarks: row.landmarks,
+    hook: row.hook,
+  };
+  for (const key of row.keys) {
+    catalogFacts[key] = fact;
+    catalogDistricts[key] = row.nearby;
+    catalogStations[key] = row.stations;
+    catalogCoords[key] = { lat: row.lat, lng: row.lng };
+  }
+}
+
+/** Hand-tuned copy wins over the nationwide catalog for the same key. */
+const HAND_NEARBY_DISTRICTS: Record<string, string[]> = {
   양재: ["서초동", "도곡동", "개포동", "내곡동", "우면동"],
   양재동: ["서초동", "도곡동", "개포동", "내곡동", "우면동"],
   서초: ["서초동", "반포동", "방배동", "양재동", "잠원동"],
@@ -35,7 +64,7 @@ export const REGION_NEARBY_DISTRICTS: Record<string, string[]> = {
   용산: ["이태원동", "한남동", "후암동", "원효로", "한강로"],
 };
 
-export const REGION_NEARBY_STATIONS: Record<string, string[]> = {
+const HAND_NEARBY_STATIONS: Record<string, string[]> = {
   양재: ["양재역", "양재시민의숲역", "매봉역", "남부터미널역", "강남역"],
   양재동: ["양재역", "양재시민의숲역", "매봉역", "남부터미널역", "강남역"],
   서초: ["서초역", "교대역", "강남역", "양재역", "방배역"],
@@ -72,14 +101,7 @@ export const REGION_NEARBY_STATIONS: Record<string, string[]> = {
   용산: ["용산역", "이태원역", "녹사평역", "삼각지역", "신용산역"],
 };
 
-export type RegionFact = {
-  official: string;
-  landmarks: string[];
-  hook: string;
-  hooks?: string[];
-};
-
-export const REGION_COORDS: Record<string, { lat: number; lng: number }> = {
+const HAND_COORDS: Record<string, { lat: number; lng: number }> = {
   양재: { lat: 37.4706, lng: 127.0407 },
   양재동: { lat: 37.4706, lng: 127.0407 },
   서초: { lat: 37.4837, lng: 127.0324 },
@@ -113,7 +135,7 @@ export const REGION_COORDS: Record<string, { lat: number; lng: number }> = {
   용산: { lat: 37.5326, lng: 126.9905 },
 };
 
-export const REGION_FACTS: Record<string, RegionFact> = {
+const HAND_FACTS: Record<string, RegionFact> = {
   양재: {
     official: "서울특별시 서초구 양재동",
     landmarks: ["양재시민의숲", "양재천", "양재역 일대", "매봉산"],
@@ -261,6 +283,26 @@ export const REGION_FACTS: Record<string, RegionFact> = {
     hook: "역세권과 주거·상업 가로가 짧게 이어지는",
     hooks: ["역세권과 주거·상업 가로가 짧게 이어지는", "용산역부터 이태원 쪽을 나눠 보기 좋은"],
   },
+};
+
+export const REGION_NEARBY_DISTRICTS: Record<string, string[]> = {
+  ...catalogDistricts,
+  ...HAND_NEARBY_DISTRICTS,
+};
+
+export const REGION_NEARBY_STATIONS: Record<string, string[]> = {
+  ...catalogStations,
+  ...HAND_NEARBY_STATIONS,
+};
+
+export const REGION_COORDS: Record<string, { lat: number; lng: number }> = {
+  ...catalogCoords,
+  ...HAND_COORDS,
+};
+
+export const REGION_FACTS: Record<string, RegionFact> = {
+  ...catalogFacts,
+  ...HAND_FACTS,
 };
 
 export function normalizePlaceKey(label: string): string {
