@@ -42,6 +42,10 @@ export function engagementFromSettings(settings?: {
   };
 }
 
+export function isEngageVisible(min: number, max: number) {
+  return Math.max(min, max) > 0;
+}
+
 export function countInRange(id: string, salt: number, min: number, max: number) {
   const lo = Math.min(min, max);
   const hi = Math.max(min, max);

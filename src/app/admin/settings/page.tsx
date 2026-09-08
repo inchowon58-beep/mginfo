@@ -6,13 +6,13 @@ import { DEFAULT_GEMINI_MODEL, GEMINI_MODELS } from "@/lib/gemini-models";
 import { SITE_THEMES } from "@/lib/site-theme";
 import type { SiteThemeId } from "@/lib/types";
 
-type SettingsTab = "basic" | "category" | "site" | "gemini";
+type SettingsTab = "basic" | "category" | "site" | "master";
 
 const TABS: { id: SettingsTab; label: string }[] = [
   { id: "basic", label: "기본설정" },
   { id: "category", label: "카테고리설정" },
   { id: "site", label: "사이트설정" },
-  { id: "gemini", label: "제미나이설정" },
+  { id: "master", label: "마스터설정" },
 ];
 
 export default function SettingsPage() {
@@ -45,6 +45,9 @@ export default function SettingsPage() {
   const [busy, setBusy] = useState(false);
   const [geminiUnlocked, setGeminiUnlocked] = useState(false);
   const [masterPassword, setMasterPassword] = useState("");
+  const [usableUntil, setUsableUntil] = useState("");
+  const [dailyPostLimit, setDailyPostLimit] = useState("0");
+  const [naverRankWork, setNaverRankWork] = useState(false);
 
   useEffect(() => {
     fetch("/api/settings")
@@ -77,6 +80,9 @@ export default function SettingsPage() {
         if (s.geminiModel) setGeminiModel(s.geminiModel);
         if (typeof s.hasKey === "boolean") setHasKey(s.hasKey);
         if (s.geminiApiKey) setGeminiApiKey(s.geminiApiKey);
+        if (typeof s.usableUntil === "string") setUsableUntil(s.usableUntil);
+        if (s.dailyPostLimit != null) setDailyPostLimit(String(s.dailyPostLimit));
+        setNaverRankWork(Boolean(s.naverRankWork));
       })
       .catch(() => setError("설정을 불러오지 못했습니다."));
     fetch("/api/auth/master")
@@ -136,9 +142,15 @@ export default function SettingsPage() {
     });
   }
 
-  async function saveGemini(e: FormEvent) {
+  async function saveMaster(e: FormEvent) {
     e.preventDefault();
-    await save({ geminiApiKey, geminiModel });
+    await save({
+      geminiApiKey,
+      geminiModel,
+      usableUntil,
+      dailyPostLimit,
+      naverRankWork,
+    });
     if (geminiApiKey && !geminiApiKey.includes("•")) setHasKey(true);
   }
 
@@ -163,6 +175,9 @@ export default function SettingsPage() {
       setGeminiModel(s.geminiModel || DEFAULT_GEMINI_MODEL);
       setHasKey(Boolean(s.hasKey));
       setGeminiApiKey(s.geminiApiKey || "");
+      if (typeof s.usableUntil === "string") setUsableUntil(s.usableUntil);
+      if (s.dailyPostLimit != null) setDailyPostLimit(String(s.dailyPostLimit));
+      setNaverRankWork(Boolean(s.naverRankWork));
     } catch (err) {
       setError(err instanceof Error ? err.message : "확인 실패");
     } finally {
@@ -267,45 +282,44 @@ export default function SettingsPage() {
               </button>
             ))}
           </div>
-          {siteTheme === "studio" ? (
-            <div className="admin-engage-fields">
-              <h3 className="admin-subhead">입장 팝업</h3>
-              <p className="field-hint" style={{ marginTop: 0 }}>
-                9번 클래스룸에서만 홈·글 화면에 뜹니다. 제목이나 내용을 비우면 팝업을 숨깁니다.
-              </p>
-              <label className="admin-check-all">
-                <input
-                  type="checkbox"
-                  checked={popupEnabled}
-                  onChange={(e) => setPopupEnabled(e.target.checked)}
-                />
-                팝업 사용
-              </label>
-              <label>제목</label>
+          <div className="admin-engage-fields">
+            <h3 className="admin-subhead">입장 팝업</h3>
+            <p className="field-hint" style={{ marginTop: 0 }}>
+              모든 디자인에서 홈·글 화면에 뜹니다. 카드 기본 형태는 지금과 같고, 테마마다 색과 모서리만 조금
+              달라집니다. 제목이나 내용을 비우면 팝업을 숨깁니다.
+            </p>
+            <label className="admin-check-all">
               <input
-                value={popupTitle}
-                onChange={(e) => setPopupTitle(e.target.value)}
-                placeholder="지금 바로 시작해 보세요"
+                type="checkbox"
+                checked={popupEnabled}
+                onChange={(e) => setPopupEnabled(e.target.checked)}
               />
-              <label>내용</label>
-              <textarea
-                value={popupBody}
-                onChange={(e) => setPopupBody(e.target.value)}
-                placeholder="필요한 이야기만 골라 읽고, 실생활에 바로 쓰는 가이드를 확인하세요."
-                style={{ minHeight: 90 }}
-              />
-              <label>버튼 문구</label>
-              <input value={popupCta} onChange={(e) => setPopupCta(e.target.value)} placeholder="글 보러가기" />
-              <label>버튼 링크</label>
-              <input value={popupHref} onChange={(e) => setPopupHref(e.target.value)} placeholder="/posts" />
-              <label>이미지 주소 (선택)</label>
-              <input
-                value={popupImage}
-                onChange={(e) => setPopupImage(e.target.value)}
-                placeholder="https://..."
-              />
-            </div>
-          ) : null}
+              팝업 사용
+            </label>
+            <label>제목</label>
+            <input
+              value={popupTitle}
+              onChange={(e) => setPopupTitle(e.target.value)}
+              placeholder="지금 바로 시작해 보세요"
+            />
+            <label>내용</label>
+            <textarea
+              value={popupBody}
+              onChange={(e) => setPopupBody(e.target.value)}
+              placeholder="필요한 이야기만 골라 읽고, 실생활에 바로 쓰는 가이드를 확인하세요."
+              style={{ minHeight: 90 }}
+            />
+            <label>버튼 문구</label>
+            <input value={popupCta} onChange={(e) => setPopupCta(e.target.value)} placeholder="글 보러가기" />
+            <label>버튼 링크</label>
+            <input value={popupHref} onChange={(e) => setPopupHref(e.target.value)} placeholder="/posts" />
+            <label>이미지 주소 (선택)</label>
+            <input
+              value={popupImage}
+              onChange={(e) => setPopupImage(e.target.value)}
+              placeholder="https://..."
+            />
+          </div>
           {siteTheme === "carrot" ? (
             <>
               <label>인기 검색어</label>
@@ -324,7 +338,8 @@ export default function SettingsPage() {
             <div className="admin-engage-fields">
               <h3 className="admin-subhead">좋아요 · 댓글 표시</h3>
               <p className="field-hint" style={{ marginTop: 0 }}>
-                글마다 이 구간 안에서 다른 숫자가 나갑니다. 같은 글은 항상 같은 숫자입니다.
+                글마다 이 구간 안에서 다른 숫자가 나갑니다. 같은 글은 항상 같은 숫자입니다. 최댓값까지 0이면 해당
+                아이콘(하트·말풍선)은 사이트에 나오지 않습니다.
               </p>
               <label>좋아요 개수</label>
               <div className="admin-range">
@@ -376,9 +391,9 @@ export default function SettingsPage() {
         </form>
       ) : null}
 
-      {tab === "gemini" && !geminiUnlocked ? (
+      {tab === "master" && !geminiUnlocked ? (
         <form className="admin-card admin-form" onSubmit={unlockGemini} style={{ maxWidth: 640 }}>
-          <h2>제미나이 설정</h2>
+          <h2>마스터 설정</h2>
           <p style={{ color: "#94a3b8", fontSize: 14 }}>
             마스터 관리자만 볼 수 있습니다. 비밀번호를 한 번 더 입력하세요.
           </p>
@@ -399,10 +414,39 @@ export default function SettingsPage() {
         </form>
       ) : null}
 
-      {tab === "gemini" && geminiUnlocked ? (
-        <form className="admin-card admin-form" onSubmit={saveGemini} style={{ maxWidth: 640 }}>
-          <h2>제미나이 설정</h2>
+      {tab === "master" && geminiUnlocked ? (
+        <form className="admin-card admin-form" onSubmit={saveMaster} style={{ maxWidth: 640 }}>
+          <h2>마스터 설정</h2>
           <p style={{ color: "#94a3b8", fontSize: 14 }}>
+            사용가능일과 하루 작성 수량은 대시보드에도 표시됩니다. 날짜가 지나면 추가 발행이 멈추고, 수량에 닿으면 그날
+            새 글을 더 만들 수 없습니다.
+          </p>
+          <h3 className="admin-subhead">사용가능일</h3>
+          <label>사용 종료일</label>
+          <input type="date" value={usableUntil} onChange={(e) => setUsableUntil(e.target.value)} />
+          <p className="field-hint">이 날짜까지 발행할 수 있습니다. 다음 날부터는 추가 발행이 막힙니다. 비우면 제한 없습니다.</p>
+          <h3 className="admin-subhead">하루 글작성수량</h3>
+          <label>하루 작성 가능 편수</label>
+          <input
+            type="number"
+            min={0}
+            inputMode="numeric"
+            value={dailyPostLimit}
+            onChange={(e) => setDailyPostLimit(e.target.value)}
+          />
+          <p className="field-hint">0이면 제한 없습니다. 오늘 새로 만든 글만 세고, 이미 있는 글 수정은 세지 않습니다.</p>
+          <h3 className="admin-subhead">네이버상위노출작업설정</h3>
+          <label className="admin-check-all">
+            <input
+              type="checkbox"
+              checked={naverRankWork}
+              onChange={(e) => setNaverRankWork(e.target.checked)}
+            />
+            네이버 상위노출 작업 진행 중으로 표시
+          </label>
+          <p className="field-hint">체크하면 대시보드 맨 위에 “네이버상위노출작업진행중”이 뜹니다.</p>
+          <h3 className="admin-subhead">제미나이</h3>
+          <p style={{ color: "#94a3b8", fontSize: 14, marginTop: 0 }}>
             Google AI Studio에서 발급한 API 키를 저장하면 글 작성 화면에서 초안을 만들 수 있습니다.
             {hasKey ? " 키가 이미 저장되어 있습니다. 새 키를 넣으면 교체됩니다." : ""}
           </p>
@@ -426,7 +470,7 @@ export default function SettingsPage() {
           {message ? <p className="notice ok">{message}</p> : null}
           <div className="admin-actions">
             <button className="btn btn-primary" disabled={busy}>
-              {busy ? "저장 중…" : "제미나이 설정 저장"}
+              {busy ? "저장 중…" : "마스터 설정 저장"}
             </button>
           </div>
         </form>

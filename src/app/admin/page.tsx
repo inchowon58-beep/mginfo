@@ -1,55 +1,223 @@
 import Link from "next/link";
+import { AdminIcon } from "@/components/admin/AdminIcons";
 import { PersistNotice } from "@/components/admin/PersistNotice";
+import { getCategory } from "@/lib/categories";
 import { readStore } from "@/lib/db";
+import { formatDate } from "@/lib/format";
+import { masterDashboard } from "@/lib/publish-limits";
 
 export const dynamic = "force-dynamic";
+
+function todayLabel() {
+  return new Intl.DateTimeFormat("ko-KR", {
+    timeZone: "Asia/Seoul",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    weekday: "long",
+  }).format(new Date());
+}
+
+function quotaPercent(used: number, limit: number) {
+  if (limit <= 0) return 0;
+  return Math.min(100, Math.round((used / limit) * 100));
+}
 
 export default async function AdminHome() {
   const store = await readStore();
   const published = store.posts.filter((p) => p.status === "published").length;
   const drafts = store.posts.filter((p) => p.status === "draft").length;
+  const banners = store.banners?.filter((b) => b.enabled).length || 0;
   const hasKey = Boolean(store.settings.geminiApiKey);
+  const master = masterDashboard(store.settings, store.posts);
+  const recent = [...store.posts]
+    .sort((a, b) => (b.updatedAt || "").localeCompare(a.updatedAt || ""))
+    .slice(0, 6);
+  const usedPct = quotaPercent(master.dailyUsed, master.dailyLimit);
+  const publishRate = store.posts.length ? Math.round((published / store.posts.length) * 100) : 0;
+  const usableTone = master.expired ? "위험" : master.usableUntil ? "정상" : "제한 없음";
 
   return (
     <>
       <PersistNotice />
-      <div className="admin-stats">
-        <div className="admin-stat">
-          전체 글<b>{store.posts.length}</b>
+      <header className="admin-dash-head">
+        <div>
+          <p className="admin-dash-kicker">운영 현황</p>
+          <h2>대시보드</h2>
+          <p>발행 한도, 콘텐츠, 작업 상태를 한곳에서 확인합니다.</p>
         </div>
-        <div className="admin-stat">
-          발행됨<b>{published}</b>
+        <div className="admin-dash-today">
+          <span>오늘</span>
+          <b>{todayLabel()}</b>
         </div>
-        <div className="admin-stat">
-          초안<b>{drafts}</b>
+      </header>
+
+      {master.naverRankWork ? (
+        <div className="admin-naver-banner" role="status">
+          <span className="admin-naver-ico">
+            <AdminIcon name="naver" />
+          </span>
+          <div>
+            <strong>네이버상위노출작업진행중</strong>
+            <p>검색 노출 작업을 진행하고 있습니다. 대시보드에서 상태를 유지합니다.</p>
+          </div>
+          <em>ON</em>
         </div>
-        <div className="admin-stat">
-          메인 배너<b>{store.banners?.filter((b) => b.enabled).length || 0}</b>
-        </div>
-        <div className="admin-stat">
-          제미나이 키<b>{hasKey ? "설정됨" : "없음"}</b>
-        </div>
+      ) : null}
+
+      <div className="admin-kpis">
+        <article className="admin-kpi">
+          <span className="admin-kpi-ico is-blue">
+            <AdminIcon name="posts" />
+          </span>
+          <span>전체 글</span>
+          <b>{store.posts.length}</b>
+          <small>발행률 {publishRate}%</small>
+        </article>
+        <article className="admin-kpi">
+          <span className="admin-kpi-ico is-green">
+            <AdminIcon name="published" />
+          </span>
+          <span>발행됨</span>
+          <b>{published}</b>
+          <small>라이브 콘텐츠</small>
+        </article>
+        <article className="admin-kpi">
+          <span className="admin-kpi-ico is-amber">
+            <AdminIcon name="draft" />
+          </span>
+          <span>초안</span>
+          <b>{drafts}</b>
+          <small>검토 대기</small>
+        </article>
+        <article className="admin-kpi">
+          <span className="admin-kpi-ico is-violet">
+            <AdminIcon name="banner" />
+          </span>
+          <span>메인 배너</span>
+          <b>{banners}</b>
+          <small>현재 노출 중</small>
+        </article>
       </div>
-      <div className="admin-card">
-        <h2>빠른 시작</h2>
-        <p style={{ color: "#94a3b8", fontSize: 14 }}>
-          제미나이 API 키를 저장한 뒤, 주제를 넣으면 뉴스·매거진 형식 초안이 채워집니다. 검토 후 발행하세요.
-        </p>
-        <div className="admin-actions">
-          <Link className="btn btn-primary" href="/admin/posts/new">
-            새 글 작성
-          </Link>
-          <Link className="btn btn-ghost" href="/admin/banners">
-            메인 배너
-          </Link>
-          <Link className="btn btn-ghost" href="/admin/settings">
-            설정
+
+      <div className="admin-dash-grid">
+        <section className="admin-card admin-ops">
+          <div className="admin-card-head">
+            <h2>운영 한도</h2>
+            <span className={`admin-pill${master.expired ? " is-danger" : ""}`}>{usableTone}</span>
+          </div>
+          <div className={`admin-ops-row${master.expired ? " is-alert" : ""}`}>
+            <span className="admin-kpi-ico is-cyan">
+              <AdminIcon name="calendar" />
+            </span>
+            <div>
+              <span>사용가능일</span>
+              <b>{master.usableLabel}</b>
+            </div>
+          </div>
+          <div className="admin-ops-row">
+            <span className="admin-kpi-ico is-blue">
+              <AdminIcon name="quota" />
+            </span>
+            <div className="admin-ops-meter">
+              <span>하루 글작성수량</span>
+              <b>{master.dailyLabel}</b>
+              {master.dailyLimit > 0 ? (
+                <i className="admin-meter" aria-hidden="true">
+                  <i style={{ width: `${usedPct}%` }} />
+                </i>
+              ) : (
+                <small>수량 제한 없이 작성할 수 있습니다.</small>
+              )}
+            </div>
+          </div>
+          <div className="admin-ops-row">
+            <span className={`admin-kpi-ico${hasKey ? " is-green" : " is-amber"}`}>
+              <AdminIcon name="key" />
+            </span>
+            <div>
+              <span>제미나이 키</span>
+              <b>{hasKey ? "연결됨" : "미설정"}</b>
+            </div>
+          </div>
+        </section>
+
+        <section className="admin-card">
+          <div className="admin-card-head">
+            <h2>바로가기</h2>
+          </div>
+          <div className="admin-quick">
+            <Link href="/admin/posts/new" className="admin-quick-link">
+              <span className="admin-kpi-ico is-blue">
+                <AdminIcon name="write" />
+              </span>
+              <span>
+                <b>새 글 작성</b>
+                <small>초안을 만들고 발행합니다</small>
+              </span>
+            </Link>
+            <Link href="/admin/banners" className="admin-quick-link">
+              <span className="admin-kpi-ico is-violet">
+                <AdminIcon name="banner" />
+              </span>
+              <span>
+                <b>메인 배너</b>
+                <small>홈 상단 노출을 관리합니다</small>
+              </span>
+            </Link>
+            <Link href="/admin/settings" className="admin-quick-link">
+              <span className="admin-kpi-ico is-cyan">
+                <AdminIcon name="settings" />
+              </span>
+              <span>
+                <b>사이트 설정</b>
+                <small>디자인과 팝업을 바꿉니다</small>
+              </span>
+            </Link>
+            <Link href="/admin/posts" className="admin-quick-link">
+              <span className="admin-kpi-ico is-green">
+                <AdminIcon name="posts" />
+              </span>
+              <span>
+                <b>글 목록</b>
+                <small>발행·초안을 검토합니다</small>
+              </span>
+            </Link>
+          </div>
+          <p className="admin-cats">
+            {(store.categories || []).map((c) => c.name).join(" · ") || "카테고리 없음"}
+          </p>
+        </section>
+      </div>
+
+      <section className="admin-card">
+        <div className="admin-card-head">
+          <h2>최근 업데이트</h2>
+          <Link className="admin-more" href="/admin/posts">
+            전체 보기
           </Link>
         </div>
-        <p style={{ color: "#64748b", fontSize: 13, marginTop: 20 }}>
-          카테고리: {(store.categories || []).map((c) => c.name).join(" · ") || "없음"}
-        </p>
-      </div>
+        {recent.length === 0 ? (
+          <p className="admin-empty">아직 등록된 글이 없습니다.</p>
+        ) : (
+          <div className="admin-recent">
+            {recent.map((post) => {
+              const cat = getCategory(post.category, store.categories || []);
+              return (
+                <Link key={post.id} href={`/admin/posts/${post.id}`} className="admin-recent-row">
+                  <span className={`admin-status is-${post.status}`}>
+                    {post.status === "published" ? "발행" : "초안"}
+                  </span>
+                  <span className="admin-recent-title">{post.title}</span>
+                  <span className="admin-recent-meta">
+                    {cat?.name || "분류 없음"} · {formatDate(post.updatedAt || post.publishedAt)}
+                  </span>
+                </Link>
+              );
+            })}
+          </div>
+        )}
+      </section>
     </>
   );
 }

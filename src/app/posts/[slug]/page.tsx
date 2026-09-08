@@ -19,7 +19,8 @@ import {
   resolveFaqItems,
 } from "@/lib/post-seo";
 import { buildBreadcrumbJsonLd, buildFaqPageJsonLd } from "@/lib/site-jsonld";
-import { resolveRegionContext } from "@/lib/region-intro";
+import { resolveRegionContext, seedNumber } from "@/lib/region-intro";
+import { getPlaceWeather, weatherSentence } from "@/lib/weather";
 import { hasVendorCta } from "@/lib/vendor";
 
 export const dynamic = "force-dynamic";
@@ -94,7 +95,14 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
   const description = buildPostSeoDescription(post);
   const keywords = buildPostKeywords(post, cat?.name);
   const faqs = resolveFaqItems(post, cat?.name);
-  const geo = resolveRegionContext(post, { categoryName: cat?.name });
+  const geoBase = resolveRegionContext(post, { categoryName: cat?.name });
+  const weather = geoBase?.place ? await getPlaceWeather(geoBase.place) : null;
+  const geo = resolveRegionContext(post, {
+    categoryName: cat?.name,
+    weatherLine: geoBase?.place
+      ? weatherSentence(geoBase.place, weather, seedNumber(post.id, post.slug, post.publishedAt))
+      : "",
+  });
   const showVendor = hasVendorCta(post);
   const crumbs = [
     { name: "홈", path: "/" },
@@ -148,36 +156,6 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
           </figure>
         )}
         <div className="article-body" dangerouslySetInnerHTML={{ __html: post.bodyHtml }} />
-        {geo && (geo.nearbyAreas.length > 0 || geo.nearbyStations.length > 0) ? (
-          <section className="article-geo">
-            {geo.nearbyAreas.length > 0 ? (
-              <div>
-                <h2>{geo.place || "이 지역"} 인근에서 함께 찾는 곳</h2>
-                <p>
-                  {geo.place || "이 지역"}에서 {keyword} 알아보는 분들이 생활권으로 함께 검색하는 근방입니다.
-                </p>
-                <ul>
-                  {geo.nearbyAreas.map((area) => (
-                    <li key={area}>
-                      {area} {keyword}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ) : null}
-            {geo.nearbyStations.length > 0 ? (
-              <div>
-                <h2>{geo.place || "이 지역"} 인근 지하철역</h2>
-                <p>통학·방문 거리를 기준으로 함께 검색되는 역입니다.</p>
-                <ul>
-                  {geo.nearbyStations.map((station) => (
-                    <li key={station}>{station} {keyword}</li>
-                  ))}
-                </ul>
-              </div>
-            ) : null}
-          </section>
-        ) : null}
         <VendorCta post={post} />
         {faqs.length > 0 && (
           <section className="article-faq">
@@ -222,6 +200,32 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
             ) : null}
           </div>
         )}
+        {geo && (geo.nearbyAreas.length > 0 || geo.nearbyStations.length > 0) ? (
+          <section className="article-geo">
+            {geo.nearbyAreas.length > 0 ? (
+              <div>
+                <h2>{geo.nearbyHeading}</h2>
+                <p>{geo.nearbyLead}</p>
+                <ul>
+                  {geo.nearbyAreas.map((area, index) => (
+                    <li key={area}>{geo.nearbyLabels[index] || `${area} ${keyword}`}</li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+            {geo.nearbyStations.length > 0 ? (
+              <div>
+                <h2>{geo.stationHeading}</h2>
+                <p>{geo.stationLead}</p>
+                <ul>
+                  {geo.nearbyStations.map((station, index) => (
+                    <li key={station}>{geo.stationLabels[index] || `${station} ${keyword}`}</li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+          </section>
+        ) : null}
       </article>
     </SiteFrame>
   );

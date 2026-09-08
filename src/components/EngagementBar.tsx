@@ -1,6 +1,6 @@
 "use client";
 
-import { countInRange } from "@/lib/engagement";
+import { countInRange, isEngageVisible } from "@/lib/engagement";
 import { useEngagement } from "@/components/EngagementContext";
 
 function HeartIcon() {
@@ -37,18 +37,25 @@ export function EngagementBar({
   className?: string;
 }) {
   const range = useEngagement();
+  const showLikes = isEngageVisible(range.likeMin, range.likeMax);
+  const showComments = isEngageVisible(range.commentMin, range.commentMax);
+  if (!showLikes && !showComments) return null;
   const likes = countInRange(postId, 17, range.likeMin, range.likeMax);
   const comments = countInRange(postId, 91, range.commentMin, range.commentMax);
   return (
     <div className={className} aria-hidden>
-      <span className="engage-item">
-        <HeartIcon />
-        {likes.toLocaleString("ko-KR")}
-      </span>
-      <span className="engage-item">
-        <CommentIcon />
-        {comments.toLocaleString("ko-KR")}
-      </span>
+      {showLikes ? (
+        <span className="engage-item">
+          <HeartIcon />
+          {likes.toLocaleString("ko-KR")}
+        </span>
+      ) : null}
+      {showComments ? (
+        <span className="engage-item">
+          <CommentIcon />
+          {comments.toLocaleString("ko-KR")}
+        </span>
+      ) : null}
     </div>
   );
 }

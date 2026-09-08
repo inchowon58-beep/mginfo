@@ -107,6 +107,9 @@ export type Settings = {
   likeCountMax: number;
   commentCountMin: number;
   commentCountMax: number;
+  usableUntil: string;
+  dailyPostLimit: number;
+  naverRankWork: boolean;
   company: string;
   ceo: string;
   bizNo: string;

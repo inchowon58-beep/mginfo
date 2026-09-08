@@ -67,7 +67,18 @@ export function VendorCta({ post }: { post: Post }) {
         <p className="vendor-cta-copy">방문 전 운영 시간과 예약 여부를 한 번 더 확인해 보세요.</p>
         <Buttons links={links} className="vendor-cta-actions" />
       </aside>
-      <div className="vendor-cta-bar" aria-label="업체 바로가기">
+      <div className="vendor-cta-bar" aria-label={name ? `${name} 바로가기` : "업체 바로가기"}>
+        {name ? (
+          <p className="vendor-cta-bar-pick">
+            <span>이 글이 고른 곳</span>
+            <strong>{name}</strong>
+          </p>
+        ) : (
+          <p className="vendor-cta-bar-pick">
+            <span>이 글에서 소개한 곳</span>
+            <strong>바로 문의하기</strong>
+          </p>
+        )}
         <Buttons links={links} className="vendor-cta-actions" />
       </div>
     </>

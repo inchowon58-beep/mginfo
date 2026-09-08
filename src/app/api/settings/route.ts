@@ -10,6 +10,10 @@ import {
   orderedRange,
 } from "@/lib/engagement";
 import { persistFail } from "@/lib/persist-api";
+import {
+  normalizeDailyPostLimit,
+  normalizeUsableUntil,
+} from "@/lib/publish-limits";
 import { isSiteThemeId } from "@/lib/site-theme";
 
 export async function GET() {
@@ -37,9 +41,14 @@ export async function POST(request: Request) {
   const wantsGemini =
     (typeof body.geminiApiKey === "string" && body.geminiApiKey && !body.geminiApiKey.includes("•")) ||
     typeof body.geminiModel === "string";
-  if (wantsGemini && !(await isMasterSession())) {
+  const wantsMaster =
+    wantsGemini ||
+    body.usableUntil !== undefined ||
+    body.dailyPostLimit !== undefined ||
+    body.naverRankWork !== undefined;
+  if (wantsMaster && !(await isMasterSession())) {
     return NextResponse.json(
-      { error: "마스터 관리자만 제미나이 설정을 바꿀 수 있습니다." },
+      { error: "마스터 관리자만 마스터 설정을 바꿀 수 있습니다." },
       { status: 403 }
     );
   }
@@ -50,6 +59,19 @@ export async function POST(request: Request) {
       }
       if (typeof body.geminiModel === "string" && body.geminiModel.trim()) {
         s.settings.geminiModel = body.geminiModel.trim();
+      }
+      if (body.usableUntil !== undefined) {
+        s.settings.usableUntil = normalizeUsableUntil(body.usableUntil);
+      }
+      if (body.dailyPostLimit !== undefined) {
+        s.settings.dailyPostLimit = normalizeDailyPostLimit(body.dailyPostLimit, s.settings.dailyPostLimit);
+      }
+      if (typeof body.naverRankWork === "boolean") {
+        s.settings.naverRankWork = body.naverRankWork;
+      } else if (body.naverRankWork === "true" || body.naverRankWork === "1") {
+        s.settings.naverRankWork = true;
+      } else if (body.naverRankWork === "false" || body.naverRankWork === "0") {
+        s.settings.naverRankWork = false;
       }
       const textKeys = [
         "siteName",

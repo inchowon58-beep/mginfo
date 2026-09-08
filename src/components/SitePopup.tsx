@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 
-const HIDE_KEY = "infocs_studio_popup_hide";
+const HIDE_KEY = "infocs_popup_hide";
+const LEGACY_HIDE_KEY = "infocs_studio_popup_hide";
 
 export function SitePopup({
   enabled,
@@ -11,6 +12,7 @@ export function SitePopup({
   cta,
   href,
   image,
+  themeId,
 }: {
   enabled: boolean;
   title: string;
@@ -18,14 +20,15 @@ export function SitePopup({
   cta: string;
   href: string;
   image?: string;
+  themeId?: string;
 }) {
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
     if (!enabled || !(title || body || image)) return;
     try {
-      const hideUntil = localStorage.getItem(HIDE_KEY);
       const today = new Date().toISOString().slice(0, 10);
+      const hideUntil = localStorage.getItem(HIDE_KEY) || localStorage.getItem(LEGACY_HIDE_KEY);
       if (hideUntil === today) return;
     } catch {
       /* ignore */
@@ -51,7 +54,12 @@ export function SitePopup({
   const link = (href || "/posts").trim() || "/posts";
 
   return (
-    <div className="studio-popup" role="dialog" aria-modal="true" aria-label={title || "안내"}>
+    <div
+      className={`studio-popup${themeId ? ` is-${themeId}` : ""}`}
+      role="dialog"
+      aria-modal="true"
+      aria-label={title || "안내"}
+    >
       <button className="studio-popup-veil" type="button" aria-label="닫기" onClick={close} />
       <div className="studio-popup-card">
         <button className="studio-popup-x" type="button" onClick={close} aria-label="닫기">

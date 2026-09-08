@@ -41,16 +41,15 @@ export async function SiteFrame({
       </SiteNameProvider>
       <Footer themeId={theme.id} settings={settings} />
       {hideBottomNav ? null : <BottomNav current={current} categories={categories} />}
-      {theme.id === "studio" ? (
-        <SitePopup
-          enabled={Boolean(settings.popupEnabled)}
-          title={settings.popupTitle || ""}
-          body={settings.popupBody || ""}
-          cta={settings.popupCta || "확인"}
-          href={settings.popupHref || "/posts"}
-          image={settings.popupImage || ""}
-        />
-      ) : null}
+      <SitePopup
+        enabled={Boolean(settings.popupEnabled)}
+        title={settings.popupTitle || ""}
+        body={settings.popupBody || ""}
+        cta={settings.popupCta || "확인"}
+        href={settings.popupHref || "/posts"}
+        image={settings.popupImage || ""}
+        themeId={theme.id}
+      />
     </div>
   );
 }

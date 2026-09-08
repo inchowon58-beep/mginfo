@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { ensureCategorySlug } from "@/lib/categories";
 import { isAdminSession } from "@/lib/auth";
 import { getPublishedPosts, readStore, updateStore } from "@/lib/db";
+import { checkCanCreatePost, checkCanPublish } from "@/lib/publish-limits";
 import { notifyPostIndexed } from "@/lib/indexnow";
 import { persistFail } from "@/lib/persist-api";
 import { cleanHtml } from "@/lib/sanitize";
@@ -31,6 +32,12 @@ export async function POST(request: Request) {
   const status: PostStatus = body.status === "published" ? "published" : "draft";
   let slug = slugify(String(body.slug || title));
   const store = await readStore();
+  const createBlock = checkCanCreatePost(store.settings, store.posts);
+  if (createBlock) return NextResponse.json({ error: createBlock }, { status: 403 });
+  if (status === "published") {
+    const publishBlock = checkCanPublish(store.settings);
+    if (publishBlock) return NextResponse.json({ error: publishBlock }, { status: 403 });
+  }
   const category = ensureCategorySlug(body.category, store.categories || []);
   if (store.posts.some((p) => p.slug === slug)) slug = `${slug}-${Date.now().toString(36)}`;
 

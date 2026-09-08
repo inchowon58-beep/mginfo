@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { isAdminSession } from "@/lib/auth";
-import { getPostById, getCategories, updateStore } from "@/lib/db";
+import { getPostById, getCategories, getSettings, updateStore } from "@/lib/db";
+import { checkCanPublish } from "@/lib/publish-limits";
 import { ensureCategorySlug } from "@/lib/categories";
 import { notifyPostIndexed } from "@/lib/indexnow";
 import { persistFail } from "@/lib/persist-api";
@@ -24,6 +25,10 @@ export async function PUT(
   const body = await request.json().catch(() => ({}));
   const now = new Date().toISOString();
   const status: PostStatus = body.status === "published" ? "published" : body.status === "draft" ? "draft" : current.status;
+  if (status === "published") {
+    const publishBlock = checkCanPublish(await getSettings(), current.status === "published");
+    if (publishBlock) return NextResponse.json({ error: publishBlock }, { status: 403 });
+  }
   const cats = await getCategories();
   const category = ensureCategorySlug(body.category, cats, current.category);
 
