@@ -20,7 +20,7 @@
       "lib/**"
     ],
     "directories": {
-      "output": "dist"
+      "output": "release"
     },
     "win": {
       "signAndEditExecutable": false,

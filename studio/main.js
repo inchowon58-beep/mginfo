@@ -71,17 +71,21 @@ ipcMain.handle("studio:open", (_event, url) => {
 ipcMain.handle("studio:create", async (event, payload) => {
   const cfg = readConfig();
   if (!cfg.token) throw new Error("설정에서 Vercel 토큰을 먼저 저장하세요.");
-  const result = await provisionSite(
-    {
-      token: cfg.token,
-      teamId: cfg.teamId,
-      repo: cfg.repo || DEFAULT_REPO,
-      blogName: payload.blogName,
-      domain: payload.domain,
-    },
-    (line) => event.sender.send("studio:log", line)
-  );
-  cfg.history = [result, ...(cfg.history || [])].slice(0, 30);
-  writeConfig(cfg);
-  return result;
+  try {
+    const result = await provisionSite(
+      {
+        token: cfg.token,
+        teamId: cfg.teamId,
+        repo: cfg.repo || DEFAULT_REPO,
+        blogName: payload.blogName,
+        domain: payload.domain,
+      },
+      (line) => event.sender.send("studio:log", line)
+    );
+    cfg.history = [result, ...(cfg.history || [])].slice(0, 30);
+    writeConfig(cfg);
+    return result;
+  } catch (err) {
+    throw new Error(err instanceof Error ? err.message : "사이트 생성에 실패했습니다.");
+  }
 });

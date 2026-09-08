@@ -144,7 +144,8 @@ document.getElementById("create-form").addEventListener("submit", async (event) 
     renderHistory(data.history);
   } catch (err) {
     progressState.textContent = "실패";
-    addLog(err.message || "생성 실패");
+    const raw = String(err.message || "생성 실패");
+    addLog(raw.replace(/^Error invoking remote method '[^']+': (Error:\s*)?/i, ""));
   } finally {
     btn.disabled = false;
   }

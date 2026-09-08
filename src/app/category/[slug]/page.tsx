@@ -145,8 +145,3 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
     </SiteFrame>
   );
 }
-
-export async function generateStaticParams() {
-  const cats = await getCategories();
-  return cats.map((c) => ({ slug: c.slug }));
-}

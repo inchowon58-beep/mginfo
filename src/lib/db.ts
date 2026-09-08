@@ -99,11 +99,17 @@ export class PersistError extends Error {
 }
 
 async function loadStore(): Promise<Store> {
+  const building = process.env.NEXT_PHASE === "phase-production-build";
   if (hasBlobStore()) {
     const remote = await blobGetJson<Store>();
     if (remote) return normalize(remote);
     const initial = defaultStore();
-    await blobSetJson(initial);
+    if (building) return initial;
+    try {
+      await blobSetJson(initial);
+    } catch {
+      return initial;
+    }
     return initial;
   }
   if (hasRemoteStore()) {
