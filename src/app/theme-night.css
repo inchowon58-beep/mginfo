@@ -444,6 +444,13 @@
   text-decoration: none;
 }
 
+.theme-night .night-partners-row .partner-avatar {
+  width: 100%;
+  height: 36px;
+  border-radius: 4px;
+  margin-bottom: 4px;
+}
+
 .theme-night .night-partners-row small {
   color: var(--text-muted);
   font-size: 11px;
@@ -640,6 +647,7 @@
 
 .theme-night .footer-tag,
 .theme-night .footer-copy,
+.theme-night .footer-maker,
 .theme-night .footer-biz {
   color: #7a736a;
 }

@@ -4,7 +4,8 @@ import { seedBanners } from "./banners";
 import { DEFAULT_GEMINI_MODEL } from "./gemini-models";
 import { blobGetJson, blobSetJson, hasBlobStore } from "./blob-store";
 import { hasRemoteStore, kvGetJson, kvSetJson } from "./kv";
-import { seedPartners, seedPosts } from "./seed";
+import { adVendorToPartner } from "./ad-vendors";
+import { seedAdVendors, seedPartners, seedPosts } from "./seed";
 import { siteAccountFrom, DEFAULT_SITE_PASSWORD, DEFAULT_SITE_USERNAME } from "./site-account";
 import { DEFAULT_WRITING_TONE, isWritingToneId } from "./writing-tone";
 import { DEFAULT_SITE_THEME, getSiteTheme, isSiteThemeId } from "./site-theme";
@@ -45,7 +46,7 @@ function defaultSettings(): Settings {
     dailyPostLimit: 0,
     naverRankWork: false,
     naverSiteVerification: "",
-    extraImagesEnabled: false,
+    extraImagesEnabled: true,
     writingTone: DEFAULT_WRITING_TONE,
     writingPersona: "",
     siteUsername: DEFAULT_SITE_USERNAME,
@@ -64,7 +65,7 @@ function defaultStore(): Store {
     JSON.stringify({
       posts: seedPosts,
       partners: seedPartners,
-      adVendors: [],
+      adVendors: seedAdVendors,
       banners: seedBanners,
       categories: DEFAULT_CATEGORIES,
       settings: defaultSettings(),
@@ -77,6 +78,10 @@ function normalize(parsed: Store): Store {
   parsed.posts ||= [];
   parsed.partners ||= [];
   parsed.adVendors = Array.isArray(parsed.adVendors) ? parsed.adVendors : [];
+  if (shouldSeedDefaultVendors(parsed)) {
+    parsed.adVendors = JSON.parse(JSON.stringify(seedAdVendors)) as AdVendor[];
+    parsed.partners = JSON.parse(JSON.stringify(seedPartners)) as Partner[];
+  }
   parsed.banners = parsed.banners?.length ? parsed.banners : seedBanners;
   parsed.categories = parsed.categories?.length ? parsed.categories : DEFAULT_CATEGORIES.map((c) => ({ ...c }));
   parsed.categories = parsed.categories.map((c) => ({ ...c, geminiNotes: c.geminiNotes || "" }));
@@ -90,15 +95,6 @@ function normalize(parsed: Store): Store {
   parsed.settings.writingPersona = String(parsed.settings.writingPersona || "");
   parsed.bulkPublish = normalizeBulkPublish(parsed.bulkPublish);
   return parsed;
-}
-
-function readFileStore(file: string): Store | null {
-  try {
-    if (!fs.existsSync(file)) return null;
-    return normalize(JSON.parse(fs.readFileSync(file, "utf8")) as Store);
-  } catch {
-    return null;
-  }
 }
 
 function writeFileStore(store: Store) {
@@ -117,7 +113,7 @@ async function loadStore(): Promise<Store> {
   const building = process.env.NEXT_PHASE === "phase-production-build";
   if (hasBlobStore()) {
     const remote = await blobGetJson<Store>();
-    if (remote) return normalize(remote);
+    if (remote) return persistSeededVendors(remote, building, (store) => blobSetJson(store));
     const initial = defaultStore();
     if (building) return initial;
     try {
@@ -129,12 +125,35 @@ async function loadStore(): Promise<Store> {
   }
   if (hasRemoteStore()) {
     const remote = await kvGetJson<Store>();
-    if (remote) return normalize(remote);
+    if (remote) return persistSeededVendors(remote, building, (store) => kvSetJson(store));
     const initial = defaultStore();
     await kvSetJson(initial);
     return initial;
   }
-  return readFileStore(LOCAL_PATH) || defaultStore();
+  if (!fs.existsSync(LOCAL_PATH)) return defaultStore();
+  try {
+    const raw = JSON.parse(fs.readFileSync(LOCAL_PATH, "utf8")) as Store;
+    return persistSeededVendors(raw, false, async (store) => writeFileStore(store));
+  } catch {
+    return defaultStore();
+  }
+}
+
+async function persistSeededVendors(
+  raw: Store,
+  building: boolean,
+  persist: (store: Store) => Promise<void> | void
+) {
+  const hadVendors = Array.isArray(raw.adVendors) && raw.adVendors.length > 0;
+  const next = normalize(raw);
+  if (!building && !hadVendors && next.adVendors.length) {
+    try {
+      await persist(next);
+    } catch {
+      return next;
+    }
+  }
+  return next;
 }
 
 async function saveStore(store: Store) {
@@ -244,8 +263,29 @@ export async function listAdminPosts(opts: { page?: number; category?: string } 
   };
 }
 
+function shufflePartners(list: Partner[]): Partner[] {
+  const next = list.slice();
+  for (let i = next.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const current = next[i];
+    next[i] = next[j];
+    next[j] = current;
+  }
+  return next;
+}
+
 export async function getPartners(): Promise<Partner[]> {
-  return (await readStore()).partners;
+  const store = await readStore();
+  const list = store.adVendors?.length ? store.adVendors.map(adVendorToPartner) : store.partners;
+  return shufflePartners(list);
+}
+
+function shouldSeedDefaultVendors(store: Store) {
+  if (store.adVendors.length) return false;
+  if (!store.partners.length) return true;
+  const recruiting = store.partners.filter((row) => row.name === "파트너 모집").length;
+  const oldSeedIds = store.partners.every((row) => /^p[1-5]$/.test(row.id));
+  return recruiting >= 2 || oldSeedIds;
 }
 
 export async function getSettings(): Promise<Settings> {

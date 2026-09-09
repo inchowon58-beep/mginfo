@@ -361,7 +361,8 @@
   text-decoration: none;
 }
 
-.theme-carrot .carrot-shops span {
+.theme-carrot .carrot-shops span,
+.theme-carrot .carrot-shops .partner-avatar {
   width: 36px;
   height: 36px;
   border-radius: 12px;

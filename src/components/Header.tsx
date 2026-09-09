@@ -68,6 +68,12 @@ export function Footer({
         <p className="footer-copy">
           © {new Date().getFullYear()} {siteName}
         </p>
+        <p className="footer-maker">
+          사이트 제작{" "}
+          <a href="https://www.infocs.co.kr" target="_blank" rel="noopener noreferrer">
+            인포씨에스
+          </a>
+        </p>
       </div>
     </footer>
   );

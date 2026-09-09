@@ -65,15 +65,19 @@ export type Partner = {
   intro: string;
   url?: string;
   phone?: string;
+  imageUrl?: string;
 };
 
 export type AdVendor = {
   id: string;
   name: string;
+  category?: string;
+  intro?: string;
   phone?: string;
   website?: string;
   kakao?: string;
   notes?: string;
+  imageUrl?: string;
   createdAt: string;
   updatedAt: string;
 };

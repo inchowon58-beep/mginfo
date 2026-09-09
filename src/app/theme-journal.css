@@ -281,6 +281,25 @@
   line-height: 1.4;
 }
 
+.theme-journal .blog-partners li a {
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+}
+
+.theme-journal .blog-partners li a span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.theme-journal .blog-partners .partner-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+}
+
 .theme-journal .blog-count-list li a {
   flex-direction: row;
   align-items: center;
@@ -349,6 +368,10 @@
 
 .theme-journal .partner-card-image {
   aspect-ratio: auto;
+  min-height: 120px;
+}
+
+.theme-journal .partner-card-image.has-photo img {
   min-height: 120px;
 }
 

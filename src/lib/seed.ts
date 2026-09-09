@@ -1,6 +1,15 @@
-import type { Partner, Post, Store } from "./types";
+import { adVendorToPartner } from "./ad-vendors";
+import type { AdVendor, Partner, Post, PostImage } from "./types";
 
-const now = "2026-09-07T00:00:00.000Z";
+const now = "2026-09-08T00:00:00.000Z";
+
+function photo(id: string) {
+  return `https://images.unsplash.com/${id}?auto=format&fit=crop&w=1400&q=80`;
+}
+
+function extras(...rows: Array<[string, string]>): PostImage[] {
+  return rows.map(([id, caption]) => ({ url: photo(id), caption }));
+}
 
 export const seedPosts: Post[] = [
   {
@@ -29,6 +38,12 @@ export const seedPosts: Post[] = [
     createdAt: now,
     updatedAt: now,
     theme: "art-v1",
+    coverImage: photo("photo-1548199973-03cce0bbc87b"),
+    coverCaption: "입양 첫주에는 장난감보다 일정한 리듬이 먼저입니다.",
+    extraImages: extras(
+      ["photo-1583511655857-d19b40a7a54e", "조용한 구석을 베이스캠프로 잡아 두면 적응이 빠릅니다."],
+      ["photo-1450778869180-41d0601e046e", "병원 기록과 보험 특약은 입양 전에 한곳에 모아 두세요."]
+    ),
   },
   {
     id: "seed-beauty-1",
@@ -54,6 +69,12 @@ export const seedPosts: Post[] = [
     createdAt: now,
     updatedAt: now,
     theme: "art-v2",
+    coverImage: photo("photo-1570172619644-dfd03ed5d881"),
+    coverCaption: "환절기에는 효능 성분보다 보습 순서가 먼저입니다.",
+    extraImages: extras(
+      ["photo-1556228720-195a672e8a03", "아침은 세안·보습·자외선 차단, 세 칸이면 충분합니다."],
+      ["photo-1598440947619-2c35fc9aa908", "보습제는 피부가 완전히 마르기 전에 바르는 편이 흡수에 유리합니다."]
+    ),
   },
   {
     id: "seed-interior-1",
@@ -77,7 +98,12 @@ export const seedPosts: Post[] = [
     createdAt: now,
     updatedAt: now,
     theme: "art-v3",
-    coverImage: "https://image.cattery.co.kr/pome/02.webp",
+    coverImage: photo("photo-1618221195710-dd6b41faaea6"),
+    coverCaption: "같은 평수도 철거 범위가 다르면 견적이 크게 벌어집니다.",
+    extraImages: extras(
+      ["photo-1586023492125-27b2c045efd7", "철거 범위가 문장으로 적혀 있는지부터 확인하세요."],
+      ["photo-1600210492486-724fe5c67fb0", "도배와 조명만으로 충분한 집은 철거를 줄이는 편이 낫습니다."]
+    ),
   },
   {
     id: "seed-realestate-1",
@@ -103,7 +129,12 @@ export const seedPosts: Post[] = [
     createdAt: now,
     updatedAt: now,
     theme: "art-v1",
-    coverImage: "https://image.cattery.co.kr/pome/03.webp",
+    coverImage: photo("photo-1560518883-ce09059eeffa"),
+    coverCaption: "전세 계약 전에는 특약보다 등기부 세 줄이 먼저입니다.",
+    extraImages: extras(
+      ["photo-1564013799919-ab600027ffc6", "소유자와 근저당, 압류 여부는 계약 전 기본 확인입니다."],
+      ["photo-1582407947304-fd86f028f716", "잔금 당일에는 등기부 재열람과 집 상태 사진을 같이 챙기세요."]
+    ),
   },
   {
     id: "seed-ads-1",
@@ -113,7 +144,7 @@ export const seedPosts: Post[] = [
       "광고비보다 랜딩 속도와 문의 동선이 성과를 가릅니다. 온리인광고를 집행하기 전, 소재와 페이지에서 확인할 체크리스트입니다.",
     bodyHtml: `
 <h2>클릭이 문의가 되려면</h2>
-<p>광고는 사람을 데려오고, 페이지가 결정을 돕습니다. 배너가 좋아도 랜딩이 느리거나 전화번호·상담 버튼이  mobil 화면에서 가려지면 비용만 늘어납니다. 집행 전에는 소재와 도착 페이지를 한 세트로 점검하는 것이 기본입니다.</p>
+<p>광고는 사람을 데려오고, 페이지가 결정을 돕습니다. 배너가 좋아도 랜딩이 느리거나 전화번호·상담 버튼이 모바일 화면에서 가려지면 비용만 늘어납니다. 집행 전에는 소재와 도착 페이지를 한 세트로 점검하는 것이 기본입니다.</p>
 <h2>소재에서 볼 것</h2>
 <p>한 장의 이미지에 문장이 너무 많으면 모바일에서 읽히지 않습니다. 핵심 혜택 하나, 대상 고객 하나, 다음 행동 하나를 남기는 편이 반응이 낫습니다. 과장된 가격 표현은 클릭은 올려도 문의 품질을 떨어뜨립니다.</p>
 <blockquote>광고는 관심이고, 랜딩은 신뢰입니다. 둘 중 하나만 손보면 수치가 왜곡됩니다.</blockquote>
@@ -128,7 +159,12 @@ export const seedPosts: Post[] = [
     createdAt: now,
     updatedAt: now,
     theme: "art-v2",
-    coverImage: "https://image.cattery.co.kr/pome/08.webp",
+    coverImage: photo("photo-1460925895917-afdab827c52f"),
+    coverCaption: "광고 소재와 랜딩 페이지는 한 세트로 점검해야 합니다.",
+    extraImages: extras(
+      ["photo-1551288049-bebda4e38f71", "클릭이 문의로 이어지는지 숫자로 먼저 확인하세요."],
+      ["photo-1553877522-43269d4ea984", "상담 버튼과 영업시간은 모바일에서 바로 보여야 합니다."]
+    ),
   },
   {
     id: "seed-food-1",
@@ -154,7 +190,12 @@ export const seedPosts: Post[] = [
     createdAt: now,
     updatedAt: now,
     theme: "art-v4",
-    coverImage: "https://image.cattery.co.kr/pome/15.webp",
+    coverImage: photo("photo-1546069901-ba9599a7e63c"),
+    coverCaption: "평일 저녁은 반찬 여러 개보다 한 그릇이 유지하기 쉽습니다.",
+    extraImages: extras(
+      ["photo-1512058564366-18510be2db19", "달걀·두부·김치만 있어도 열 끼를 버틸 수 있습니다."],
+      ["photo-1495521821757-a1efb6729352", "주말에 손질을 조금 해 두면 평일에는 볶고 끓이는 일만 남습니다."]
+    ),
   },
   {
     id: "seed-cooking-1",
@@ -181,7 +222,12 @@ export const seedPosts: Post[] = [
     createdAt: now,
     updatedAt: now,
     theme: "art-v3",
-    coverImage: "https://image.cattery.co.kr/pome/10.webp",
+    coverImage: photo("photo-1556910103-1c02745aae4d"),
+    coverCaption: "찬장에 기본 재료가 있으면 레시피 없이 한 그릇이 나옵니다.",
+    extraImages: extras(
+      ["photo-1507048331197-7d4ac70811cf", "주말에 마늘과 양파만 다져 두어도 평일 요리가 짧아집니다."],
+      ["photo-1466637574441-749b8f19452f", "팬과 냄비 하나만 쓰는 구성이 설거지를 버팁니다."]
+    ),
   },
   {
     id: "seed-life-1",
@@ -205,17 +251,29 @@ export const seedPosts: Post[] = [
     createdAt: now,
     updatedAt: now,
     theme: "art-v5",
-    coverImage: "https://image.cattery.co.kr/pome/20.webp",
+    coverImage: photo("photo-1484480974693-6ca0a78fb36b"),
+    coverCaption: "일요일 리셋은 거창한 목표보다 다음 48시간을 편하게 만드는 일입니다.",
+    extraImages: extras(
+      ["photo-1506784983877-45594efa4cbe", "일정 칸에는 이동 시간과 마감만 남기세요."],
+      ["photo-1499750310107-5fef28a66643", "끝내지 못한 일은 다음 주 칸으로 미루는 편이 반복됩니다."]
+    ),
   },
   {
     id: "seed-pets-2",
     slug: "short-walk-better-than-long",
     title: "산책은 거리가 아니라 냄새를 맡는 시간이 핵심이다",
-    excerpt: "오래 걷는 것보다 코를 쓰는 시간이 스트레스를 줄입니다. 짧은 산책에서도 리듬을 만드는 법을 정리했습니다.",
+    excerpt:
+      "오래 걷는 것보다 코를 쓰는 시간이 스트레스를 줄입니다. 짧은 산책에서도 리듬을 만드는 법을 정리했습니다.",
     bodyHtml: `
 <h2>많이 걷는 것이 좋은 산책은 아니다</h2>
-<p>같은 길을 빨리 돌면 사람은 운동이 되지만, 동물은 탐색할 틈이 없습니다. 전신주와 풀숲에서 냄새를 맡게 두면 짧은 코스도 충분할 때가 많습니다.</p>
+<p>같은 길을 빨리 돌면 사람은 운동이 되지만, 동물은 탐색할 틈이 없습니다. 전신주와 풀숲에서 냄새를 맡게 두면 짧은 코스도 충분할 때가 많습니다. 숨이 차도록 끌기보다, 코가 바빠지는 구간을 두세 곳 정해 두는 편이 낫습니다.</p>
 <blockquote>산책의 질은 걸음 수가 아니라, 코가 바쁜지에 가깝습니다.</blockquote>
+<h2>짧은 코스에도 리듬이 있다</h2>
+<p>출발 5분은 배변, 중간 10분은 탐색, 마지막 5분은 집으로 돌아오는 전환. 이 세 칸만 있어도 매일 같은 공원이 지루하지 않습니다. 비가 오거나 더운 날에는 거리를 줄이되, 냄새 맡는 시간은 남기는 것이 핵심입니다.</p>
+<h3>줄을 짧게 잡아야 하는 순간</h3>
+<p>자전거도로, 어린이, 다른 개가 가까이 오면 탐색보다 안전이 먼저입니다. 평소에는 여유를 주되, 위험 구간에서는 미리 줄을 짧게 잡아 신호를 같게 만드세요.</p>
+<h2>집에 돌아온 뒤</h2>
+<p>발을 닦고 물을 주는 일을 산책의 마지막 칸으로 두면, 흥분했던 호흡이 가라앉습니다. 실내에서 바로 뛰어다니게 두면 산책의 진정 효과가 짧아집니다.</p>
 `,
     category: "pets",
     tags: ["산책", "반려동물"],
@@ -224,85 +282,29 @@ export const seedPosts: Post[] = [
     createdAt: now,
     updatedAt: now,
     theme: "art-v2",
-  },
-  {
-    id: "seed-beauty-2",
-    slug: "sunscreen-reapply-without-mess",
-    title: "선크림 재도포, 화장 위로 올리는 가장 덜 무너지는 방법",
-    excerpt: "두꺼운 덧칠보다 얇게 자주 올리는 편이 자외선을 막습니다. 외출 중 재도포 순서를 짧게 정리했습니다.",
-    bodyHtml: `
-<h2>한 번에 두껍게 바르면 무너진다</h2>
-<p>오전에 두껍게 올린 양은 점심이면 이미 밀려 있습니다. 손바닥보다 쿠션·스틱으로 얇게 겹치는 편이 화장도 덜 뜨고 차단도 유지됩니다.</p>
-`,
-    category: "beauty",
-    tags: ["선크림", "뷰티"],
-    status: "published",
-    publishedAt: "2026-08-28T09:00:00.000Z",
-    createdAt: now,
-    updatedAt: now,
-    theme: "art-v3",
-  },
-  {
-    id: "seed-interior-2",
-    slug: "lighting-before-wallpaper",
-    title: "도배보다 조명이 집을 더 빨리 바꿔 주는 이유",
-    excerpt: "색을 바꾸기 전에 빛의 위치와 색온도를 보면 공사 없이도 분위기가 달라집니다. 거실과 주방부터 손보는 순서를 정리했습니다.",
-    bodyHtml: `
-<h2>벽지보다 그림자가 먼저다</h2>
-<p>같은 페인트라도 조명이 위에서만 떨어지면 공간이 좁아 보입니다. 간접등과 색온도만 맞춰도 도배 전에 집이 달라집니다.</p>
-`,
-    category: "interior",
-    tags: ["조명", "인테리어"],
-    status: "published",
-    publishedAt: "2026-08-27T09:00:00.000Z",
-    createdAt: now,
-    updatedAt: now,
-    theme: "art-v1",
-  },
-  {
-    id: "seed-realestate-2",
-    slug: "wolse-renewal-checklist",
-    title: "월세 재계약, 인상률보다 먼저 확인할 네 가지",
-    excerpt: "보증금과 월세 숫자만 보면 관리비와 수선 책임이 빠져 있습니다. 재계약 전에 집주인과 맞춰야 할 항목입니다.",
-    bodyHtml: `
-<h2>숫자보다 책임이 먼저다</h2>
-<p>월세가 조금만 올라도 보일러, 누수, 곰팡이 수선 주체가 빠지면 나중에 비용이 더 큽니다. 재계약서는 인상률과 수선 범위를 같이 적어야 합니다.</p>
-`,
-    category: "realestate",
-    tags: ["월세", "재계약"],
-    status: "published",
-    publishedAt: "2026-08-26T09:00:00.000Z",
-    createdAt: now,
-    updatedAt: now,
-    theme: "art-v4",
-    coverImage: "https://image.cattery.co.kr/pome/04.webp",
-  },
-  {
-    id: "seed-ads-2",
-    slug: "search-ad-keyword-trap",
-    title: "검색광고 키워드, 클릭은 많은데 문의가 없는 이유",
-    excerpt: "넓은 키워드는 트래픽을 가져오지만 고객은 데려오지 않습니다. 문의로 이어지는 검색어를 고르는 기준을 정리했습니다.",
-    bodyHtml: `
-<h2>많이 검색되는 말이 좋은 키워드는 아니다</h2>
-<p>지역과 서비스가 빠진 키워드는 구경꾼을 부릅니다. 예산이 적을수록 ‘근처+상담’처럼 의도가 분명한 조합이 낫습니다.</p>
-`,
-    category: "ads",
-    tags: ["검색광고", "키워드"],
-    status: "published",
-    publishedAt: "2026-08-25T09:00:00.000Z",
-    createdAt: now,
-    updatedAt: now,
-    theme: "art-v5",
-    coverImage: "https://image.cattery.co.kr/pome/05.webp",
+    coverImage: photo("photo-1587300003388-59208cc962cb"),
+    coverCaption: "산책은 거리보다 냄새를 맡는 시간이 핵심입니다.",
+    extraImages: extras(
+      ["photo-1543466835-00a7907e9de1", "전신주와 풀숲에서 코를 쓰게 두면 짧은 코스도 충분합니다."],
+      ["photo-1552053831-71594a27632d", "위험 구간에서는 줄을 짧게 잡아 신호를 같게 만드세요."]
+    ),
   },
   {
     id: "seed-food-2",
     slug: "lunch-spot-without-wait",
     title: "점심 맛집, 웨이팅 없이 고르려면 이 세 가지를 보라",
-    excerpt: "리뷰 별점보다 회전율과 메뉴 수가 대기 시간을 가릅니다. 직장 근처에서 빠르게 고르는 법을 정리했습니다.",
+    excerpt:
+      "리뷰 별점보다 회전율과 메뉴 수가 대기 시간을 가릅니다. 직장 근처에서 빠르게 고르는 법을 정리했습니다.",
     bodyHtml: `
 <h2>별점보다 회전이 빠르다</h2>
-<p>메뉴가 적고 점심 단품이 있는 집은 줄이 짧습니다. 사진이 예쁜 집보다, 12시 전에 자리 나는 집을 표시해 두는 편이 실속 있습니다.</p>
+<p>메뉴가 적고 점심 단품이 있는 집은 줄이 짧습니다. 사진이 예쁜 집보다, 12시 전에 자리 나는 집을 표시해 두는 편이 실속 있습니다. 리뷰가 많아도 주문이 복잡한 집은 대기 시간이 점심 시간을 잡아먹습니다.</p>
+<h2>고를 때 볼 세 가지</h2>
+<p>첫째는 메뉴 수입니다. 점심 세트가 분명한 집은 주방이 빨라집니다. 둘째는 좌석 형태입니다. 2인 테이블이 많은 집은 혼자 또는 둘이 들어가기 쉽습니다. 셋째는 결제입니다. 키오스크나 선불이 되면 계산 줄이 식사 뒤에 생기지 않습니다.</p>
+<blockquote>맛집 리스트보다, 내 점심 시간에 실제로 앉을 수 있는 집이 좋은 집입니다.</blockquote>
+<h3>줄이 길 때</h3>
+<p>대기 번호가 10팀을 넘으면 다음 후보로 옮기는 규칙을 정해 두세요. 배가 고프면 판단이 느려집니다. 미리 후보지 세 곳을 저장해 두면 길에서 헤매지 않습니다.</p>
+<h2>회사 근처를 나누는 법</h2>
+<p>비 오는 날, 더운 날, 회의가 긴 날을 구분해 동선을 다르게 잡으면 실패가 줄어듭니다. 같은 집을 매주 가도 됩니다. 점심은 탐험보다 회복에 가깝습니다.</p>
 `,
     category: "food",
     tags: ["맛집", "점심"],
@@ -311,58 +313,66 @@ export const seedPosts: Post[] = [
     createdAt: now,
     updatedAt: now,
     theme: "art-v2",
-    coverImage: "https://image.cattery.co.kr/pome/06.webp",
-  },
-  {
-    id: "seed-life-2",
-    slug: "commute-bag-reset",
-    title: "출퇴근 가방, 매일 들고 다니면 허리가 먼저 지친다",
-    excerpt: "충전기와 텀블러를 다 넣으면 무게가 일과를 잡아먹습니다. 매일 쓰는 물건만 남기는 가방 리셋을 소개합니다.",
-    bodyHtml: `
-<h2>만일의 물건을 빼야 가방이 가벼워진다</h2>
-<p>보조배터리, 여분 옷, 읽지 않는 책은 서랍에 두는 편이 낫습니다. 출근 가방은 오늘 쓸 것 네 가지면 충분합니다.</p>
-`,
-    category: "life",
-    tags: ["출퇴근", "라이프"],
-    status: "published",
-    publishedAt: "2026-08-23T09:00:00.000Z",
-    createdAt: now,
-    updatedAt: now,
-    theme: "art-v3",
-    coverImage: "https://image.cattery.co.kr/pome/07.webp",
+    coverImage: photo("photo-1517248135467-4c7edcad34c4"),
+    coverCaption: "점심은 별점보다 실제로 앉을 수 있는 집이 좋은 집입니다.",
+    extraImages: extras(
+      ["photo-1414235077428-338989a2e8c0", "점심 세트가 분명한 집은 주방이 빨라집니다."],
+      ["photo-1559339352-11d035aa65de", "후보지 세 곳을 저장해 두면 길에서 헤매지 않습니다."]
+    ),
   },
 ];
 
-export const seedPartners: Partner[] = [
+export const seedAdVendors: AdVendor[] = [
   {
-    id: "p1",
-    name: "인포씨에스",
-    category: "온리인광고",
-    intro: "네이버 웹문서 상위노출과 매거진형 사이트 제작",
-    url: "https://infocs.co.kr",
+    id: "vendor-naver-blog",
+    name: "네이버 블로그",
+    category: "블로그",
+    intro: "네이버에서 글을 쓰고 이웃과 정보를 나누는 블로그입니다.",
+    website: "https://blog.naver.com",
+    imageUrl: "/partners/naver.svg",
+    createdAt: now,
+    updatedAt: now,
   },
   {
-    id: "p2",
-    name: "파트너 모집",
-    category: "반려동물",
-    intro: "병원·미용·입양 정보를 함께 전할 업체를 찾습니다.",
+    id: "vendor-tistory",
+    name: "티스토리",
+    category: "블로그",
+    intro: "카카오에서 운영하는 블로그 플랫폼입니다.",
+    website: "https://www.tistory.com",
+    imageUrl: "/partners/tistory.svg",
+    createdAt: now,
+    updatedAt: now,
   },
   {
-    id: "p3",
-    name: "파트너 모집",
-    category: "뷰티",
-    intro: "피부·헤어·클리닉 분야의 제휴 업체를 기다립니다.",
+    id: "vendor-instagram",
+    name: "인스타그램",
+    category: "소셜",
+    intro: "사진과 짧은 영상으로 일상을 공유하는 소셜 미디어입니다.",
+    website: "https://www.instagram.com",
+    imageUrl: "/partners/instagram.svg",
+    createdAt: now,
+    updatedAt: now,
   },
   {
-    id: "p4",
-    name: "파트너 모집",
-    category: "인테리어/철거",
-    intro: "시공 사례와 견적 가이드를 같이 만들 업체를 찾습니다.",
+    id: "vendor-youtube",
+    name: "유튜브",
+    category: "영상",
+    intro: "영상으로 정보를 찾고 채널을 구독하는 동영상 플랫폼입니다.",
+    website: "https://www.youtube.com",
+    imageUrl: "/partners/youtube.svg",
+    createdAt: now,
+    updatedAt: now,
   },
   {
-    id: "p5",
-    name: "파트너 모집",
-    category: "부동산",
-    intro: "지역 시세와 계약 정보를 검증해 전할 파트너를 모집합니다.",
+    id: "vendor-google",
+    name: "구글",
+    category: "검색",
+    intro: "검색과 지도, 메일 등 웹 서비스를 한곳에서 쓰는 구글입니다.",
+    website: "https://www.google.com",
+    imageUrl: "/partners/google.svg",
+    createdAt: now,
+    updatedAt: now,
   },
 ];
+
+export const seedPartners: Partner[] = seedAdVendors.map(adVendorToPartner);

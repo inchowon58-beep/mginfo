@@ -7,6 +7,7 @@ import { PromoBanner } from "@/components/PromoBanner";
 import { SearchForm } from "@/components/SearchForm";
 import { useSiteName } from "@/components/SiteNameContext";
 import { PortalRank } from "@/components/themes/PortalRank";
+import { PartnerMedia } from "@/components/PartnerMedia";
 import { getCategory } from "@/lib/categories";
 import type { Banner, Partner, Post } from "@/lib/types";
 
@@ -114,7 +115,8 @@ export function PortalHome({
           </div>
           <div className="portal-partners-row">
             {partners.map((p) => (
-              <Link key={p.id} href={p.url || "/partners"} target={p.url ? "_blank" : undefined} title={p.name}>
+              <Link key={p.id} href={p.url || "/partners"} target={p.url ? "_blank" : undefined} rel={p.url ? "noopener noreferrer" : undefined} title={p.name}>
+                <PartnerMedia partner={p} variant="avatar" />
                 <span>{p.name}</span>
                 <small>{p.category}</small>
               </Link>

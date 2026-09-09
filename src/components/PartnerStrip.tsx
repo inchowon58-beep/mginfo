@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PartnerMedia } from "@/components/PartnerMedia";
 import type { Partner } from "@/lib/types";
 
 export function PartnerStrip({
@@ -20,8 +21,9 @@ export function PartnerStrip({
               className="partner-chip"
               href={p.url || "/partners"}
               target={p.url ? "_blank" : undefined}
+              rel={p.url ? "noopener noreferrer" : undefined}
             >
-              <div className="partner-chip-image" />
+              <PartnerMedia partner={p} variant="chip" />
               <div className="partner-chip-name">{p.name}</div>
               <div className="partner-chip-sub">{p.category}</div>
             </Link>

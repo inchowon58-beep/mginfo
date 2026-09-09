@@ -6,10 +6,13 @@ import type { AdVendor } from "@/lib/types";
 
 const emptyForm = {
   name: "",
+  category: "",
+  intro: "",
   phone: "",
   website: "",
   kakao: "",
   notes: "",
+  imageUrl: "",
 };
 
 export function AdVendorManager({ vendors }: { vendors: AdVendor[] }) {
@@ -18,6 +21,7 @@ export function AdVendorManager({ vendors }: { vendors: AdVendor[] }) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [busy, setBusy] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
 
@@ -46,13 +50,35 @@ export function AdVendorManager({ vendors }: { vendors: AdVendor[] }) {
     setEditingId(vendor.id);
     setForm({
       name: vendor.name || "",
+      category: vendor.category || "",
+      intro: vendor.intro || "",
       phone: vendor.phone || "",
       website: vendor.website || "",
       kakao: vendor.kakao || "",
       notes: vendor.notes || "",
+      imageUrl: vendor.imageUrl || "",
     });
     setError("");
     setMessage("");
+  }
+
+  async function uploadImage(file: File) {
+    setError("");
+    setMessage("");
+    setUploading(true);
+    try {
+      const dataForm = new FormData();
+      dataForm.append("file", file);
+      const res = await fetch("/api/upload", { method: "POST", body: dataForm });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "업로드 실패");
+      setForm((current) => ({ ...current, imageUrl: String(data.url || "") }));
+      setMessage("업체 이미지를 올렸습니다.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "업로드 실패");
+    } finally {
+      setUploading(false);
+    }
   }
 
   async function onSubmit(e: FormEvent) {
@@ -79,7 +105,7 @@ export function AdVendorManager({ vendors }: { vendors: AdVendor[] }) {
   }
 
   async function remove(id: string) {
-    if (!confirm("이 업체를 삭제할까요?")) return;
+    if (!confirm("이 업체를 삭제할까요? 사이트 하단 제휴 영역에서도 빠집니다.")) return;
     await fetch(`/api/ad-vendors/${id}`, { method: "DELETE" });
     if (editingId === id) resetForm();
     router.refresh();
@@ -92,8 +118,8 @@ export function AdVendorManager({ vendors }: { vendors: AdVendor[] }) {
           <div>
             <h2>광고업체정보설정</h2>
             <p className="field-hint" style={{ marginTop: 0 }}>
-              자주 쓰는 업체를 저장해 두면, 새 글 작성과 예약발행에서 업체명만 고르면 연락처가 채워집니다. 기본
-              업체내용은 관리자만 보는 메모입니다.
+              등록한 업체는 사이트 하단 제휴 영역과 제휴 페이지에 바로 나갑니다. 새 글 작성과 예약발행에서는 업체명만
+              고르면 연락처가 채워집니다.
             </p>
           </div>
           <button className="btn btn-primary" type="button" onClick={startCreate}>
@@ -108,8 +134,20 @@ export function AdVendorManager({ vendors }: { vendors: AdVendor[] }) {
             <input
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
-              placeholder="예: 인포씨에스"
+              placeholder="예: 네이버 블로그"
               required
+            />
+            <label>구분</label>
+            <input
+              value={form.category}
+              onChange={(e) => setForm({ ...form, category: e.target.value })}
+              placeholder="예: 블로그, 소셜, 검색"
+            />
+            <label>소개 문구</label>
+            <input
+              value={form.intro}
+              onChange={(e) => setForm({ ...form, intro: e.target.value })}
+              placeholder="사이트 제휴 영역에 보이는 짧은 소개"
             />
             <label>전화번호</label>
             <input
@@ -129,6 +167,34 @@ export function AdVendorManager({ vendors }: { vendors: AdVendor[] }) {
               onChange={(e) => setForm({ ...form, kakao: e.target.value })}
               placeholder="https://pf.kakao.com/..."
             />
+            <label>업체 이미지</label>
+            <div className="cover-upload">
+              <label className="btn btn-ghost cover-file-btn">
+                {uploading ? "올리는 중…" : "내 컴퓨터에서 올리기"}
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/gif,image/svg+xml"
+                  disabled={uploading}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    e.target.value = "";
+                    if (file) void uploadImage(file);
+                  }}
+                />
+              </label>
+              {form.imageUrl ? (
+                <button className="btn btn-ghost" type="button" onClick={() => setForm({ ...form, imageUrl: "" })}>
+                  이미지 빼기
+                </button>
+              ) : null}
+            </div>
+            <input
+              value={form.imageUrl}
+              onChange={(e) => setForm({ ...form, imageUrl: e.target.value })}
+              placeholder="또는 이미지 주소 https://..."
+            />
+            {form.imageUrl ? <img className="cover-preview vendor-logo-preview" src={form.imageUrl} alt="" /> : null}
+            <p className="field-hint">이 이미지가 하단 제휴 영역과 제휴 페이지에 나갑니다.</p>
             <label>기본 업체내용</label>
             <textarea
               className="vendor-notes"
@@ -140,7 +206,7 @@ export function AdVendorManager({ vendors }: { vendors: AdVendor[] }) {
             {error ? <p className="notice">{error}</p> : null}
             {message ? <p className="notice ok">{message}</p> : null}
             <div className="admin-actions">
-              <button className="btn btn-primary" disabled={busy}>
+              <button className="btn btn-primary" disabled={busy || uploading}>
                 {busy ? "저장 중…" : editing ? "수정 저장" : "업체 저장"}
               </button>
               <button className="btn btn-ghost" type="button" onClick={resetForm}>
@@ -161,7 +227,13 @@ export function AdVendorManager({ vendors }: { vendors: AdVendor[] }) {
           <ul className="vendor-name-list">
             {vendors.map((vendor) => (
               <li key={vendor.id}>
-                <strong>{vendor.name}</strong>
+                <span className="vendor-name-main">
+                  {vendor.imageUrl ? <img src={vendor.imageUrl} alt="" /> : <span className="vendor-name-fallback" />}
+                  <strong>
+                    {vendor.name}
+                    {vendor.category ? <small>{vendor.category}</small> : null}
+                  </strong>
+                </span>
                 <span>
                   <button className="btn btn-ghost" type="button" onClick={() => startEdit(vendor)}>
                     수정

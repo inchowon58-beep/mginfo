@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCategories } from "@/components/CategoriesContext";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { PromoBanner } from "@/components/PromoBanner";
+import { PartnerMedia } from "@/components/PartnerMedia";
 import { SearchForm } from "@/components/SearchForm";
 import { CarrotList } from "@/components/themes/CarrotList";
 import { getCategory } from "@/lib/categories";
@@ -111,8 +112,8 @@ export function CarrotHome({
           </div>
           <div className="carrot-shops">
             {partners.map((p) => (
-              <Link key={p.id} href={p.url || "/partners"} target={p.url ? "_blank" : undefined} title={p.name}>
-                <span>{p.name.slice(0, 1)}</span>
+              <Link key={p.id} href={p.url || "/partners"} target={p.url ? "_blank" : undefined} rel={p.url ? "noopener noreferrer" : undefined} title={p.name}>
+                <PartnerMedia partner={p} variant="avatar" />
                 <b>{p.name}</b>
                 <small>{p.category}</small>
               </Link>

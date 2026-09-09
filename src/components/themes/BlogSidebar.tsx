@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCategories } from "@/components/CategoriesContext";
 import { SITE, displaySiteName, getCategory } from "@/lib/categories";
+import { PartnerMedia } from "@/components/PartnerMedia";
 import type { Partner, Post } from "@/lib/types";
 
 export function BlogSidebar({
@@ -64,14 +65,17 @@ export function BlogSidebar({
         </section>
       ) : null}
       {partners.length > 0 ? (
-        <section className="blog-widget">
+        <section className="blog-widget blog-partners">
           <h3>이웃</h3>
           <ul>
             {partners.map((p) => (
               <li key={p.id}>
-                <Link href={p.url || "/partners"} target={p.url ? "_blank" : undefined}>
-                  {p.name}
-                  <small>{p.category}</small>
+                <Link href={p.url || "/partners"} target={p.url ? "_blank" : undefined} rel={p.url ? "noopener noreferrer" : undefined}>
+                  <PartnerMedia partner={p} variant="avatar" />
+                  <span>
+                    {p.name}
+                    <small>{p.category}</small>
+                  </span>
                 </Link>
               </li>
             ))}

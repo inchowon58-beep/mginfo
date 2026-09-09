@@ -5,6 +5,7 @@ import { useState } from "react";
 import { useCategories } from "@/components/CategoriesContext";
 import { EngagementBar } from "@/components/EngagementBar";
 import { PromoBanner } from "@/components/PromoBanner";
+import { PartnerMedia } from "@/components/PartnerMedia";
 import { StudioList } from "@/components/themes/StudioList";
 import type { Banner, Partner, Post } from "@/lib/types";
 
@@ -106,7 +107,8 @@ export function StudioHome({
           <p>실제 현장에서 쓰는 정보와 업체를 모아 두었습니다.</p>
           <div className="studio-partners">
             {partners.slice(0, 6).map((p) => (
-              <a key={p.id} href={p.url || "/partners"}>
+              <a key={p.id} href={p.url || "/partners"} target={p.url ? "_blank" : undefined} rel={p.url ? "noopener noreferrer" : undefined}>
+                <PartnerMedia partner={p} variant="avatar" />
                 <b>{p.name}</b>
                 <small>{p.category}</small>
               </a>

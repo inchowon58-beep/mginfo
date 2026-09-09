@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCategories } from "@/components/CategoriesContext";
 import { PromoBanner } from "@/components/PromoBanner";
+import { PartnerMedia } from "@/components/PartnerMedia";
 import { SearchForm } from "@/components/SearchForm";
 import { QnaList } from "@/components/themes/QnaList";
 import type { Banner, Partner, Post } from "@/lib/types";
@@ -71,9 +72,12 @@ export function QnaHome({
               <ul className="qna-helps">
                 {partners.map((p) => (
                   <li key={p.id}>
-                    <Link href={p.url || "/partners"} target={p.url ? "_blank" : undefined}>
-                      {p.name}
-                      <small>{p.category}</small>
+                    <Link href={p.url || "/partners"} target={p.url ? "_blank" : undefined} rel={p.url ? "noopener noreferrer" : undefined}>
+                      <PartnerMedia partner={p} variant="avatar" />
+                      <span>
+                        {p.name}
+                        <small>{p.category}</small>
+                      </span>
                     </Link>
                   </li>
                 ))}

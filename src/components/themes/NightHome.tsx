@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCategories } from "@/components/CategoriesContext";
 import { PromoBanner } from "@/components/PromoBanner";
+import { PartnerMedia } from "@/components/PartnerMedia";
 import { NightList } from "@/components/themes/NightList";
 import { getCategory } from "@/lib/categories";
 import { formatDate } from "@/lib/format";
@@ -120,7 +121,8 @@ export function NightHome({
           <p>Partners</p>
           <div className="night-partners-row">
             {partners.map((p) => (
-              <Link key={p.id} href={p.url || "/partners"} target={p.url ? "_blank" : undefined}>
+              <Link key={p.id} href={p.url || "/partners"} target={p.url ? "_blank" : undefined} rel={p.url ? "noopener noreferrer" : undefined}>
+                <PartnerMedia partner={p} variant="avatar" />
                 {p.name}
                 <small>{p.category}</small>
               </Link>

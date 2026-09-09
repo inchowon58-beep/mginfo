@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { SiteFrame, getPublicTheme } from "@/components/SiteFrame";
 import { PageMast } from "@/components/PageMast";
+import { PartnerMedia } from "@/components/PartnerMedia";
 import { displaySiteName } from "@/lib/categories";
 import { getPartners, getSettings } from "@/lib/db";
 import { siteUrl } from "@/lib/seo";
@@ -78,9 +79,7 @@ export default async function PartnersPage() {
         <div className="partner-grid">
           {partners.map((p) => (
             <article className="partner-card" key={p.id}>
-              <div className="partner-card-image" data-cat={p.category}>
-                {p.name}
-              </div>
+              <PartnerMedia partner={p} variant="card" />
               <div className="partner-card-body">
                 <div className="partner-card-meta" data-cat={p.category}>
                   <span className="partner-cat-dot" />

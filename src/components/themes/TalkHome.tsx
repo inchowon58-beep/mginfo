@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCategories } from "@/components/CategoriesContext";
 import { PromoBanner } from "@/components/PromoBanner";
+import { PartnerMedia } from "@/components/PartnerMedia";
 import { TalkThread } from "@/components/themes/TalkThread";
 import type { Banner, Partner, Post } from "@/lib/types";
 
@@ -64,8 +65,8 @@ export function TalkHome({
           <h2>추천 계정</h2>
           <div>
             {partners.map((p) => (
-              <Link key={p.id} href={p.url || "/partners"} target={p.url ? "_blank" : undefined}>
-                <span>{p.name.slice(0, 1)}</span>
+              <Link key={p.id} href={p.url || "/partners"} target={p.url ? "_blank" : undefined} rel={p.url ? "noopener noreferrer" : undefined}>
+                <PartnerMedia partner={p} variant="avatar" />
                 <b>{p.name}</b>
                 <small>{p.category}</small>
               </Link>

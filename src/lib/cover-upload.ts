@@ -3,12 +3,12 @@ import fs from "fs";
 import path from "path";
 import { hasBlobStore } from "@/lib/blob-store";
 
-const ALLOWED = new Set(["image/jpeg", "image/png", "image/webp", "image/gif", "image/jpg"]);
+const ALLOWED = new Set(["image/jpeg", "image/png", "image/webp", "image/gif", "image/jpg", "image/svg+xml"]);
 const MAX_BYTES = 4 * 1024 * 1024;
 
 export function assertCoverFile(file: File) {
   if (!ALLOWED.has(file.type)) {
-    throw new Error("jpg, png, webp, gif만 올릴 수 있습니다.");
+    throw new Error("jpg, png, webp, gif, svg만 올릴 수 있습니다.");
   }
   if (file.size > MAX_BYTES) {
     throw new Error("이미지는 4MB 이하만 올릴 수 있습니다.");
