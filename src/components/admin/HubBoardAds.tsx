@@ -67,6 +67,7 @@ export function HubBoardAds() {
   const [nowId, setNowId] = useState("");
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const [sitesOpen, setSitesOpen] = useState(false);
 
   async function load() {
     const res = await fetch("/api/ops/board-campaigns");
@@ -324,35 +325,47 @@ export function HubBoardAds() {
 
         <div className="hub-board-sites">
           <div className="hub-board-sites-head">
-            <b>순차 발행 사이트 (위부터 한 키워드씩)</b>
-            <button
-              className="btn btn-ghost"
-              type="button"
-              onClick={() =>
-                setForm((prev) => ({
-                  ...prev,
-                  siteIds: prev.siteIds.length === sites.length ? [] : sites.map((site) => site.id),
-                }))
-              }
-            >
-              {form.siteIds.length === sites.length ? "선택 해제" : "모두 선택"}
-            </button>
+            <div>
+              <b>순차 발행 사이트 (위부터 한 키워드씩)</b>
+              <p className="field-hint" style={{ margin: "4px 0 0" }}>
+                {sites.length}곳 중 {form.siteIds.length}곳 선택
+              </p>
+            </div>
+            <div className="admin-actions" style={{ margin: 0 }}>
+              <button className="btn btn-ghost" type="button" onClick={() => setSitesOpen((open) => !open)}>
+                {sitesOpen ? "접기" : "펼치기"}
+              </button>
+              <button
+                className="btn btn-ghost"
+                type="button"
+                onClick={() =>
+                  setForm((prev) => ({
+                    ...prev,
+                    siteIds: prev.siteIds.length === sites.length ? [] : sites.map((site) => site.id),
+                  }))
+                }
+              >
+                {form.siteIds.length === sites.length ? "선택 해제" : "모두 선택"}
+              </button>
+            </div>
           </div>
           {sites.length === 0 ? (
             <p className="field-hint">동의한 사이트가 없습니다. 사이트 대장에서 광고글 동의를 켜 주세요.</p>
           ) : (
-            grouped.map(([apex, rows]) => (
-              <div className="hub-board-group" key={apex}>
-                <p>{apex}</p>
-                {rows.map((site) => (
-                  <label key={site.id}>
-                    <input type="checkbox" checked={form.siteIds.includes(site.id)} onChange={() => toggleSite(site.id)} />
-                    {site.domain}
-                    {site.siteName ? ` · ${site.siteName}` : ""}
-                  </label>
-                ))}
-              </div>
-            ))
+            <div className={`hub-board-sites-body${sitesOpen ? " is-open" : ""}`}>
+              {grouped.map(([apex, rows]) => (
+                <div className="hub-board-group" key={apex}>
+                  <p>{apex}</p>
+                  {rows.map((site) => (
+                    <label key={site.id}>
+                      <input type="checkbox" checked={form.siteIds.includes(site.id)} onChange={() => toggleSite(site.id)} />
+                      {site.domain}
+                      {site.siteName ? ` · ${site.siteName}` : ""}
+                    </label>
+                  ))}
+                </div>
+              ))}
+            </div>
           )}
         </div>
 

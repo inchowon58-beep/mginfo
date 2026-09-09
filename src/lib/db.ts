@@ -7,8 +7,8 @@ import { hasRemoteStore, kvGetJson, kvSetJson } from "./kv";
 import { adVendorToPartner } from "./ad-vendors";
 import { seedAdVendors, seedPartners, seedPosts } from "./seed";
 import { siteAccountFrom, DEFAULT_SITE_PASSWORD, DEFAULT_SITE_USERNAME } from "./site-account";
-import { DEFAULT_WRITING_TONE, isWritingToneId } from "./writing-tone";
-import { DEFAULT_SITE_THEME, getSiteTheme, isSiteThemeId } from "./site-theme";
+import { DEFAULT_WRITING_TONE, isWritingToneId, pickRandomWritingTone } from "./writing-tone";
+import { DEFAULT_SITE_THEME, getSiteTheme, isSiteThemeId, pickRandomSiteTheme } from "./site-theme";
 import { defaultBulkPublish, normalizeBulkPublish } from "./bulk-publish";
 import type { AdminPostRow, AdVendor, Banner, Category, Partner, Post, Settings, Store } from "./types";
 import { DEFAULT_CATEGORIES, SITE, withFreeBoard } from "./categories";
@@ -68,7 +68,11 @@ function defaultStore(): Store {
       adVendors: seedAdVendors,
       banners: seedBanners,
       categories: DEFAULT_CATEGORIES,
-      settings: defaultSettings(),
+      settings: {
+        ...defaultSettings(),
+        writingTone: pickRandomWritingTone(),
+        siteTheme: pickRandomSiteTheme(),
+      },
       bulkPublish: defaultBulkPublish(),
     })
   ) as Store;

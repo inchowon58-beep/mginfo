@@ -114,3 +114,21 @@ export function getSiteTheme(id?: string | null): SiteTheme {
   const found = SITE_THEMES.find((theme) => theme.id === id);
   return found || SITE_THEMES.find((theme) => theme.id === DEFAULT_SITE_THEME)!;
 }
+
+function shuffleIds<T>(ids: T[]): T[] {
+  const next = ids.slice();
+  for (let i = next.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [next[i], next[j]] = [next[j], next[i]];
+  }
+  return next;
+}
+
+export function shuffledSiteThemes(): SiteThemeId[] {
+  return shuffleIds(SITE_THEMES.map((theme) => theme.id));
+}
+
+export function pickRandomSiteTheme(): SiteThemeId {
+  const ids = SITE_THEMES.map((theme) => theme.id);
+  return ids[Math.floor(Math.random() * ids.length)] || DEFAULT_SITE_THEME;
+}

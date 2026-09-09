@@ -2789,6 +2789,15 @@ body {
 
 .hub-board-sites-head {
   justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+.hub-board-sites-body {
+  display: none;
+}
+
+.hub-board-sites-body.is-open {
+  display: block;
 }
 
 .hub-board-group {

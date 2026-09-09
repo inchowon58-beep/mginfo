@@ -28,6 +28,7 @@ export function OpsLedger({ sites }: { sites: OpsSite[] }) {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
   const [showPw, setShowPw] = useState<Record<string, boolean>>({});
 
   const filtered = useMemo(() => {
@@ -148,6 +149,38 @@ export function OpsLedger({ sites }: { sites: OpsSite[] }) {
     }
   }
 
+  async function shuffleLooks() {
+    if (!visibleSites.length) return;
+    setBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      const res = await fetch("/api/ops/sites/shuffle", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ siteIds: visibleSites.map((site) => site.id) }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "적용 실패");
+      const failed = Array.isArray(data.results)
+        ? (data.results as { domain?: string; ok?: boolean; error?: string }[])
+            .filter((row) => !row.ok)
+            .slice(0, 5)
+            .map((row) => `${row.domain || ""}${row.error ? ` (${row.error})` : ""}`)
+            .join(", ")
+        : "";
+      setNotice(
+        data.failed
+          ? `${data.updated}곳 적용, ${data.failed}곳 실패${failed ? ` · ${failed}` : ""}`
+          : `${data.updated}곳에 말투와 디자인을 서로 다르게 넣었습니다.`
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "적용 실패");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   const apexHint = form.domain.trim()
     ? `메인도메인 묶음: ${apexDomain(form.domain)}`
     : "서브도메인을 넣으면 메인도메인 아래에 묶입니다.";
@@ -161,9 +194,13 @@ export function OpsLedger({ sites }: { sites: OpsSite[] }) {
             <p className="field-hint" style={{ marginTop: 0 }}>
               마스터만 볼 수 있습니다. 메인도메인으로 묶이고, 각 서브도메인의 컨셉·VM·네이버 웹문서 계정이 남습니다.
               광고글 동의를 켠 사이트만 자유게시판 허브 광고 대상이 됩니다.
+              말투·디자인 랜덤은 화면에 보이는 사이트에 서로 다른 말투와 디자인을 한 번 넣습니다. 허브는 건너뜁니다.
             </p>
           </div>
           <div className="admin-actions" style={{ margin: 0 }}>
+            <button className="btn btn-ghost" type="button" disabled={busy || !visibleSites.length} onClick={shuffleLooks}>
+              {busy ? "적용 중…" : "말투·디자인 랜덤"}
+            </button>
             <button className="btn btn-ghost" type="button" disabled={busy || !visibleSites.length} onClick={() => setConsentAll(!allConsented)}>
               {allConsented ? "광고글 동의 전체 해제" : "광고글 동의 전체 선택"}
             </button>
@@ -177,6 +214,8 @@ export function OpsLedger({ sites }: { sites: OpsSite[] }) {
           onChange={(e) => setQuery(e.target.value)}
           placeholder="도메인, VM, 네이버 아이디, 컨셉으로 찾기"
         />
+        {notice ? <p className="field-hint">{notice}</p> : null}
+        {error ? <p className="notice">{error}</p> : null}
       </div>
 
       {open ? (

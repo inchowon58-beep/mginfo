@@ -5,6 +5,8 @@ import { getSettings, updateStore } from "@/lib/db";
 import { alreadyHasCampaign, makeBoardPost } from "@/lib/hub-board";
 import { notifyPostIndexed } from "@/lib/indexnow";
 import { persistFail } from "@/lib/persist-api";
+import { isSiteThemeId } from "@/lib/site-theme";
+import { isWritingToneId } from "@/lib/writing-tone";
 
 export const dynamic = "force-dynamic";
 
@@ -17,9 +19,34 @@ export async function GET(request: Request) {
   return NextResponse.json({
     writingTone: settings.writingTone || "",
     writingPersona: settings.writingPersona || "",
+    siteTheme: settings.siteTheme || "",
     siteName: settings.siteName || "",
     siteTagline: settings.siteTagline || "",
   });
+}
+
+export async function PATCH(request: Request) {
+  const header = request.headers.get("x-infocs-master") || "";
+  if (!checkMasterPassword(header)) {
+    return NextResponse.json({ error: "마스터만 저장할 수 있습니다." }, { status: 401 });
+  }
+  const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
+  const writingTone = isWritingToneId(body.writingTone) ? body.writingTone : "";
+  const siteTheme = isSiteThemeId(body.siteTheme) ? body.siteTheme : "";
+  if (!writingTone && !siteTheme) {
+    return NextResponse.json({ error: "말투 또는 디자인을 보내 주세요." }, { status: 400 });
+  }
+  try {
+    let next = { writingTone: "", siteTheme: "" };
+    await updateStore((store) => {
+      if (writingTone) store.settings.writingTone = writingTone;
+      if (siteTheme) store.settings.siteTheme = siteTheme;
+      next = { writingTone: store.settings.writingTone, siteTheme: store.settings.siteTheme };
+    });
+    return NextResponse.json({ ok: true, ...next });
+  } catch (err) {
+    return persistFail(err);
+  }
 }
 
 export async function POST(request: Request) {
