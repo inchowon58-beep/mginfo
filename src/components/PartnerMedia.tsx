@@ -12,7 +12,7 @@ export function PartnerMedia({
   if (partner.imageUrl) {
     return (
       <span className={`${className} has-photo`}>
-        <img src={partner.imageUrl} alt="" />
+        <img src={partner.imageUrl} alt={partner.name} />
       </span>
     );
   }
