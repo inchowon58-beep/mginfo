@@ -2699,6 +2699,57 @@ body {
   font-size: 16px;
 }
 
+.ops-group h2 {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.ops-group h2 small {
+  color: #94a3b8;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.ops-site-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.ops-site-list li {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid #1f2937;
+}
+
+.ops-site-list li:last-child {
+  border-bottom: 0;
+}
+
+.ops-site-list strong {
+  display: block;
+  font-size: 15px;
+}
+
+.ops-site-list span {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.ops-site-list li > div span {
+  display: block;
+  color: #94a3b8;
+  font-size: 12px;
+  line-height: 1.6;
+  margin-top: 4px;
+}
+
 .admin-form textarea.vendor-notes {
   min-height: 96px;
 }

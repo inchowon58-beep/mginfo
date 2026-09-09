@@ -1,4 +1,5 @@
 const STORE_KEY = "infocs-magazine-store";
+const OPS_KEY = "infocs-ops-ledger";
 
 function redisConfig(): { url: string; token: string } | null {
   const url = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL || "";
@@ -54,4 +55,24 @@ export async function kvGetJson<T>(): Promise<T | null> {
 export async function kvSetJson(value: unknown): Promise<void> {
   if (!redisConfig()) throw new Error("Redis가 연결되어 있지 않습니다.");
   await redisCommand(["SET", STORE_KEY, JSON.stringify(value)]);
+}
+
+export async function kvGetOpsJson<T>(): Promise<T | null> {
+  if (!redisConfig()) return null;
+  const result = await redisCommand(["GET", OPS_KEY]);
+  if (result == null) return null;
+  if (typeof result === "object") return result as T;
+  if (typeof result === "string") {
+    try {
+      return JSON.parse(result) as T;
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
+export async function kvSetOpsJson(value: unknown): Promise<void> {
+  if (!redisConfig()) throw new Error("Redis가 연결되어 있지 않습니다.");
+  await redisCommand(["SET", OPS_KEY, JSON.stringify(value)]);
 }

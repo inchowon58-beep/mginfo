@@ -8,7 +8,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   if (pathname.startsWith("/admin/login")) {
     return <div className="admin-body">{children}</div>;
   }
-  const keepWide = pathname === "/admin/posts/new";
+  const keepWide = pathname === "/admin/posts/new" || pathname.startsWith("/admin/ops");
   return (
     <div className="admin-body">
       <div className="admin-shell">

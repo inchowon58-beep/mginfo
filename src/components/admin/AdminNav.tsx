@@ -7,6 +7,7 @@ const NAV = [
   { href: "/admin", label: "대시보드" },
   { href: "/admin/settings", label: "설정" },
   { href: "/admin/vendors", label: "광고업체정보설정" },
+  { href: "/admin/ops", label: "사이트 대장" },
   { href: "/admin/posts", label: "글 목록" },
   { href: "/admin/posts/new", label: "새 글 작성" },
   { href: "/admin/bulk", label: "대량발행예약" },
@@ -32,6 +33,7 @@ export function AdminNav() {
     }
     if (href === "/admin/password") return pathname.startsWith("/admin/password");
     if (href === "/admin/vendors") return pathname.startsWith("/admin/vendors");
+    if (href === "/admin/ops") return pathname.startsWith("/admin/ops");
     return pathname === href;
   }
 

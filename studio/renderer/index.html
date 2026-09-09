@@ -19,15 +19,16 @@
             <strong>Studio</strong>
           </div>
         </div>
-        <p class="lede">도메인과 블로그 이름만 넣으면 Vercel 프로젝트, Blob, 배포까지 한 번에 준비합니다.</p>
+        <p class="lede">도메인과 블로그 이름만 넣으면 Vercel 프로젝트, Blob, 배포까지 한 번에 준비합니다. 대장에는 VM과 네이버 계정도 같이 남깁니다.</p>
         <nav>
           <button class="nav-btn active" data-view="create" type="button">새 사이트</button>
+          <button class="nav-btn" data-view="ledger" type="button">사이트 대장</button>
           <button class="nav-btn" data-view="history" type="button">배포 기록</button>
           <button class="nav-btn" data-view="settings" type="button">계정 설정</button>
         </nav>
         <div class="rail-foot">
           <span id="account-label">토큰 미연결</span>
-          <small>실행 파일: Studio 1.0.4 · 기존 프로젝트와 도메인은 덮어쓰지 않습니다.</small>
+          <small>실행 파일: Studio 1.0.6 · 기존 프로젝트와 도메인은 덮어쓰지 않습니다.</small>
         </div>
       </aside>
 
@@ -46,7 +47,26 @@
               도메인
               <input id="domain" maxlength="80" placeholder="예: magazine.agapet.co.kr" required />
             </label>
-            <p class="hint">제미나이 키와 네이버 메타태그는 사이트 관리자에서 직접 넣으면 됩니다.</p>
+            <p class="hint" id="apex-hint">서브도메인으로 만들면 메인도메인 아래에 자동으로 묶입니다.</p>
+            <label>
+              메인 컨셉
+              <input id="concept" maxlength="80" placeholder="예: 반려동물, 부천 맛집" />
+            </label>
+            <label>
+              VM 이름 / 번호
+              <input id="vmName" maxlength="60" placeholder="예: VM-12, 본사-3" />
+            </label>
+            <div class="field-row">
+              <label>
+                네이버 웹문서 아이디
+                <input id="naverId" maxlength="80" autocomplete="off" placeholder="웹문서 등록요청 아이디" />
+              </label>
+              <label>
+                네이버 비밀번호
+                <input id="naverPassword" type="password" maxlength="80" autocomplete="off" placeholder="웹문서 등록요청 비밀번호" />
+              </label>
+            </div>
+            <p class="hint">제미나이 키와 네이버 메타태그는 사이트 관리자에서 직접 넣으면 됩니다. VM과 네이버 계정은 사이트 대장에 남습니다.</p>
             <button class="gold" id="create-btn" type="submit">사이트 생성하고 배포</button>
           </form>
           <div class="panel log-card" id="progress-card" hidden>
@@ -57,6 +77,63 @@
             <ol id="log"></ol>
             <div class="result" id="result" hidden></div>
           </div>
+        </section>
+
+        <section class="view view-wide" id="view-ledger">
+          <header class="page-head">
+            <p>Inventory</p>
+            <h1>사이트 대장</h1>
+          </header>
+          <div class="panel ledger-toolbar">
+            <input id="ledger-search" placeholder="도메인, VM, 네이버 아이디, 컨셉으로 찾기" />
+            <div class="ledger-actions">
+              <button class="ghost" id="ledger-add-btn" type="button">대장에만 추가</button>
+              <button class="ghost" id="ops-pull-btn" type="button">웹에서 가져오기</button>
+              <button class="ghost" id="ops-push-btn" type="button">웹에 올리기</button>
+            </div>
+            <p class="hint" id="ledger-sync-status"></p>
+          </div>
+          <form class="panel" id="ledger-form" hidden>
+            <h2 id="ledger-form-title">대장에 사이트 추가</h2>
+            <input type="hidden" id="edit-id" />
+            <div class="field-row">
+              <label>
+                사이트 이름
+                <input id="edit-name" maxlength="80" placeholder="예: 아가펫 매거진" />
+              </label>
+              <label>
+                도메인
+                <input id="edit-domain" maxlength="80" placeholder="예: magazine.agapet.co.kr" required />
+              </label>
+            </div>
+            <p class="hint" id="edit-apex-hint"></p>
+            <div class="field-row">
+              <label>
+                메인 컨셉
+                <input id="edit-concept" maxlength="80" />
+              </label>
+              <label>
+                VM 이름 / 번호
+                <input id="edit-vm" maxlength="60" />
+              </label>
+            </div>
+            <div class="field-row">
+              <label>
+                네이버 웹문서 아이디
+                <input id="edit-naver-id" maxlength="80" autocomplete="off" />
+              </label>
+              <label>
+                네이버 비밀번호
+                <input id="edit-naver-pw" type="password" maxlength="80" autocomplete="off" />
+              </label>
+            </div>
+            <div class="ledger-actions">
+              <button class="gold" type="submit">저장</button>
+              <button class="ghost" id="ledger-cancel-btn" type="button">취소</button>
+            </div>
+            <p class="status" id="ledger-form-status"></p>
+          </form>
+          <div id="ledger-list"></div>
         </section>
 
         <section class="view" id="view-history">
@@ -89,6 +166,15 @@
               팀 ID (선택)
               <input id="teamId" placeholder="비우면 개인 계정" />
             </label>
+            <label>
+              웹 대장 주소
+              <input id="opsHubUrl" placeholder="https://magazine.infocs.co.kr" />
+            </label>
+            <label>
+              웹 대장 마스터 비밀번호
+              <input id="opsMasterPassword" type="password" autocomplete="off" placeholder="허브 마스터 비밀번호" />
+            </label>
+            <p class="hint">이 주소의 관리자 사이트 대장에 올립니다. 기본값은 magazine.infocs.co.kr 입니다. 마스터만 볼 수 있습니다.</p>
             <button class="gold" type="submit">설정 저장</button>
             <p class="status" id="settings-status"></p>
           </form>
