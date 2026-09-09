@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { SiteFrame } from "@/components/SiteFrame";
 import { VendorCta } from "@/components/VendorCta";
+import { PlaceCard } from "@/components/PlaceCard";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { displaySiteName, getCategory } from "@/lib/categories";
 import { getCategories, getPostBySlug, getPublishedPosts, getSettings } from "@/lib/db";
@@ -154,7 +155,6 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
           {post.region ? <span>· {post.region}</span> : null}
           {post.tags.length > 0 && <span>· {post.tags.join(" · ")}</span>}
         </div>
-        {geo?.regionInfo ? <p className="article-region">{geo.regionInfo}</p> : null}
         {post.coverImage ? (
           <ArticlePhoto
             image={{ url: post.coverImage, caption: post.coverCaption }}
@@ -162,6 +162,7 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
           />
         ) : null}
         <div className="article-body" dangerouslySetInnerHTML={{ __html: placed.html }} />
+        <PlaceCard post={post} />
         <VendorCta post={post} />
         {faqs.length > 0 && (
           <section className="article-faq">
@@ -219,8 +220,9 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
             ) : null}
           </div>
         )}
-        {geo && (geo.nearbyAreas.length > 0 || geo.nearbyStations.length > 0) ? (
+        {geo && (geo.regionInfo || geo.nearbyAreas.length > 0 || geo.nearbyStations.length > 0) ? (
           <section className="article-geo">
+            {geo.regionInfo ? <p className="article-region">{geo.regionInfo}</p> : null}
             {geo.nearbyAreas.length > 0 ? (
               <div>
                 <h2>{geo.nearbyHeading}</h2>

@@ -46,6 +46,7 @@ export type Post = {
   vendorPhone?: string;
   vendorWebsite?: string;
   vendorKakao?: string;
+  vendorPlaceUrl?: string;
   hubCampaignId?: string;
 };
 
@@ -168,6 +169,7 @@ export type BulkGroup = {
   vendorPhone?: string;
   vendorWebsite?: string;
   vendorKakao?: string;
+  vendorPlaceUrl?: string;
   writingStyle?: string;
   extraPrompt?: string;
   imagePool?: string[];

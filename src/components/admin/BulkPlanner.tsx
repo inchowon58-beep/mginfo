@@ -46,6 +46,7 @@ function emptyGroup(category: string): GroupDraft {
     vendorPhone: "",
     vendorWebsite: "",
     vendorKakao: "",
+    vendorPlaceUrl: "",
     writingStyle: "random" as ArticleStyleChoice,
     extraPrompt: "",
     imagePool: [],
@@ -113,6 +114,7 @@ export function BulkPlanner({
             vendorPhone: group.vendorPhone,
             vendorWebsite: group.vendorWebsite,
             vendorKakao: group.vendorKakao,
+            vendorPlaceUrl: group.vendorPlaceUrl,
             writingStyle: group.writingStyle || "random",
             extraPrompt: group.extraPrompt || "",
             imagePool: group.imagePool || [],
@@ -455,7 +457,18 @@ export function BulkPlanner({
                     placeholder="https://pf.kakao.com/"
                   />
                 </label>
+                <label>
+                  네이버 플레이스
+                  <input
+                    value={group.vendorPlaceUrl || ""}
+                    onChange={(e) => updateGroup(group.id, { vendorPlaceUrl: e.target.value })}
+                    placeholder="https://naver.me/ 또는 플레이스 주소"
+                  />
+                </label>
               </div>
+              <p className="field-hint">
+                플레이스 주소를 넣으면 발행 글 하단에 사용한 사진, 짧은 소개, 네이버 플레이스 바로가기 버튼이 붙습니다.
+              </p>
               <GroupImagePool
                 urls={group.imagePool || []}
                 minCount={group.imageCountMin || 1}
@@ -661,7 +674,7 @@ function GroupImagePool({
           {busy && progress.includes("/") ? `올리는 중 ${progress}` : "사진 올리기"}
           <input
             type="file"
-            accept="image/jpeg,image/png,image/webp,image/gif"
+            accept="image/*"
             multiple
             disabled={busy}
             onChange={(e) => {
@@ -675,7 +688,7 @@ function GroupImagePool({
           {busy ? "처리 중…" : "폴더 올리기"}
           <input
             type="file"
-            accept="image/jpeg,image/png,image/webp,image/gif"
+            accept="image/*"
             multiple
             {...{ webkitdirectory: "", directory: "" }}
             disabled={busy}

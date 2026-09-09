@@ -81,6 +81,7 @@ function normalizeGroup(raw: Partial<BulkGroup>): BulkGroup | null {
     vendorPhone: vendor.vendorPhone,
     vendorWebsite: vendor.vendorWebsite,
     vendorKakao: vendor.vendorKakao,
+    vendorPlaceUrl: vendor.vendorPlaceUrl,
     writingStyle: String(raw.writingStyle || "random").trim() || "random",
     extraPrompt: String(raw.extraPrompt || "").trim() || undefined,
     imagePool: mergeImageUrls([], Array.isArray(raw.imagePool) ? raw.imagePool.map((item) => String(item || "")) : []),
@@ -437,6 +438,7 @@ async function generateAndSave(store: Store, group: BulkGroup, item: BulkKeyword
     vendorPhone: group.vendorPhone,
     vendorWebsite: group.vendorWebsite,
     vendorKakao: group.vendorKakao,
+    vendorPlaceUrl: group.vendorPlaceUrl,
   };
 }
 

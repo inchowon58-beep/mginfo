@@ -217,7 +217,7 @@ export function buildArticleJsonLd(input: {
             "@type": "LocalBusiness",
             name: post.vendorName,
             telephone: post.vendorPhone,
-            url: post.vendorWebsite,
+            url: post.vendorWebsite || post.vendorPlaceUrl,
             areaServed: region || undefined,
           },
         }

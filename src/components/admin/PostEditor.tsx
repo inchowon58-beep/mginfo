@@ -9,7 +9,7 @@ import {
   type ArticleStyleChoice,
 } from "@/lib/article-style";
 import { DEFAULT_GEMINI_NOTES, resolveGeminiNotes } from "@/lib/gemini-notes";
-import { extraImageLimit } from "@/lib/post-images";
+import { extraImageLimit, MAX_POST_IMAGES } from "@/lib/post-images";
 import { extractPlaceName } from "@/lib/region-geo";
 import { VendorPicker } from "@/components/admin/VendorPicker";
 import type { Category, CategorySlug, FaqItem, Post, PostImage, PostStatus } from "@/lib/types";
@@ -33,7 +33,7 @@ export function PostEditor({ post }: { post?: Post }) {
   const [coverImage, setCoverImage] = useState(post?.coverImage || "");
   const [coverCaption, setCoverCaption] = useState(post?.coverCaption || "");
   const [extraImages, setExtraImages] = useState<PostImage[]>(post?.extraImages || []);
-  const [extraImagesEnabled, setExtraImagesEnabled] = useState(false);
+  const [extraImagesEnabled, setExtraImagesEnabled] = useState(true);
   const [focusKeyword, setFocusKeyword] = useState(post?.focusKeyword || "");
   const [faqItems, setFaqItems] = useState<FaqItem[]>(padFaqs(post?.faqItems));
   const [status, setStatus] = useState<PostStatus>(post?.status || "draft");
@@ -46,6 +46,7 @@ export function PostEditor({ post }: { post?: Post }) {
   const [vendorPhone, setVendorPhone] = useState(post?.vendorPhone || "");
   const [vendorWebsite, setVendorWebsite] = useState(post?.vendorWebsite || "");
   const [vendorKakao, setVendorKakao] = useState(post?.vendorKakao || "");
+  const [vendorPlaceUrl, setVendorPlaceUrl] = useState(post?.vendorPlaceUrl || "");
   const [writingStyle, setWritingStyle] = useState<ArticleStyleChoice>("info");
   const [keywords, setKeywords] = useState("");
   const [notes, setNotes] = useState(DEFAULT_GEMINI_NOTES);
@@ -57,7 +58,7 @@ export function PostEditor({ post }: { post?: Post }) {
   const [error, setError] = useState("");
   const [categories, setCategories] = useState<Category[]>([]);
   const [vendorOpen, setVendorOpen] = useState(
-    Boolean(post?.vendorName || post?.vendorPhone || post?.vendorWebsite || post?.vendorKakao)
+    Boolean(post?.vendorName || post?.vendorPhone || post?.vendorWebsite || post?.vendorKakao || post?.vendorPlaceUrl)
   );
   const [faqOpen, setFaqOpen] = useState(Boolean(post?.faqItems?.some((item) => item.question && item.answer)));
   const notesForCategory = useRef("");
@@ -152,20 +153,6 @@ export function PostEditor({ post }: { post?: Post }) {
     return String(data.url || "");
   }
 
-  async function uploadCover(file: File) {
-    setError("");
-    setMessage("");
-    setUploading(true);
-    try {
-      setCoverImage(await uploadImage(file));
-      setMessage("대표 이미지를 올렸습니다.");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "업로드 실패");
-    } finally {
-      setUploading(false);
-    }
-  }
-
   async function uploadExtra(index: number, file: File) {
     setError("");
     setMessage("");
@@ -174,6 +161,47 @@ export function PostEditor({ post }: { post?: Post }) {
       const url = await uploadImage(file);
       setExtraImages((rows) => rows.map((row, i) => (i === index ? { ...row, url } : row)));
       setMessage("사진을 올렸습니다.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "업로드 실패");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  async function uploadMany(files: FileList | File[]) {
+    const images = Array.from(files).filter(
+      (file) => file.type.startsWith("image/") || /\.(jpe?g|png|webp|gif)$/i.test(file.name)
+    );
+    if (!images.length) return;
+    setError("");
+    setMessage("");
+    setUploading(true);
+    try {
+      const urls: string[] = [];
+      for (const file of images) urls.push(await uploadImage(file));
+      const extraCap = extraImagesEnabled ? extraImageLimit(true) : 0;
+      let nextCover = coverImage;
+      let nextExtras = extraImages.filter((row) => row.url.trim());
+      let skipped = 0;
+      for (const url of urls) {
+        if (!nextCover) {
+          nextCover = url;
+          continue;
+        }
+        if (nextExtras.length >= extraCap) {
+          skipped += 1;
+          continue;
+        }
+        nextExtras = [...nextExtras, { url, caption: "" }];
+      }
+      setCoverImage(nextCover);
+      setExtraImages(nextExtras);
+      const kept = (nextCover ? 1 : 0) + nextExtras.length;
+      setMessage(
+        skipped
+          ? `${kept}장을 올렸습니다. 대표 포함 최대 ${MAX_POST_IMAGES}장이라 ${skipped}장은 건너뛰었습니다.`
+          : `${urls.length}장을 올렸습니다.`
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : "업로드 실패");
     } finally {
@@ -221,6 +249,7 @@ export function PostEditor({ post }: { post?: Post }) {
         vendorPhone,
         vendorWebsite,
         vendorKakao,
+        vendorPlaceUrl,
       };
       const res = await fetch(post ? `/api/posts/${post.id}` : "/api/posts", {
         method: post ? "PUT" : "POST",
@@ -299,7 +328,7 @@ export function PostEditor({ post }: { post?: Post }) {
             <h3>소개 업체</h3>
             <p className="field-hint" style={{ marginTop: 0 }}>
               저장된 업체를 고르거나, 이번 글만 직접 적을 수 있습니다. 전화·홈페이지·카카오를 넣으면 글 하단에 버튼이
-              생깁니다.
+              생깁니다. 네이버 플레이스 주소를 넣으면 사용한 사진과 바로가기 버튼이 붙습니다.
             </p>
             <label>업체명</label>
             <input value={vendorName} onChange={(e) => setVendorName(e.target.value)} placeholder="예: 인포씨에스" />
@@ -317,6 +346,15 @@ export function PostEditor({ post }: { post?: Post }) {
               onChange={(e) => setVendorKakao(e.target.value)}
               placeholder="https://pf.kakao.com/..."
             />
+            <label>네이버 플레이스 주소</label>
+            <input
+              value={vendorPlaceUrl}
+              onChange={(e) => setVendorPlaceUrl(e.target.value)}
+              placeholder="https://naver.me/... 또는 플레이스 주소"
+            />
+            <p className="field-hint">
+              넣으면 글 하단에 사용한 사진, 짧은 소개, 네이버 플레이스 바로가기 버튼이 붙습니다.
+            </p>
           </div>
         ) : null}
         <button className="editor-fold" type="button" onClick={() => setFaqOpen((open) => !open)}>
@@ -360,15 +398,17 @@ export function PostEditor({ post }: { post?: Post }) {
         <label>대표 이미지</label>
         <div className="cover-upload">
           <label className="btn btn-ghost cover-file-btn">
-            {uploading ? "올리는 중…" : "내 컴퓨터에서 올리기"}
+            {uploading ? "올리는 중…" : "사진 여러 장 선택"}
             <input
               type="file"
-              accept="image/jpeg,image/png,image/webp,image/gif"
+              accept="image/*"
+              multiple
               disabled={uploading}
               onChange={(e) => {
-                const file = e.target.files?.[0];
+                const files = e.target.files;
                 e.target.value = "";
-                if (file) void uploadCover(file);
+                if (!files?.length) return;
+                void uploadMany(files);
               }}
             />
           </label>
@@ -389,8 +429,8 @@ export function PostEditor({ post }: { post?: Post }) {
           placeholder="사진 아래 짧은 설명 (예: 오래된 구획은 실측부터 합니다)"
         />
         <p className="field-hint">
-          파일을 올리거나 주소를 넣으면 됩니다. 이 이미지가 글 상단과 네이버 검색 썸네일로 쓰입니다. 설명은 사진 아래에
-          작게 나갑니다.
+          휴대폰·컴퓨터에서 사진을 여러 장 한 번에 고를 수 있습니다. 첫 장이 대표, 나머지는 추가 사진입니다. 대표 포함
+          최대 {MAX_POST_IMAGES}장입니다.
         </p>
         {coverImage ? (
           <img className="cover-preview" src={coverImage} alt="대표 이미지 미리보기" />
@@ -399,8 +439,25 @@ export function PostEditor({ post }: { post?: Post }) {
           <div className="extra-images">
             <h3 className="admin-subhead">추가 사진</h3>
             <p className="field-hint" style={{ marginTop: 0 }}>
-              대표 포함 최대 7장입니다. 추가 사진은 소제목 앞에 들어가고, 남는 장은 하단 갤러리에 모입니다.
+              대표 포함 최대 7장입니다. 위 버튼으로 여러 장을 한 번에 올리거나, 아래에서 장마다 바꿀 수 있습니다. 추가
+              사진은 소제목 앞에 들어가고, 남는 장은 하단 갤러리에 모입니다.
             </p>
+            <div className="cover-upload">
+              <label className="btn btn-ghost cover-file-btn">
+                {uploading ? "올리는 중…" : "추가 사진 여러 장 선택"}
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  disabled={uploading}
+                  onChange={(e) => {
+                    const files = e.target.files;
+                    e.target.value = "";
+                    if (files?.length) void uploadMany(files);
+                  }}
+                />
+              </label>
+            </div>
             {extraImages.map((image, index) => (
               <div className="extra-image-row" key={`extra-${index}`}>
                 <label>추가 사진 {index + 2}</label>
@@ -409,7 +466,7 @@ export function PostEditor({ post }: { post?: Post }) {
                     {uploading ? "올리는 중…" : "올리기"}
                     <input
                       type="file"
-                      accept="image/jpeg,image/png,image/webp,image/gif"
+                      accept="image/*"
                       disabled={uploading}
                       onChange={(e) => {
                         const file = e.target.files?.[0];

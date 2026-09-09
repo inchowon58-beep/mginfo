@@ -5,6 +5,7 @@ export type VendorFields = {
   vendorPhone?: string;
   vendorWebsite?: string;
   vendorKakao?: string;
+  vendorPlaceUrl?: string;
   region?: string;
 };
 
@@ -44,12 +45,17 @@ export function telHref(phone: string): string {
   return `tel:${phone.replace(/[^\d+]/g, "")}`;
 }
 
+export function normalizePlaceUrl(raw: unknown): string | undefined {
+  return normalizeHttpUrl(raw);
+}
+
 export function parseVendorFields(body: Record<string, unknown>): VendorFields {
   return {
     vendorName: trimOrUndef(body.vendorName),
     vendorPhone: normalizePhone(body.vendorPhone),
     vendorWebsite: normalizeHttpUrl(body.vendorWebsite),
     vendorKakao: normalizeHttpUrl(body.vendorKakao),
+    vendorPlaceUrl: normalizePlaceUrl(body.vendorPlaceUrl),
     region: trimOrUndef(body.region),
   };
 }

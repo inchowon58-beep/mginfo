@@ -831,7 +831,7 @@ body {
 }
 
 .magazine-root .article-region {
-  margin: 18px 0 0;
+  margin: 0;
   padding: 16px 18px;
   background: var(--bg-soft, #fafafa);
   border-radius: 12px;
@@ -1063,6 +1063,9 @@ body {
   .magazine-root .article-gallery {
     grid-template-columns: 1fr;
   }
+  .magazine-root .place-card-photos {
+    grid-template-columns: 1fr 1fr;
+  }
   .magazine-root .article-body,
   .magazine-root .article-body p,
   .magazine-root .article-body li {
@@ -1174,9 +1177,49 @@ body {
 
 .admin-table-actions {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 8px;
   align-items: center;
+  white-space: nowrap;
+}
+
+.admin-post-table {
+  table-layout: fixed;
+}
+
+.admin-post-table .admin-check {
+  width: 36px;
+}
+
+.admin-post-table .admin-col-title {
+  width: auto;
+  min-width: 0;
+}
+
+.admin-post-table .admin-post-title {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-post-table .admin-col-cat {
+  width: 92px;
+}
+
+.admin-post-table .admin-col-status {
+  width: 72px;
+  white-space: nowrap;
+}
+
+.admin-post-table .admin-col-date {
+  width: 108px;
+  white-space: nowrap;
+}
+
+.admin-post-table .admin-col-actions,
+.admin-post-table .admin-table-actions {
+  width: 120px;
 }
 
 .admin-main {
@@ -2202,6 +2245,7 @@ body {
   border-radius: 999px;
   font-size: 11px;
   font-weight: 700;
+  white-space: nowrap;
 }
 
 .badge-on {
@@ -2968,6 +3012,74 @@ body {
   background: #f7f3eb;
 }
 
+.magazine-root .place-card {
+  margin: 36px 0 8px;
+  padding: 22px 22px 20px;
+  border: 1px solid #e8e2d6;
+  border-radius: 16px;
+  background: #f7f3eb;
+}
+
+.magazine-root .place-card-kicker {
+  margin: 0 0 6px;
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #8a8174;
+}
+
+.magazine-root .place-card strong {
+  display: block;
+  font-size: 20px;
+  line-height: 1.35;
+}
+
+.magazine-root .place-card-copy {
+  margin: 10px 0 0;
+  color: #5c564c;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.magazine-root .place-card-photos {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 16px 0 0;
+}
+
+.magazine-root .place-card-photos.is-single {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.magazine-root .place-card-photos figure {
+  margin: 0;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  border-radius: 10px;
+  background: #ece6da;
+}
+
+.magazine-root .place-card-photos img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.magazine-root .place-card-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 16px;
+  min-height: 44px;
+  padding: 0 16px;
+  border-radius: 999px;
+  background: #03c75a;
+  color: #fff;
+  font-weight: 700;
+  text-decoration: none;
+}
+
 .magazine-root .vendor-cta-kicker {
   margin: 0 0 6px;
   font-size: 11px;
@@ -3333,6 +3445,51 @@ body {
     font-weight: 600;
     flex: 0 0 72px;
   }
+  .admin-post-table {
+    table-layout: auto;
+  }
+  .admin-post-table tr {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    column-gap: 10px;
+    padding: 12px 0;
+  }
+  .admin-post-table td.admin-check {
+    grid-column: 1;
+    padding: 0;
+    width: auto;
+  }
+  .admin-post-table td.admin-col-title,
+  .admin-post-table td[data-label="제목"] {
+    grid-column: 2;
+    display: block;
+    min-width: 0;
+    padding: 0;
+    font-size: 14px;
+    font-weight: 600;
+  }
+  .admin-post-table td.admin-col-title::before,
+  .admin-post-table td[data-label="제목"]::before {
+    content: none;
+    display: none;
+  }
+  .admin-post-table .admin-post-title {
+    min-width: 0;
+  }
+  .admin-post-table .admin-col-cat,
+  .admin-post-table .admin-col-status,
+  .admin-post-table .admin-col-date {
+    display: none !important;
+  }
+  .admin-post-table .admin-table-actions {
+    grid-column: 3;
+    width: auto;
+    margin: 0;
+    flex-wrap: nowrap;
+    justify-content: flex-end;
+    white-space: nowrap;
+  }
   .admin-table td.admin-check {
     display: flex;
     justify-content: flex-start;
@@ -3355,6 +3512,26 @@ body {
     margin-bottom: 4px;
     flex: none;
   }
+  .admin-post-table td.admin-col-title::before,
+  .admin-post-table td[data-label="제목"]::before {
+    content: none;
+    display: none;
+    margin: 0;
+  }
+  .admin-post-table td.admin-check {
+    padding-bottom: 0;
+    width: auto;
+  }
+  .admin-post-table td.admin-col-title,
+  .admin-post-table td[data-label="제목"] {
+    overflow: hidden;
+    overflow-wrap: normal;
+  }
+  .admin-post-table .admin-table-actions,
+  .admin-post-table td.admin-table-actions {
+    width: auto;
+    max-width: none;
+  }
   .admin-table-actions,
   .admin-table td.admin-table-actions {
     display: flex;
@@ -3362,6 +3539,11 @@ body {
     justify-content: flex-start;
     gap: 8px;
     margin-top: 8px;
+  }
+  .admin-post-table .admin-table-actions,
+  .admin-post-table td.admin-table-actions {
+    margin-top: 0;
+    flex-wrap: nowrap;
   }
   .admin-table-actions[data-label]::before {
     display: none;

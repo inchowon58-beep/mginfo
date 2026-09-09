@@ -207,7 +207,7 @@ export function PostTable({
       {posts.length === 0 ? (
         <p className="admin-empty">이 목록에 글이 없습니다.</p>
       ) : (
-        <table className="admin-table">
+        <table className="admin-table admin-post-table">
           <thead>
             <tr>
               <th className="admin-check">
@@ -218,11 +218,11 @@ export function PostTable({
                   aria-label="이 페이지 전체 선택"
                 />
               </th>
-              <th>제목</th>
-              <th>카테고리</th>
-              <th>상태</th>
-              <th>날짜</th>
-              <th></th>
+              <th className="admin-col-title">제목</th>
+              <th className="admin-col-cat">카테고리</th>
+              <th className="admin-col-status">상태</th>
+              <th className="admin-col-date">날짜</th>
+              <th className="admin-col-actions"></th>
             </tr>
           </thead>
           <tbody>
@@ -236,22 +236,28 @@ export function PostTable({
                     aria-label={`${post.title} 선택`}
                   />
                 </td>
-                <td data-label="제목">
-                  <Link href={`/admin/posts/${post.id}`}>{post.title}</Link>
+                <td className="admin-col-title" data-label="제목">
+                  <Link className="admin-post-title" href={`/admin/posts/${post.id}`}>
+                    {post.title}
+                  </Link>
                 </td>
-                <td data-label="카테고리">{getCategory(post.category, categories)?.name || post.category}</td>
-                <td data-label="상태">
+                <td className="admin-col-cat" data-label="카테고리">
+                  {getCategory(post.category, categories)?.name || post.category}
+                </td>
+                <td className="admin-col-status" data-label="상태">
                   <span className={post.status === "published" ? "badge badge-on" : "badge badge-off"}>
                     {post.status === "published" ? "발행" : "초안"}
                   </span>
                 </td>
-                <td data-label="날짜">{formatDate(post.publishedAt || post.createdAt)}</td>
-                <td data-label="관리" className="admin-table-actions">
-                  {post.status === "published" && (
+                <td className="admin-col-date" data-label="날짜">
+                  {formatDate(post.publishedAt || post.createdAt)}
+                </td>
+                <td className="admin-table-actions">
+                  {post.status === "published" ? (
                     <Link href={`/posts/${post.slug}`} target="_blank">
                       보기
                     </Link>
-                  )}
+                  ) : null}
                   <Link href={`/admin/posts/${post.id}`}>수정</Link>
                 </td>
               </tr>
