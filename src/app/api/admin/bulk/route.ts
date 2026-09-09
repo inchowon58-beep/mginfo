@@ -4,6 +4,7 @@ import {
   bulkStats,
   defaultBulkPublish,
   normalizeBulkPublish,
+  planToday,
   sanitizeGroupsInput,
   sanitizeScheduleInput,
 } from "@/lib/bulk-publish";
@@ -42,6 +43,7 @@ export async function PUT(request: Request) {
         current.groups = sanitizeGroupsInput(body.groups, s.categories || []);
       }
       s.bulkPublish = current;
+      planToday(s);
     });
     return NextResponse.json({
       ok: true,

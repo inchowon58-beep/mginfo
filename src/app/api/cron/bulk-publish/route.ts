@@ -19,14 +19,16 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
+  let planned = 0;
   const before = await updateStore((s) => {
-    planToday(s);
+    planned = planToday(s).planned;
   });
   if (!before.bulkPublish.schedule.enabled) {
     return NextResponse.json({
       ok: true,
       skipped: true,
       reason: "off",
+      planned: 0,
       stats: bulkStats(before.bulkPublish, before.categories || []),
     });
   }
@@ -37,6 +39,7 @@ export async function GET(request: Request) {
   return NextResponse.json({
     ok: true,
     skipped: false,
+    planned,
     ...published,
     stats: bulkStats(store.bulkPublish, store.categories || []),
   });

@@ -125,7 +125,12 @@ export function BulkPlanner({
       setSchedule(data.bulk.schedule);
       setGroups(data.bulk.groups.map((g: BulkGroup) => ({ ...g, text: "" })));
       setStats(data.stats);
-      setMessage("예약 목록을 저장했습니다.");
+      const reserved = (data.stats?.todayScheduled as number) || 0;
+      setMessage(
+        nextSchedule.enabled && reserved
+          ? `저장했습니다. 오늘 분량 ${reserved}건에 예약시간을 넣었습니다.`
+          : "예약 목록을 저장했습니다."
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : "저장 실패");
     } finally {
@@ -153,7 +158,9 @@ export function BulkPlanner({
       setTickMessage(
         data.processed
           ? `대기 발행 ${data.processed}건 처리 · 성공 ${done} · 실패 ${fail}`
-          : "지금은 발행 시각이 된 키워드가 없습니다. 오늘 분량이 예약되어 있으면 시간이 되면 나갑니다."
+          : data.planned
+            ? `오늘 분량 ${data.planned}건에 예약시간을 넣었습니다. 해당 시각에 발행됩니다.`
+            : "지금은 발행 시각이 된 키워드가 없습니다. 오늘 분량이 예약되어 있으면 시간이 되면 나갑니다."
       );
       const fresh = await fetch("/api/admin/bulk");
       const body = await fresh.json();
@@ -236,6 +243,7 @@ export function BulkPlanner({
 
   useEffect(() => {
     if (!schedule.enabled) return;
+    void runTick();
     const timer = window.setInterval(() => {
       fetch("/api/cron/bulk-publish", { method: "POST" }).catch(() => undefined);
     }, 4 * 60 * 1000);
@@ -249,7 +257,7 @@ export function BulkPlanner({
           <div>
             <h2>스케줄 설정</h2>
             <p className="field-hint" style={{ marginTop: 6 }}>
-              켜 두면 시작시간~밤 11시 사이에 오늘 분량을 시간 간격을 두고 발행합니다.
+              켜 두고 저장하면 오늘 분량에 예약시간이 바로 붙습니다. 시작시간 이전이면 시작시간 이후로 잡힙니다.
             </p>
           </div>
         </div>
@@ -277,7 +285,7 @@ export function BulkPlanner({
               </select>
             </label>
           </div>
-          <p className="field-hint">종료는 밤 11시입니다. 오늘 총발행량을 나눠 랜덤 간격으로 올립니다.</p>
+          <p className="field-hint">종료는 밤 11시입니다. 저장하거나 이 화면을 열면 대기 키워드에 오늘 예약시간이 생깁니다.</p>
         </div>
         <div className="admin-actions">
           <button className="btn btn-primary" type="button" onClick={() => save(groups, schedule, true)} disabled={busy}>

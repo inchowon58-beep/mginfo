@@ -135,11 +135,22 @@ function openKeywords(group: BulkGroup) {
   return group.keywords.filter((item) => item.status === "queued" || item.status === "scheduled");
 }
 
+function usedTodayQuota(group: BulkGroup, today: string) {
+  return group.keywords.filter((item) => {
+    if (item.status === "scheduled" || item.status === "processing") {
+      return Boolean(item.scheduledAt && seoulDateKey(item.scheduledAt) === today);
+    }
+    if (item.status === "published") {
+      return Boolean(item.publishedAt && seoulDateKey(item.publishedAt) === today);
+    }
+    return false;
+  }).length;
+}
+
 export function planToday(store: Store, now = new Date()) {
   const state = store.bulkPublish;
   const today = seoulDateKey(now);
   if (!today || !state.schedule.enabled) return { planned: 0, reason: "off" as const };
-  if (state.schedule.planDate === today) return { planned: 0, reason: "already" as const };
 
   const { start, end } = seoulWindow(today, state.schedule.startHour, state.schedule.endHour);
   if (now >= end) {
@@ -154,10 +165,16 @@ export function planToday(store: Store, now = new Date()) {
   const picks: BulkKeyword[] = [];
   for (const group of state.groups) {
     if (remaining <= 0) break;
-    const take = Math.min(group.dailyLimit, remaining, group.keywords.filter((item) => item.status === "queued").length);
-    const queued = group.keywords.filter((item) => item.status === "queued").slice(0, take);
-    picks.push(...queued);
-    remaining -= queued.length;
+    const quota = Math.max(0, group.dailyLimit - usedTodayQuota(group, today));
+    const queued = group.keywords.filter((item) => item.status === "queued");
+    const take = Math.min(quota, remaining, queued.length);
+    picks.push(...queued.slice(0, take));
+    remaining -= take;
+  }
+
+  if (!picks.length) {
+    state.schedule.planDate = today;
+    return { planned: 0, reason: remaining <= 0 ? "limit" : "empty" as const };
   }
 
   const slots = randomPublishSlots(picks.length, windowStart, end);
