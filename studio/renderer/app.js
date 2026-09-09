@@ -41,6 +41,14 @@ const ledgerForm = document.getElementById("ledger-form");
 const ledgerSyncStatus = document.getElementById("ledger-sync-status");
 const ledgerFormStatus = document.getElementById("ledger-form-status");
 
+document.getElementById("ledger-stats")?.addEventListener("click", (event) => {
+  const btn = event.target.closest("#apex-stats-toggle");
+  if (!btn) return;
+  event.preventDefault();
+  apexStatsOpen = !apexStatsOpen;
+  renderLedgerStats();
+});
+
 function addLog(line) {
   const item = document.createElement("li");
   item.textContent = line;
@@ -196,16 +204,12 @@ function renderLedgerStats() {
           <b>대표도메인별 서브도메인</b>
           <p>${stats.apexCount}개 대표도메인 · 개수는 각 묶음의 사이트 수입니다.</p>
         </div>
-        <button class="ghost" id="apex-stats-toggle" type="button">${apexStatsOpen ? "접기" : "펼치기"}</button>
+        <button class="ghost" id="apex-stats-toggle" type="button" aria-expanded="${apexStatsOpen ? "true" : "false"}">${apexStatsOpen ? "접기" : "펼치기"}</button>
       </div>
-      <div class="apex-stats-list" ${apexStatsOpen ? "" : "hidden"}>
+      <div class="apex-stats-list${apexStatsOpen ? " is-open" : ""}">
         ${stats.groups.length ? apexRows : `<p class="empty">아직 대표도메인이 없습니다.</p>`}
       </div>
     </div>`;
-  document.getElementById("apex-stats-toggle")?.addEventListener("click", () => {
-    apexStatsOpen = !apexStatsOpen;
-    renderLedgerStats();
-  });
 }
 
 function updateApexHint(inputId, hintEl, fallback) {

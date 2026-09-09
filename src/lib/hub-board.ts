@@ -1,8 +1,17 @@
+import { resolveArticleStyle } from "./article-style";
+import { parseKeywordList } from "./bulk-keywords";
+import { randomPublishSlots, seoulWindow } from "./bulk-publish";
+import { parseFaqItems } from "./faq";
 import { FREE_BOARD_SLUG } from "./categories";
+import { generateArticle } from "./gemini";
+import { DEFAULT_GEMINI_MODEL } from "./gemini-models";
+import { resolveGeminiNotes } from "./gemini-notes";
 import type { OpsSite } from "./ops-ledger";
+import { seoulDateKey } from "./publish-limits";
+import { extractPlaceName, parseNameList } from "./region-geo";
 import { cleanHtml } from "./sanitize";
-import { slugify, uid } from "./slug";
-import type { Post } from "./types";
+import { articleSlug, slugify, uid } from "./slug";
+import type { Post, Settings } from "./types";
 import { parseVendorFields } from "./vendor";
 
 export type HubBoardResult = {
@@ -13,23 +22,48 @@ export type HubBoardResult = {
   postId?: string;
 };
 
+export type HubBoardKeyword = {
+  id: string;
+  keyword: string;
+  status: "queued" | "scheduled" | "processing" | "published" | "failed";
+  siteId?: string;
+  domain?: string;
+  postId?: string;
+  scheduledAt?: string;
+  publishedAt?: string;
+  error?: string;
+  title?: string;
+};
+
+export type HubBoardSchedule = {
+  enabled: boolean;
+  startHour: number;
+  endHour: number;
+  planDate: string;
+};
+
 export type HubBoardCampaign = {
   id: string;
   title: string;
-  excerpt: string;
-  bodyHtml: string;
-  coverImage?: string;
   vendorName?: string;
   vendorPhone?: string;
   vendorWebsite?: string;
   vendorKakao?: string;
+  writingStyle: string;
+  dailyLimit: number;
   siteIds: string[];
-  status: "scheduled" | "publishing" | "published" | "partial" | "failed";
-  scheduledAt?: string | null;
+  nextSiteIndex: number;
+  keywords: HubBoardKeyword[];
+  schedule: HubBoardSchedule;
   createdAt: string;
   updatedAt: string;
+  excerpt?: string;
+  bodyHtml?: string;
+  coverImage?: string;
+  status?: "scheduled" | "publishing" | "published" | "partial" | "failed";
+  scheduledAt?: string | null;
   publishedAt?: string | null;
-  results: HubBoardResult[];
+  results?: HubBoardResult[];
 };
 
 function masterSecret() {
@@ -40,40 +74,73 @@ function trimText(value: unknown) {
   return String(value ?? "").trim();
 }
 
+function clampHour(value: unknown, fallback: number) {
+  const num = Number(value);
+  if (!Number.isFinite(num)) return fallback;
+  return Math.min(23, Math.max(0, Math.floor(num)));
+}
+
+function normalizeKeyword(raw: unknown): HubBoardKeyword | null {
+  if (!raw || typeof raw !== "object") return null;
+  const row = raw as Record<string, unknown>;
+  const keyword = trimText(row.keyword);
+  if (!keyword) return null;
+  const status = String(row.status || "queued");
+  return {
+    id: trimText(row.id) || uid(),
+    keyword,
+    status:
+      status === "scheduled" || status === "processing" || status === "published" || status === "failed"
+        ? status
+        : "queued",
+    siteId: trimText(row.siteId) || undefined,
+    domain: trimText(row.domain) || undefined,
+    postId: trimText(row.postId) || undefined,
+    scheduledAt: trimText(row.scheduledAt) || undefined,
+    publishedAt: trimText(row.publishedAt) || undefined,
+    error: trimText(row.error) || undefined,
+    title: trimText(row.title) || undefined,
+  };
+}
+
 export function parseHubCampaign(raw: unknown, current?: HubBoardCampaign): HubBoardCampaign | null {
   if (!raw || typeof raw !== "object") return current || null;
   const row = raw as Record<string, unknown>;
-  const title = trimText(row.title ?? current?.title);
-  if (!title) return current || null;
-  const now = new Date().toISOString();
   const vendor = parseVendorFields(row);
+  const title = trimText(row.title ?? current?.title) || vendor.vendorName || "자유게시판 광고";
+  const now = new Date().toISOString();
   const siteIds = Array.isArray(row.siteIds)
     ? [...new Set(row.siteIds.map((id) => String(id || "").trim()).filter(Boolean))]
     : current?.siteIds || [];
-  const results = Array.isArray(row.results)
-    ? (row.results as HubBoardResult[])
-    : current?.results || [];
-  const status = String(row.status ?? current?.status ?? "scheduled");
+  const keywords = Array.isArray(row.keywords)
+    ? row.keywords.map(normalizeKeyword).filter((item): item is HubBoardKeyword => Boolean(item))
+    : current?.keywords || [];
+  const scheduleRaw = (row.schedule && typeof row.schedule === "object" ? row.schedule : {}) as Record<string, unknown>;
+  const prevSchedule = current?.schedule;
   return {
     id: trimText(row.id ?? current?.id) || uid(),
     title,
-    excerpt: trimText(row.excerpt ?? current?.excerpt),
-    bodyHtml: cleanHtml(String(row.bodyHtml ?? current?.bodyHtml ?? "")),
-    coverImage: trimText(row.coverImage ?? current?.coverImage) || undefined,
     vendorName: vendor.vendorName || current?.vendorName,
     vendorPhone: vendor.vendorPhone || current?.vendorPhone,
     vendorWebsite: vendor.vendorWebsite || current?.vendorWebsite,
     vendorKakao: vendor.vendorKakao || current?.vendorKakao,
+    writingStyle: trimText(row.writingStyle ?? current?.writingStyle) || "random",
+    dailyLimit: Math.max(1, Math.min(40, Math.floor(Number(row.dailyLimit ?? current?.dailyLimit) || 1))),
     siteIds,
-    status:
-      status === "published" || status === "partial" || status === "failed" || status === "publishing"
-        ? status
-        : "scheduled",
-    scheduledAt: row.scheduledAt === undefined ? current?.scheduledAt || null : trimText(row.scheduledAt) || null,
+    nextSiteIndex: Math.max(0, Math.floor(Number(row.nextSiteIndex ?? current?.nextSiteIndex) || 0)),
+    keywords,
+    schedule: {
+      enabled: typeof scheduleRaw.enabled === "boolean" ? scheduleRaw.enabled : Boolean(prevSchedule?.enabled),
+      startHour: clampHour(scheduleRaw.startHour ?? prevSchedule?.startHour, 1),
+      endHour: 23,
+      planDate: trimText(scheduleRaw.planDate ?? prevSchedule?.planDate),
+    },
     createdAt: String(row.createdAt ?? current?.createdAt ?? now),
     updatedAt: String(row.updatedAt ?? now),
-    publishedAt: row.publishedAt === undefined ? current?.publishedAt || null : trimText(row.publishedAt) || null,
-    results,
+    excerpt: trimText(row.excerpt ?? current?.excerpt) || undefined,
+    bodyHtml: current?.bodyHtml,
+    coverImage: trimText(row.coverImage ?? current?.coverImage) || undefined,
+    results: Array.isArray(row.results) ? (row.results as HubBoardResult[]) : current?.results || [],
   };
 }
 
@@ -83,90 +150,204 @@ export function parseHubCampaigns(raw: unknown): HubBoardCampaign[] {
 }
 
 export function consentedSites(sites: OpsSite[]) {
-  return sites.filter((site) => site.boardAdsConsent && site.domain);
+  return sites
+    .filter((site) => site.boardAdsConsent && site.domain)
+    .slice()
+    .sort((a, b) => {
+      const apex = String(a.apexDomain || "").localeCompare(String(b.apexDomain || ""), "ko");
+      if (apex) return apex;
+      return a.domain.localeCompare(b.domain, "ko");
+    });
 }
 
-function campaignPayload(campaign: HubBoardCampaign) {
+export function orderedCampaignSites(campaign: HubBoardCampaign, sites: OpsSite[]) {
+  const selected = new Set(campaign.siteIds);
+  return consentedSites(sites).filter((site) => selected.has(site.id));
+}
+
+export function appendCampaignKeywords(campaign: HubBoardCampaign, incoming: string[]) {
+  const have = new Set(campaign.keywords.map((item) => item.keyword));
+  const extra: HubBoardKeyword[] = [];
+  for (const keyword of incoming) {
+    if (have.has(keyword)) continue;
+    have.add(keyword);
+    extra.push({ id: uid(), keyword, status: "queued" });
+  }
+  return { campaign: { ...campaign, keywords: [...campaign.keywords, ...extra] }, added: extra.length };
+}
+
+function usedTodayQuota(campaign: HubBoardCampaign, today: string) {
+  return campaign.keywords.filter((item) => {
+    if (item.status === "scheduled" || item.status === "processing") {
+      return Boolean(item.scheduledAt && seoulDateKey(item.scheduledAt) === today);
+    }
+    if (item.status === "published") {
+      return Boolean(item.publishedAt && seoulDateKey(item.publishedAt) === today);
+    }
+    return false;
+  }).length;
+}
+
+export function planHubCampaign(campaign: HubBoardCampaign, sites: OpsSite[], now = new Date()) {
+  const today = seoulDateKey(now);
+  if (!today || !campaign.schedule.enabled) return { planned: 0, campaign };
+  const targets = orderedCampaignSites(campaign, sites);
+  if (!targets.length) return { planned: 0, campaign };
+  const { start, end } = seoulWindow(today, campaign.schedule.startHour, campaign.schedule.endHour);
+  if (now >= end) {
+    return { planned: 0, campaign: { ...campaign, schedule: { ...campaign.schedule, planDate: today } } };
+  }
+  const remaining = Math.max(0, campaign.dailyLimit - usedTodayQuota(campaign, today));
+  const queued = campaign.keywords.filter((item) => item.status === "queued");
+  const take = Math.min(remaining, queued.length);
+  if (!take) {
+    return { planned: 0, campaign: { ...campaign, schedule: { ...campaign.schedule, planDate: today } } };
+  }
+  const windowStart = now > start ? now : start;
+  const slots = randomPublishSlots(take, windowStart, end);
+  let index = campaign.nextSiteIndex || 0;
+  const keywords = campaign.keywords.map((item) => ({ ...item }));
+  queued.slice(0, take).forEach((item, i) => {
+    const found = keywords.find((row) => row.id === item.id);
+    if (!found) return;
+    const site = targets[index % targets.length];
+    found.status = "scheduled";
+    found.siteId = site.id;
+    found.domain = site.domain;
+    found.scheduledAt = slots[i].toISOString();
+    found.error = undefined;
+    index += 1;
+  });
   return {
-    hubCampaignId: campaign.id,
-    title: campaign.title,
-    excerpt: campaign.excerpt || campaign.title,
-    bodyHtml: campaign.bodyHtml,
-    coverImage: campaign.coverImage || "",
+    planned: take,
+    campaign: {
+      ...campaign,
+      keywords,
+      nextSiteIndex: index,
+      schedule: { ...campaign.schedule, planDate: today },
+      updatedAt: now.toISOString(),
+    },
+  };
+}
+
+export function dueHubKeywords(campaigns: HubBoardCampaign[], now = new Date()) {
+  const due: { campaign: HubBoardCampaign; keyword: HubBoardKeyword }[] = [];
+  for (const campaign of campaigns) {
+    for (const keyword of campaign.keywords) {
+      if (keyword.status !== "scheduled") continue;
+      if (!keyword.scheduledAt || new Date(keyword.scheduledAt).getTime() > now.getTime()) continue;
+      due.push({ campaign, keyword });
+    }
+  }
+  due.sort((a, b) => String(a.keyword.scheduledAt).localeCompare(String(b.keyword.scheduledAt)));
+  return due;
+}
+
+export function findHubKeyword(campaigns: HubBoardCampaign[], campaignId: string, keywordId: string) {
+  const campaign = campaigns.find((row) => row.id === campaignId);
+  const keyword = campaign?.keywords.find((row) => row.id === keywordId);
+  if (!campaign || !keyword) return null;
+  return { campaign, keyword };
+}
+
+export function assignNextSite(campaign: HubBoardCampaign, keyword: HubBoardKeyword, sites: OpsSite[]) {
+  const targets = orderedCampaignSites(campaign, sites);
+  if (!targets.length) throw new Error("동의한 발행 사이트가 없습니다.");
+  const existing = keyword.siteId ? targets.find((site) => site.id === keyword.siteId) : undefined;
+  if (existing) return { campaign, keyword, site: existing };
+  const site = targets[(campaign.nextSiteIndex || 0) % targets.length];
+  const nextKeyword = { ...keyword, siteId: site.id, domain: site.domain };
+  const nextCampaign: HubBoardCampaign = {
+    ...campaign,
+    nextSiteIndex: (campaign.nextSiteIndex || 0) + 1,
+    keywords: campaign.keywords.map((row) => (row.id === keyword.id ? nextKeyword : row)),
+    updatedAt: new Date().toISOString(),
+  };
+  return { campaign: nextCampaign, keyword: nextKeyword, site };
+}
+
+export function hubCampaignStats(campaign: HubBoardCampaign) {
+  const published = campaign.keywords.filter((item) => item.status === "published").length;
+  const failed = campaign.keywords.filter((item) => item.status === "failed").length;
+  const queued = campaign.keywords.filter((item) => item.status === "queued").length;
+  const scheduled = campaign.keywords.filter((item) => item.status === "scheduled" || item.status === "processing").length;
+  const total = campaign.keywords.length;
+  const remaining = queued + scheduled;
+  const daysLeft = campaign.dailyLimit > 0 ? Math.ceil(remaining / campaign.dailyLimit) : remaining;
+  return {
+    total,
+    published,
+    failed,
+    queued,
+    scheduled,
+    remaining,
+    percent: total ? Math.round((published / total) * 100) : 0,
+    daysLeft,
+    dailyLimit: campaign.dailyLimit,
+  };
+}
+
+export async function generateHubBoardArticle(
+  campaign: HubBoardCampaign,
+  keyword: HubBoardKeyword,
+  site: OpsSite,
+  settings: Settings
+) {
+  const apiKey = settings.geminiApiKey || process.env.GEMINI_API_KEY || "";
+  if (!apiKey) throw new Error("허브 마스터설정에 제미나이 API 키가 없습니다.");
+  const writingStyle = resolveArticleStyle(campaign.writingStyle || "random", keyword.keyword);
+  const article = await generateArticle({
+    topic: keyword.keyword,
+    writingStyle,
+    category: FREE_BOARD_SLUG,
+    categoryName: "자유게시판",
+    notes: resolveGeminiNotes(
+      `이 글은 ${site.siteName || site.domain} 자유게시판 광고 글이다. 사이트 컨셉: ${site.concept || "생활 정보 매거진"}. 업체 ${campaign.vendorName || ""}를 자연스럽게 소개하되 과장 광고 문장은 피한다.`,
+      ""
+    ),
+    focusKeyword: keyword.keyword,
+    region: extractPlaceName(keyword.keyword, site.concept, site.siteName) || "",
+    vendorName: campaign.vendorName,
+    writingTone: settings.writingTone,
+    writingPersona: settings.writingPersona,
+    apiKey,
+    model: settings.geminiModel || DEFAULT_GEMINI_MODEL,
+  });
+  return {
+    hubCampaignId: `${campaign.id}:${keyword.id}`,
+    title: article.title,
+    excerpt: article.excerpt || keyword.keyword,
+    bodyHtml: cleanHtml(article.bodyHtml || ""),
+    coverImage: "",
+    extraImages: [],
+    focusKeyword: keyword.keyword,
+    faqItems: article.faqItems,
+    regionInfo: article.regionInfo,
+    nearbyAreas: parseNameList(article.nearbyAreas),
+    nearbyStations: parseNameList(article.nearbyStations),
+    slug: articleSlug(article.slugHint, keyword.keyword),
     vendorName: campaign.vendorName || "",
     vendorPhone: campaign.vendorPhone || "",
     vendorWebsite: campaign.vendorWebsite || "",
     vendorKakao: campaign.vendorKakao || "",
+    region: extractPlaceName(article.title, keyword.keyword) || "",
   };
 }
 
-export async function pushCampaignToSites(campaign: HubBoardCampaign, sites: OpsSite[]): Promise<HubBoardCampaign> {
-  const allowed = new Map(consentedSites(sites).map((site) => [site.id, site]));
-  const targets = campaign.siteIds.map((id) => allowed.get(id)).filter((site): site is OpsSite => Boolean(site));
-  const results: HubBoardResult[] = [];
-  const body = JSON.stringify(campaignPayload(campaign));
-  const password = masterSecret();
-
-  for (const site of targets) {
-    const url = `https://${site.domain}/api/ops/board`;
-    try {
-      const res = await fetch(url, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-infocs-master": password,
-        },
-        body,
-        signal: AbortSignal.timeout(20000),
-      });
-      const data = (await res.json().catch(() => ({}))) as { error?: string; post?: { id?: string } };
-      if (!res.ok) {
-        results.push({ siteId: site.id, domain: site.domain, ok: false, error: data.error || `실패 (${res.status})` });
-        continue;
-      }
-      results.push({ siteId: site.id, domain: site.domain, ok: true, postId: data.post?.id });
-    } catch (err) {
-      results.push({
-        siteId: site.id,
-        domain: site.domain,
-        ok: false,
-        error: err instanceof Error ? err.message : "연결 실패",
-      });
-    }
-  }
-
-  const skipped = campaign.siteIds.filter((id) => !allowed.has(id));
-  for (const siteId of skipped) {
-    const site = sites.find((row) => row.id === siteId);
-    results.push({
-      siteId,
-      domain: site?.domain || siteId,
-      ok: false,
-      error: "광고글 동의가 꺼져 있습니다.",
-    });
-  }
-
-  const okCount = results.filter((row) => row.ok).length;
-  const status =
-    results.length === 0 ? "failed" : okCount === results.length ? "published" : okCount > 0 ? "partial" : "failed";
-  const now = new Date().toISOString();
-  return {
-    ...campaign,
-    status,
-    results,
-    updatedAt: now,
-    publishedAt: okCount > 0 ? now : campaign.publishedAt || null,
-  };
-}
-
-export function dueCampaigns(list: HubBoardCampaign[], now = new Date()) {
-  const ts = now.getTime();
-  return list.filter((row) => {
-    if (row.status !== "scheduled") return false;
-    if (!row.scheduledAt) return true;
-    const at = new Date(row.scheduledAt).getTime();
-    return !Number.isNaN(at) && at <= ts;
+export async function pushBoardPost(site: OpsSite, payload: Record<string, unknown>) {
+  const url = `https://${site.domain}/api/ops/board`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-infocs-master": masterSecret(),
+    },
+    body: JSON.stringify(payload),
+    signal: AbortSignal.timeout(25000),
   });
+  const data = (await res.json().catch(() => ({}))) as { error?: string; post?: { id?: string }; duplicate?: boolean };
+  if (!res.ok) throw new Error(data.error || `실패 (${res.status})`);
+  return data;
 }
 
 export function makeBoardPost(body: Record<string, unknown>, existing: Post[]): Post {
@@ -183,14 +364,17 @@ export function makeBoardPost(body: Record<string, unknown>, existing: Post[]): 
     excerpt: trimText(body.excerpt) || title,
     bodyHtml: cleanHtml(String(body.bodyHtml || "")),
     category: FREE_BOARD_SLUG,
-    tags: ["자유게시판"],
+    tags: Array.isArray(body.tags) ? body.tags.map((item) => String(item)).filter(Boolean) : ["자유게시판"],
     coverImage: trimText(body.coverImage) || undefined,
+    focusKeyword: trimText(body.focusKeyword) || undefined,
+    faqItems: parseFaqItems(body.faqItems),
     status: "published",
     publishedAt: now,
     createdAt: now,
     updatedAt: now,
     theme: "art-v1",
     hubCampaignId,
+    region: trimText(body.region) || undefined,
     ...vendor,
   };
 }
@@ -198,3 +382,5 @@ export function makeBoardPost(body: Record<string, unknown>, existing: Post[]): 
 export function alreadyHasCampaign(posts: Post[], hubCampaignId: string) {
   return posts.some((post) => post.hubCampaignId === hubCampaignId);
 }
+
+export { parseKeywordList };
