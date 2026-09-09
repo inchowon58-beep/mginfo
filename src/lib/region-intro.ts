@@ -4,6 +4,7 @@ import {
   getNearbyDistricts,
   getNearbyStations,
   getRegionFact,
+  isSamePlaceRegion,
 } from "./region-geo";
 
 export type RegionContext = {
@@ -307,12 +308,27 @@ export function resolveRegionContext(
   const keyword = (post.focusKeyword || post.title || "").trim();
   const seed = seedNumber(post.id, post.slug, post.publishedAt, keyword, place);
   const stored = String(post.regionInfo || "").trim();
-  const regionInfo = stored;
+  const infoPlace = extractPlaceName(stored);
+  const regionInfo = stored && (!infoPlace || isSamePlaceRegion(place, infoPlace)) ? stored : "";
   if (!place) return null;
 
-  const nearbyAreas = rotate(post.nearbyAreas?.length ? post.nearbyAreas : place ? getNearbyDistricts(place) : [], seed);
+  const itemFits = (item: string) => {
+    const found = extractPlaceName(item);
+    if (!found) return true;
+    return isSamePlaceRegion(place, found);
+  };
+  const storedAreas = post.nearbyAreas?.length ? post.nearbyAreas : [];
+  const storedStations = post.nearbyStations?.length ? post.nearbyStations : [];
+  const nearbyAreas = rotate(
+    storedAreas.length && storedAreas.every(itemFits) ? storedAreas : place ? getNearbyDistricts(place) : storedAreas,
+    seed
+  );
   const nearbyStations = rotate(
-    post.nearbyStations?.length ? post.nearbyStations : place ? getNearbyStations(place) : [],
+    storedStations.length && storedStations.every(itemFits)
+      ? storedStations
+      : place
+        ? getNearbyStations(place)
+        : storedStations,
     seed + 3
   );
 

@@ -35,7 +35,7 @@ export async function POST(request: Request) {
       topic,
       focusKeyword,
       keywords: String(body.keywords || ""),
-      notes: String(body.notes || ""),
+      notes: [String(body.notes || ""), String(body.experienceNotes || "")].filter(Boolean).join("\n"),
       region: String(body.region || ""),
     })
   );

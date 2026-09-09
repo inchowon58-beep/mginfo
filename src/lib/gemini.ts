@@ -48,6 +48,22 @@ function extractJson(text: string): string {
   return text;
 }
 
+function visitExperienceRules(experienceNotes: string) {
+  const notes = experienceNotes.trim();
+  if (!notes) {
+    return `- 고객 경험은 실명 가짜 후기가 아니라, 현장에서 반복되는 질문·방문 동선·선택 이유 같은 관찰로 쓴다.
+- 추가 프롬프트(실제 방문 후기)가 없으면, 없는 방문·없는 메뉴·없는 1인칭 체험담을 만들지 말 것.`;
+  }
+  return `실제 방문 후기 메모(작성자가 직접 가서 적은 내용. 가짜 후기가 아니다):
+"""
+${notes}
+"""
+- 이 메모가 1차 취재원이다. 메모에 있는 가게·메뉴·맛·가격대·대기·공간·느낌만 사실로 쓴다.
+- 메모를 그대로 붙이지 말고 매거진 후기글로 다듬어 완성한다. 짧은 메모라도 그 범위 안에서 글을 채운다.
+- 메모에 없는 메뉴 이름, 정확한 원 단위 가격, 직원 실명, 없는 에피소드는 만들지 마라.
+- 1인칭 방문 후기로 쓰되 체험단·광고 말투는 쓰지 않는다.`;
+}
+
 function uniquenessRules(input: GenerateInput): string {
   const region = (input.region || "").trim();
   const localNotes = (input.localNotes || "").trim();
@@ -69,7 +85,7 @@ regionInfo(글 상단, 3~5문장):
 - 아래 지역 재료의 공식 지명·랜드마크·역·근방을 재료로, 이 키워드를 그 동네에서 찾는 사람 이야기로 자연스럽게 쓴다.
 - 재료 목록을 나열하거나 ‘A와 B가 있어 … 지역입니다’ 틀로 시작하지 마라.
 - 메인 키워드를 한 번은 문장 안에 자연스럽게 넣는다. 문장마다 반복하지 마라.
-- 없는 가게, 없는 거리 풍경, 없는 방문 일기는 만들지 마라. 재료에 있는 지명만 사실로 쓴다.
+- 없는 가게, 없는 거리 풍경, 없는 방문 일기는 만들지 마라. 재료에 있는 지명만 사실로 쓴다. 실제 방문 후기 메모가 있으면 그 가게·그 방문은 사실로 쓴다.
 
 ${materials || "- 지역이 키워드에 있으면 그 지명을 regionInfo와 본문에 구체화하라."}
 ${publicFacts ? `\n${publicFacts}` : ""}
@@ -79,8 +95,7 @@ ${publicFacts ? `\n${publicFacts}` : ""}
 
 공통 문체:
 - 과장 광고, 이모지, 영어 해시태그, ‘지금 클릭’ 식 문장은 쓰지 않는다.
-- 고객 경험은 실명 가짜 후기가 아니라, 현장에서 반복되는 질문·방문 동선·선택 이유 같은 관찰로 쓴다.
-- 경험·후기 메모: ${experienceNotes || "(없음 — 있으면 취재 근거로 쓰고, 없으면 과장된 체험담을 만들지 말 것)"}
+${visitExperienceRules(experienceNotes)}
 
 업체 소개:
 - 업체명: ${vendorName || "(없음)"}
@@ -141,7 +156,7 @@ ${writingTonePrompt(resolveWritingTone(writingStyle, input.writingTone), input.w
 
 ${uniquenessRules(input)}
 
-작업: 이 메인 키워드만으로 완결된 새 글을 쓴다. 글방향은 시선만 참고하고, 소제목과 전개는 키워드·지역·대상에 맞게 매번 새로 짠다. 다른 글의 목차를 채우지 마라.
+작업: 이 메인 키워드만으로 완결된 새 글을 쓴다. 글방향은 시선만 참고하고, 소제목과 전개는 키워드·지역·대상에 맞게 매번 새로 짠다. 다른 글의 목차를 채우지 마라. 실제 방문 후기 메모가 있으면 그 메모를 중심으로 후기글을 완성한다.
 
 반드시 JSON만 출력한다. 설명 문장이나 마크다운 울타리는 넣지 않는다.
 형식:

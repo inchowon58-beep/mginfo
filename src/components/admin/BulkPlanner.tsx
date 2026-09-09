@@ -47,6 +47,7 @@ function emptyGroup(category: string): GroupDraft {
     vendorWebsite: "",
     vendorKakao: "",
     writingStyle: "random" as ArticleStyleChoice,
+    extraPrompt: "",
     imagePool: [],
     imageCountMin: 1,
     imageCountMax: 3,
@@ -113,6 +114,7 @@ export function BulkPlanner({
             vendorWebsite: group.vendorWebsite,
             vendorKakao: group.vendorKakao,
             writingStyle: group.writingStyle || "random",
+            extraPrompt: group.extraPrompt || "",
             imagePool: group.imagePool || [],
             imageCountMin: group.imageCountMin || 1,
             imageCountMax: group.imageCountMax || 3,
@@ -460,6 +462,21 @@ export function BulkPlanner({
                 maxCount={group.imageCountMax || 3}
                 onChange={(patch) => updateGroup(group.id, patch)}
               />
+              <label>
+                추가 프롬프트 (실제 방문 후기)
+                <textarea
+                  rows={5}
+                  value={group.extraPrompt || ""}
+                  onChange={(e) => updateGroup(group.id, { extraPrompt: e.target.value })}
+                  placeholder={
+                    "이 그룹 키워드 글에 공통으로 넣습니다. 예: 직접 가서 먹은 메뉴, 대기, 맛, 주차, 다시 갈지 여부."
+                  }
+                />
+              </label>
+              <p className="field-hint">
+                직접 가서 본 내용을 적으면 가짜 후기가 아니라 그 메모로 후기글을 완성합니다. 가게마다 후기가 다르면
+                그룹을 나눠 적으세요. 비워 두면 없는 방문담은 만들지 않습니다.
+              </p>
               <label>
                 키워드 작성
                 <textarea

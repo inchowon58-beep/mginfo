@@ -82,6 +82,7 @@ function normalizeGroup(raw: Partial<BulkGroup>): BulkGroup | null {
     vendorWebsite: vendor.vendorWebsite,
     vendorKakao: vendor.vendorKakao,
     writingStyle: String(raw.writingStyle || "random").trim() || "random",
+    extraPrompt: String(raw.extraPrompt || "").trim() || undefined,
     imagePool: mergeImageUrls([], Array.isArray(raw.imagePool) ? raw.imagePool.map((item) => String(item || "")) : []),
     imageCountMin: min,
     imageCountMax: max,
@@ -368,7 +369,12 @@ function findKeyword(store: Store, id: string) {
 }
 
 async function generateAndSave(store: Store, group: BulkGroup, item: BulkKeyword): Promise<Post> {
-  const keywordBan = bannedContentError(store.settings.publishBannedKeywords, item.keyword, group.vendorName);
+  const keywordBan = bannedContentError(
+    store.settings.publishBannedKeywords,
+    item.keyword,
+    group.vendorName,
+    group.extraPrompt
+  );
   if (keywordBan) throw new Error(keywordBan);
   const cats = store.categories || [];
   const category = ensureCategorySlug(group.category, cats);
@@ -387,6 +393,7 @@ async function generateAndSave(store: Store, group: BulkGroup, item: BulkKeyword
     vendorName: group.vendorName,
     writingTone: store.settings.writingTone,
     writingPersona: store.settings.writingPersona,
+    experienceNotes: group.extraPrompt || "",
     apiKey,
     model: store.settings.geminiModel || DEFAULT_GEMINI_MODEL,
   });

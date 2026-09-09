@@ -49,6 +49,7 @@ export function PostEditor({ post }: { post?: Post }) {
   const [writingStyle, setWritingStyle] = useState<ArticleStyleChoice>("info");
   const [keywords, setKeywords] = useState("");
   const [notes, setNotes] = useState(DEFAULT_GEMINI_NOTES);
+  const [extraPrompt, setExtraPrompt] = useState("");
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [genBusy, setGenBusy] = useState(false);
@@ -114,6 +115,7 @@ export function PostEditor({ post }: { post?: Post }) {
           focusKeyword,
           region: region.trim() || extractPlaceName(focusKeyword, title, keywords),
           vendorName,
+          experienceNotes: extraPrompt,
         }),
       });
       const data = await res.json();
@@ -524,6 +526,20 @@ export function PostEditor({ post }: { post?: Post }) {
         </p>
         <label>보조 키워드</label>
         <input value={keywords} onChange={(e) => setKeywords(e.target.value)} placeholder="예: 등기부, 확정일자, 보증금" />
+        <label>추가 프롬프트 (실제 방문 후기)</label>
+        <textarea
+          value={extraPrompt}
+          onChange={(e) => setExtraPrompt(e.target.value)}
+          placeholder={
+            "예: 부천 중동 OO식당. 토요일 저녁 대기 20분. 된장찌개는 간 세고 고기는 질기지 않았음. 주차는 건물 뒤가 편했음. 다음에 찌개만 다시 먹을 듯."
+          }
+          style={{ minHeight: 120 }}
+        />
+        <p className="field-hint">
+          식당·매장에 직접 가서 본 것과 생각을 대략 적으면, 그 내용으로 후기글을 완성합니다. 비워 두면 가짜 방문
+          후기는 만들지 않습니다. 사진은 위쪽에서 따로 넣으면 됩니다. 맛집이면 글방향을 맛집리뷰형이나 방문후기형으로
+          고르면 더 맞습니다.
+        </p>
         <div className="admin-actions">
           <button className="btn btn-primary" type="button" onClick={() => runGenerate()} disabled={genBusy}>
             {genBusy ? "작성 중…" : "초안 생성"}

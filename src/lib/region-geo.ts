@@ -332,6 +332,18 @@ export function getRegionFact(label: string): RegionFact | undefined {
   return lookupMap(REGION_FACTS, label);
 }
 
+function officialRoot(label: string) {
+  const official = getRegionFact(label)?.official || label.trim();
+  const parts = official.split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) return `${parts[0]} ${parts[1]}`;
+  return official;
+}
+
+export function isSamePlaceRegion(a: string, b: string) {
+  if (!a || !b) return true;
+  return officialRoot(a) === officialRoot(b);
+}
+
 export function formatRegionMaterials(place: string): string {
   const label = String(place || "").trim();
   if (!label) return "";
@@ -361,13 +373,45 @@ const PLACE_KEYS = [...new Set([...Object.keys(REGION_FACTS), ...Object.keys(REG
   (a, b) => b.length - a.length
 );
 
+/** Place keys that are also the start of a common non-place word. */
+const PLACE_FALSE_NEXT: Record<string, string[]> = {
+  고양: ["이"],
+  예산: ["안", "편"],
+  음성: ["인", "메", "파"],
+  부여: ["하", "받", "된"],
+  삼성: ["전", "화", "생", "카", "물"],
+};
+
+function indexOfPlaceKey(hay: string, key: string) {
+  let from = 0;
+  while (from <= hay.length) {
+    const pos = hay.indexOf(key, from);
+    if (pos < 0) return -1;
+    const next = hay.slice(pos + key.length);
+    const blocked = PLACE_FALSE_NEXT[key];
+    if (blocked?.some((suffix) => next.startsWith(suffix))) {
+      from = pos + 1;
+      continue;
+    }
+    return pos;
+  }
+  return -1;
+}
+
 export function extractPlaceName(...texts: Array<string | undefined>): string {
   const hay = texts.filter(Boolean).join(" ");
   if (!hay) return "";
+  let best = "";
+  let bestPos = Infinity;
   for (const key of PLACE_KEYS) {
-    if (hay.includes(key)) return key;
+    const pos = indexOfPlaceKey(hay, key);
+    if (pos < 0) continue;
+    if (key.length > best.length || (key.length === best.length && pos < bestPos)) {
+      best = key;
+      bestPos = pos;
+    }
   }
-  return "";
+  return best;
 }
 
 export function parseNameList(raw: unknown): string[] | undefined {
