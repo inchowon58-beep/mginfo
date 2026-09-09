@@ -11,7 +11,7 @@ import { DEFAULT_WRITING_TONE, isWritingToneId } from "./writing-tone";
 import { DEFAULT_SITE_THEME, getSiteTheme, isSiteThemeId } from "./site-theme";
 import { defaultBulkPublish, normalizeBulkPublish } from "./bulk-publish";
 import type { AdminPostRow, AdVendor, Banner, Category, Partner, Post, Settings, Store } from "./types";
-import { DEFAULT_CATEGORIES, SITE } from "./categories";
+import { DEFAULT_CATEGORIES, SITE, withFreeBoard } from "./categories";
 import { decodeSlugParam } from "./slug";
 import {
   DEFAULT_COMMENT_MAX,
@@ -83,8 +83,9 @@ function normalize(parsed: Store): Store {
     parsed.partners = JSON.parse(JSON.stringify(seedPartners)) as Partner[];
   }
   parsed.banners = parsed.banners?.length ? parsed.banners : seedBanners;
-  parsed.categories = parsed.categories?.length ? parsed.categories : DEFAULT_CATEGORIES.map((c) => ({ ...c }));
-  parsed.categories = parsed.categories.map((c) => ({ ...c, geminiNotes: c.geminiNotes || "" }));
+  parsed.categories = withFreeBoard(
+    parsed.categories?.length ? parsed.categories : DEFAULT_CATEGORIES.map((c) => ({ ...c }))
+  ).map((c) => ({ ...c, geminiNotes: c.geminiNotes || "" }));
   parsed.settings = { ...defaultSettings(), ...parsed.settings };
   const account = siteAccountFrom(parsed.settings);
   parsed.settings.siteUsername = account.username;
@@ -257,7 +258,7 @@ export async function listAdminPosts(opts: { page?: number; category?: string } 
     page,
     pageSize,
     totalPages,
-    categories: store.categories?.length ? store.categories : DEFAULT_CATEGORIES,
+    categories: withFreeBoard(store.categories),
     counts,
     allCount: store.posts.length,
   };
@@ -294,7 +295,7 @@ export async function getSettings(): Promise<Settings> {
 
 export async function getCategories(): Promise<Category[]> {
   const store = await readStore();
-  return store.categories?.length ? store.categories : DEFAULT_CATEGORIES;
+  return withFreeBoard(store.categories);
 }
 
 export async function getBanners(): Promise<Banner[]> {

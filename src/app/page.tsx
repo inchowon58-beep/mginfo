@@ -11,7 +11,7 @@ import { TalkHome } from "@/components/themes/TalkHome";
 import { PortalHome } from "@/components/themes/PortalHome";
 import { CarrotHome } from "@/components/themes/CarrotHome";
 import { StudioHome } from "@/components/themes/StudioHome";
-import { SITE, displaySiteName, parseCarrotKeywords } from "@/lib/categories";
+import { displaySiteName, parseCarrotKeywords, siteBrand } from "@/lib/categories";
 import { pickRandomBanner } from "@/lib/banners";
 import { getEnabledBanners, getPartners, getPublishedPosts, getSettings } from "@/lib/db";
 import { siteUrl } from "@/lib/seo";
@@ -21,22 +21,25 @@ export const dynamic = "force-dynamic";
 
 export async function generateMetadata(): Promise<Metadata> {
   const settings = await getSettings();
-  const name = displaySiteName(settings.siteName);
-  const tagline = (settings.siteTagline || "").trim() || SITE.tagline;
-  const description = `${tagline}. ${SITE.description}`;
+  const brand = siteBrand(settings);
   return {
-    title: { absolute: `${name} — ${tagline}` },
-    description,
-    keywords: [name, tagline, "매거진", "가이드"],
+    title: { absolute: `${brand.name} — ${brand.tagline}` },
+    description: brand.description,
+    keywords: [brand.name, brand.tagline, "매거진", "가이드"],
     alternates: { canonical: siteUrl("/") },
     robots: { index: true, follow: true },
     openGraph: {
-      title: `${name} — ${tagline}`,
-      description,
+      title: `${brand.name} — ${brand.tagline}`,
+      description: brand.description,
       url: siteUrl("/"),
-      siteName: name,
+      siteName: brand.name,
       locale: "ko_KR",
       type: "website",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: `${brand.name} — ${brand.tagline}`,
+      description: brand.description,
     },
   };
 }
@@ -125,13 +128,15 @@ export default async function HomePage() {
   }
 
   if (theme.id === "press") {
+    const settings = await getSettings();
+    const brand = siteBrand(settings);
     const feed = posts.slice(0, 6);
     return (
       <SiteFrame active="home">
         <section className="press-mast">
-          <p className="press-kicker">매일 새로운 이야기</p>
-          <h1>모든 생활 정보를 한눈에</h1>
-          <p className="press-dek">반려동물·뷰티·인테리어·맛집 — 실생활에 바로 쓰는 가이드</p>
+          <p className="press-kicker">{brand.tagline}</p>
+          <h1>{brand.name}</h1>
+          <p className="press-dek">{brand.description}</p>
         </section>
         <main className="container">
           {banner ? <PromoBanner banner={banner} /> : null}
@@ -159,15 +164,17 @@ export default async function HomePage() {
     );
   }
 
+  const settings = await getSettings();
+  const brand = siteBrand(settings);
   return (
     <SiteFrame active="home">
       <section className="edit-hero">
-        <p className="edit-kicker">Lifestyle Magazine</p>
+        <p className="edit-kicker">{brand.tagline}</p>
         <h1>
-          Curated Life &amp; Trend
-          <span>매거진</span>
+          {brand.name}
+          <span>{brand.tagline}</span>
         </h1>
-        <p className="edit-dek">{SITE.description}</p>
+        <p className="edit-dek">{brand.description}</p>
       </section>
       <main className="container">
         <CategoryBar />

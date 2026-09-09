@@ -4,7 +4,7 @@ out
 .env
 .env.local
 data/store.json
-data/ops-ledger.json
+data/hub-board.json
 public/uploads
 *.log
 .DS_Store

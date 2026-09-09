@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { displaySiteName, SITE } from "@/lib/categories";
+import { displaySiteName, siteBrand } from "@/lib/categories";
 import { getPublishedPosts, getSettings } from "@/lib/db";
 import { buildPostSeoDescription, buildPostSeoTitle } from "@/lib/post-seo";
 import { postUrl, SITE_ORIGIN } from "@/lib/seo";
@@ -19,6 +19,7 @@ export async function GET() {
   const [postsRaw, settings] = await Promise.all([getPublishedPosts(), getSettings()]);
   const posts = postsRaw.slice(0, 50);
   const siteName = displaySiteName(settings.siteName);
+  const brand = siteBrand(settings);
   const items = posts
     .map((post) => {
       const url = xmlEscape(postUrl(post.slug));
@@ -44,7 +45,7 @@ export async function GET() {
   <channel>
     <title>${xmlEscape(siteName)}</title>
     <link>${SITE_ORIGIN}/</link>
-    <description>${xmlEscape(SITE.description)}</description>
+    <description>${xmlEscape(brand.description)}</description>
     <language>ko</language>
     <atom:link href="${SITE_ORIGIN}/rss.xml" rel="self" type="application/rss+xml" />
     ${items}

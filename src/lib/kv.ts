@@ -1,5 +1,6 @@
 const STORE_KEY = "infocs-magazine-store";
 const OPS_KEY = "infocs-ops-ledger";
+const HUB_BOARD_KEY = "infocs-hub-board";
 
 function redisConfig(): { url: string; token: string } | null {
   const url = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL || "";
@@ -75,4 +76,24 @@ export async function kvGetOpsJson<T>(): Promise<T | null> {
 export async function kvSetOpsJson(value: unknown): Promise<void> {
   if (!redisConfig()) throw new Error("Redis가 연결되어 있지 않습니다.");
   await redisCommand(["SET", OPS_KEY, JSON.stringify(value)]);
+}
+
+export async function kvGetHubBoardJson<T>(): Promise<T | null> {
+  if (!redisConfig()) return null;
+  const result = await redisCommand(["GET", HUB_BOARD_KEY]);
+  if (result == null) return null;
+  if (typeof result === "object") return result as T;
+  if (typeof result === "string") {
+    try {
+      return JSON.parse(result) as T;
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
+export async function kvSetHubBoardJson(value: unknown): Promise<void> {
+  if (!redisConfig()) throw new Error("Redis가 연결되어 있지 않습니다.");
+  await redisCommand(["SET", HUB_BOARD_KEY, JSON.stringify(value)]);
 }

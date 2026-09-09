@@ -7,6 +7,7 @@ const views = {
 
 let sites = [];
 let showPasswords = {};
+let apexStatsOpen = false;
 
 function show(name) {
   Object.entries(views).forEach(([key, node]) => node?.classList.toggle("show", key === name));
@@ -107,6 +108,106 @@ function formatDay(value) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
+function localDayKey(value) {
+  const d = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(d.getTime())) return "";
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function shiftLocalDay(base, delta) {
+  return localDayKey(new Date(base.getFullYear(), base.getMonth(), base.getDate() + delta));
+}
+
+function ledgerOverview(list) {
+  const rows = Array.isArray(list) ? list : [];
+  const now = new Date();
+  const today = localDayKey(now);
+  const yesterday = shiftLocalDay(now, -1);
+  const twoDaysAgo = shiftLocalDay(now, -2);
+  let todayCount = 0;
+  let yesterdayCount = 0;
+  let twoDaysCount = 0;
+  for (const site of rows) {
+    const day = localDayKey(site.createdAt);
+    if (day === today) todayCount += 1;
+    else if (day === yesterday) yesterdayCount += 1;
+    else if (day === twoDaysAgo) twoDaysCount += 1;
+  }
+  const groups = groupByApex(rows)
+    .slice()
+    .sort((a, b) => b.count - a.count || a.apex.localeCompare(b.apex, "ko"));
+  return {
+    total: rows.length,
+    today: todayCount,
+    yesterday: yesterdayCount,
+    twoDaysAgo: twoDaysCount,
+    todayLabel: today,
+    yesterdayLabel: yesterday,
+    twoDaysLabel: twoDaysAgo,
+    apexCount: groups.length,
+    groups,
+  };
+}
+
+function renderLedgerStats() {
+  const el = document.getElementById("ledger-stats");
+  if (!el) return;
+  const stats = ledgerOverview(sites);
+  const apexRows = stats.groups
+    .map(
+      (group) => `
+        <div class="apex-stat">
+          <span>${escapeHtml(group.apex)}</span>
+          <b>${group.count}</b>
+        </div>`
+    )
+    .join("");
+  el.innerHTML = `
+    <div class="stat-grid">
+      <div class="stat-card">
+        <p>전체 등록 사이트</p>
+        <strong>${stats.total}</strong>
+        <small>대장에 있는 사이트</small>
+      </div>
+      <div class="stat-card">
+        <p>오늘 등록</p>
+        <strong>${stats.today}</strong>
+        <small>${escapeHtml(stats.todayLabel)}</small>
+      </div>
+      <div class="stat-card">
+        <p>어제 등록</p>
+        <strong>${stats.yesterday}</strong>
+        <small>${escapeHtml(stats.yesterdayLabel)}</small>
+      </div>
+      <div class="stat-card">
+        <p>2일 전 등록</p>
+        <strong>${stats.twoDaysAgo}</strong>
+        <small>${escapeHtml(stats.twoDaysLabel)}</small>
+      </div>
+      <div class="stat-card">
+        <p>대표도메인</p>
+        <strong>${stats.apexCount}</strong>
+        <small>메인 도메인 묶음</small>
+      </div>
+    </div>
+    <div class="apex-stats">
+      <div class="apex-stats-head">
+        <div>
+          <b>대표도메인별 서브도메인</b>
+          <p>${stats.apexCount}개 대표도메인 · 개수는 각 묶음의 사이트 수입니다.</p>
+        </div>
+        <button class="ghost" id="apex-stats-toggle" type="button">${apexStatsOpen ? "접기" : "펼치기"}</button>
+      </div>
+      <div class="apex-stats-list" ${apexStatsOpen ? "" : "hidden"}>
+        ${stats.groups.length ? apexRows : `<p class="empty">아직 대표도메인이 없습니다.</p>`}
+      </div>
+    </div>`;
+  document.getElementById("apex-stats-toggle")?.addEventListener("click", () => {
+    apexStatsOpen = !apexStatsOpen;
+    renderLedgerStats();
+  });
+}
+
 function updateApexHint(inputId, hintEl, fallback) {
   const host = cleanHost(document.getElementById(inputId).value);
   if (!host) {
@@ -150,6 +251,7 @@ function renderHistory(rows) {
 }
 
 function renderLedger() {
+  renderLedgerStats();
   const query = document.getElementById("ledger-search").value;
   const groups = groupByApex(filterSites(sites, query));
   if (!groups.length) {

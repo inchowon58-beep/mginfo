@@ -44,6 +44,7 @@ export function Footer({
 }) {
   const chrome = getThemeChrome(themeId);
   const siteName = displaySiteName(settings?.siteName);
+  const tagline = (settings?.siteTagline || "").trim() || chrome.tagline;
   const bizLines = settings ? footerBizLines(settings) : [];
   return (
     <footer className="site-footer">
@@ -51,7 +52,7 @@ export function Footer({
         <div className="footer-brand">
           <BrandText themeId={themeId} name={siteName} />
         </div>
-        <p className="footer-tag">{chrome.tagline}</p>
+        <p className="footer-tag">{tagline}</p>
         <div className="footer-links">
           <Link href="/">{chrome.home}</Link>
           <Link href="/posts">{chrome.posts}</Link>

@@ -2,6 +2,7 @@ import { get, put } from "@vercel/blob";
 
 const STORE_PATH = "infocs-magazine-store.json";
 const OPS_PATH = "infocs-ops-ledger.json";
+const HUB_BOARD_PATH = "infocs-hub-board.json";
 
 export function hasBlobStore(): boolean {
   return Boolean(
@@ -47,4 +48,12 @@ export async function blobGetOpsJson<T>(): Promise<T | null> {
 
 export async function blobSetOpsJson(value: unknown): Promise<void> {
   return blobSetJson(value, OPS_PATH);
+}
+
+export async function blobGetHubBoardJson<T>(): Promise<T | null> {
+  return blobGetJson<T>(HUB_BOARD_PATH);
+}
+
+export async function blobSetHubBoardJson(value: unknown): Promise<void> {
+  return blobSetJson(value, HUB_BOARD_PATH);
 }

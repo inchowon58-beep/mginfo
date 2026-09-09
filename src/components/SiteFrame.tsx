@@ -4,7 +4,7 @@ import { SiteNameProvider } from "@/components/SiteNameContext";
 import { SitePopup } from "@/components/SitePopup";
 import { BottomNav, Footer, Header } from "@/components/Header";
 import { JsonLd } from "@/components/seo/JsonLd";
-import { SITE, displaySiteName } from "@/lib/categories";
+import { displaySiteName, siteBrand } from "@/lib/categories";
 import { getCategories, getSettings, resolveSiteTheme } from "@/lib/db";
 import { engagementFromSettings } from "@/lib/engagement";
 import { buildOrganizationJsonLd, buildWebSiteJsonLd } from "@/lib/site-jsonld";
@@ -29,7 +29,7 @@ export async function SiteFrame({
     getCategories(),
   ]);
   const siteName = displaySiteName(settings.siteName);
-  const description = (settings.siteTagline || "").trim() || SITE.description;
+  const { description } = siteBrand(settings);
   return (
     <div className={`${theme.rootClass} ${className}`.trim()}>
       <JsonLd data={[buildWebSiteJsonLd(siteName, description), buildOrganizationJsonLd(siteName, settings, description)]} />

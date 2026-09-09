@@ -9,7 +9,7 @@ import "./theme-talk.css";
 import "./theme-portal.css";
 import "./theme-carrot.css";
 import "./theme-studio.css";
-import { SITE, displaySiteName } from "@/lib/categories";
+import { siteBrand } from "@/lib/categories";
 import { getSettings } from "@/lib/db";
 import { resolveNaverVerification, SITE_ORIGIN } from "@/lib/seo";
 
@@ -23,17 +23,29 @@ export const viewport: Viewport = {
 
 export async function generateMetadata(): Promise<Metadata> {
   const settings = await getSettings();
-  const name = displaySiteName(settings.siteName);
-  const tagline = (settings.siteTagline || "").trim() || SITE.tagline;
+  const brand = siteBrand(settings);
   const naverVerification = resolveNaverVerification(settings.naverSiteVerification);
   return {
     title: {
-      default: `${name} — ${tagline}`,
-      template: `%s | ${name}`,
+      default: `${brand.name} — ${brand.tagline}`,
+      template: `%s | ${brand.name}`,
     },
-    description: SITE.description,
+    description: brand.description,
     metadataBase: new URL(SITE_ORIGIN),
     robots: { index: true, follow: true },
+    openGraph: {
+      title: `${brand.name} — ${brand.tagline}`,
+      description: brand.description,
+      url: SITE_ORIGIN,
+      siteName: brand.name,
+      locale: "ko_KR",
+      type: "website",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: `${brand.name} — ${brand.tagline}`,
+      description: brand.description,
+    },
     other: naverVerification
       ? {
           "naver-site-verification": naverVerification,

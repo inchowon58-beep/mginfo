@@ -14,6 +14,15 @@ export const CATEGORY_COLORS = [
   "#6366f1",
 ];
 
+export const FREE_BOARD_SLUG = "free";
+
+export const FREE_BOARD_CATEGORY: Category = {
+  slug: FREE_BOARD_SLUG,
+  name: "자유게시판",
+  filterClass: "g-free",
+  color: "#64748b",
+};
+
 export const DEFAULT_CATEGORIES: Category[] = [
   { slug: "pets", name: "반려동물", filterClass: "g-pets", color: "#f59e0b" },
   { slug: "beauty", name: "뷰티", filterClass: "g-beauty", color: "#ec4899" },
@@ -23,6 +32,7 @@ export const DEFAULT_CATEGORIES: Category[] = [
   { slug: "food", name: "맛집", filterClass: "g-food", color: "#ef4444" },
   { slug: "cooking", name: "요리", filterClass: "g-cooking", color: "#ea580c" },
   { slug: "life", name: "라이프", filterClass: "g-life", color: "#10b981" },
+  { ...FREE_BOARD_CATEGORY },
 ];
 
 export const CATEGORIES = DEFAULT_CATEGORIES;
@@ -41,8 +51,33 @@ export function ensureCategorySlug(slug: unknown, categories: Category[], fallba
   return categories[0]?.slug || fallback;
 }
 
+export function withFreeBoard(categories: Category[] = []): Category[] {
+  const others = (Array.isArray(categories) ? categories : []).filter((c) => c.slug !== FREE_BOARD_SLUG);
+  const found = (Array.isArray(categories) ? categories : []).find((c) => c.slug === FREE_BOARD_SLUG);
+  return [
+    ...others,
+    {
+      ...FREE_BOARD_CATEGORY,
+      color: found?.color || FREE_BOARD_CATEGORY.color,
+      filterClass: found?.filterClass || FREE_BOARD_CATEGORY.filterClass,
+      geminiNotes: found?.geminiNotes || "",
+    },
+  ];
+}
+
+export function isFreeBoardSlug(slug: string) {
+  return slug === FREE_BOARD_SLUG;
+}
+
 export function displaySiteName(name?: string) {
   return (name || "").trim() || SITE.name;
+}
+
+export function siteBrand(settings?: Pick<Settings, "siteName" | "siteTagline"> | null) {
+  const name = displaySiteName(settings?.siteName);
+  const tagline = String(settings?.siteTagline || "").trim() || SITE.tagline;
+  const description = `${name}. ${tagline}`;
+  return { name, tagline, description };
 }
 
 export function footerBizLines(biz: Pick<Settings, "company" | "ceo" | "bizNo" | "address" | "phone" | "email">) {
@@ -63,9 +98,9 @@ export function makeCategory(name: string, existing: Category[], geminiNotes = "
   const label = name.trim();
   const notes = geminiNotes.trim();
   const base = slugify(label);
-  let slug = base;
-  let n = 2;
-  while (existing.some((c) => c.slug === slug)) {
+  let slug = base === FREE_BOARD_SLUG ? `${base}-2` : base;
+  let n = slug === base ? 2 : 3;
+  while (existing.some((c) => c.slug === slug) || slug === FREE_BOARD_SLUG) {
     slug = `${base}-${n}`;
     n += 1;
   }

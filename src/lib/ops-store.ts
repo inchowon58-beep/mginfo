@@ -3,7 +3,7 @@ import path from "path";
 import { blobGetOpsJson, blobSetOpsJson, hasBlobStore } from "./blob-store";
 import { hasRemoteStore, kvGetOpsJson, kvSetOpsJson } from "./kv";
 import { PersistError } from "./db";
-import { parseOpsSites, type OpsSite } from "./ops-ledger";
+import { cleanHost, parseOpsSite, parseOpsSites, type OpsSite } from "./ops-ledger";
 
 const LOCAL_PATH = path.join(process.cwd(), "data", "ops-ledger.json");
 
@@ -67,7 +67,21 @@ export async function getOpsSites(): Promise<OpsSite[]> {
 }
 
 export async function setOpsSites(sites: OpsSite[]): Promise<OpsSite[]> {
-  const next = { sites: parseOpsSites(sites) };
-  await saveOps(next);
-  return next.sites;
+  const prev = (await loadOps()).sites;
+  const byId = new Map(prev.map((row) => [row.id, row]));
+  const byDomain = new Map(prev.map((row) => [row.domain, row]));
+  const out: OpsSite[] = [];
+  const seen = new Set<string>();
+  for (const item of Array.isArray(sites) ? sites : []) {
+    const raw = item && typeof item === "object" ? (item as Record<string, unknown>) : {};
+    const domain = cleanHost(String(raw.domain ?? ""));
+    const id = String(raw.id ?? "").trim();
+    const current = (id && byId.get(id)) || (domain && byDomain.get(domain)) || undefined;
+    const site = parseOpsSite(item, current);
+    if (!site || seen.has(site.domain)) continue;
+    seen.add(site.domain);
+    out.push(site);
+  }
+  await saveOps({ sites: out });
+  return out;
 }

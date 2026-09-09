@@ -14,6 +14,7 @@ export type OpsSite = {
   vercelHost?: string;
   siteUrl?: string;
   adminUrl?: string;
+  boardAdsConsent?: boolean;
 };
 
 const KR_SECOND_LEVEL = new Set([
@@ -84,6 +85,10 @@ export function parseOpsSite(raw: unknown, current?: OpsSite): OpsSite | null {
     vercelHost: String(row.vercelHost ?? current?.vercelHost ?? "").trim(),
     siteUrl: String(row.siteUrl ?? current?.siteUrl ?? "").trim() || `https://${domain}`,
     adminUrl: String(row.adminUrl ?? current?.adminUrl ?? "").trim(),
+    boardAdsConsent:
+      row.boardAdsConsent === undefined || row.boardAdsConsent === null
+        ? Boolean(current?.boardAdsConsent)
+        : Boolean(row.boardAdsConsent),
   };
 }
 

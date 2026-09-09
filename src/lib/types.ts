@@ -46,6 +46,7 @@ export type Post = {
   vendorPhone?: string;
   vendorWebsite?: string;
   vendorKakao?: string;
+  hubCampaignId?: string;
 };
 
 export type AdminPostRow = {

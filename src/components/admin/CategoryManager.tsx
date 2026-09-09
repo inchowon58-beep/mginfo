@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import { DEFAULT_GEMINI_NOTES } from "@/lib/gemini-notes";
+import { isFreeBoardSlug } from "@/lib/categories";
 import type { Category } from "@/lib/types";
 
 export function CategoryManager() {
@@ -108,7 +109,10 @@ export function CategoryManager() {
               <div className="admin-cat-row">
                 <span className="admin-cat-dot" style={{ background: c.color }} />
                 <b>{c.name}</b>
-                <em>{count}편</em>
+                <em>{count}편{isFreeBoardSlug(c.slug) ? " · 필수" : ""}</em>
+                {isFreeBoardSlug(c.slug) ? (
+                  <span className="field-hint" style={{ margin: 0 }}>삭제 불가</span>
+                ) : (
                 <button
                   className="btn btn-danger"
                   type="button"
@@ -117,6 +121,7 @@ export function CategoryManager() {
                 >
                   삭제
                 </button>
+                )}
               </div>
               <label>제미나이 추가 지시사항</label>
               <textarea

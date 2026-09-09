@@ -134,6 +134,16 @@ function FilledIcon({
       </svg>
     );
   }
+  if (slug === "free") {
+    return (
+      <svg {...mark} className={live} aria-hidden>
+        <g className="live-mark">
+          <path d="M5 4.5h10.5L19 8v11.5H5V4.5z" />
+          <path d="M15.2 4.8V8H19" />
+        </g>
+      </svg>
+    );
+  }
   return (
     <svg {...mark} className={live} aria-hidden>
       <circle className="live-mark" cx="12" cy="12" r="4.2" />
@@ -221,6 +231,15 @@ function LineIcon({ slug }: { slug?: CategorySlug | "all" }) {
         <path d="M8 10c0-2 1.5-4 4-5 2.5 1 4 3 4 5" />
         <path d="M5 14h14v2a5 5 0 01-5 5h-4a5 5 0 01-5-5v-2z" />
         <path d="M12 5V3" />
+      </svg>
+    );
+  }
+  if (slug === "free") {
+    return (
+      <svg {...line} aria-hidden>
+        <path d="M6 5h9l3 3v11H6V5z" />
+        <path d="M15 5v3h3" />
+        <path d="M9 12h6M9 16h4" />
       </svg>
     );
   }

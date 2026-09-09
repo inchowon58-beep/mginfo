@@ -8,6 +8,7 @@ const NAV = [
   { href: "/admin/settings", label: "설정" },
   { href: "/admin/vendors", label: "광고업체정보설정" },
   { href: "/admin/ops", label: "사이트 대장" },
+  { href: "/admin/ops/board", label: "자유게시판 광고" },
   { href: "/admin/posts", label: "글 목록" },
   { href: "/admin/posts/new", label: "새 글 작성" },
   { href: "/admin/bulk", label: "대량발행예약" },
@@ -17,7 +18,7 @@ const NAV = [
 export function AdminNav({ showOps = false }: { showOps?: boolean }) {
   const pathname = usePathname();
   const router = useRouter();
-  const items = showOps ? NAV : NAV.filter((item) => item.href !== "/admin/ops");
+  const items = showOps ? NAV : NAV.filter((item) => !item.href.startsWith("/admin/ops"));
 
   async function logout() {
     await fetch("/api/auth/logout", { method: "POST" });
@@ -34,7 +35,8 @@ export function AdminNav({ showOps = false }: { showOps?: boolean }) {
     }
     if (href === "/admin/password") return pathname.startsWith("/admin/password");
     if (href === "/admin/vendors") return pathname.startsWith("/admin/vendors");
-    if (href === "/admin/ops") return pathname.startsWith("/admin/ops");
+    if (href === "/admin/ops/board") return pathname.startsWith("/admin/ops/board");
+    if (href === "/admin/ops") return pathname === "/admin/ops";
     return pathname === href;
   }
 

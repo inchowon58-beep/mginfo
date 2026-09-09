@@ -99,6 +99,28 @@ export function OpsLedger({ sites }: { sites: OpsSite[] }) {
     if (res.ok) router.refresh();
   }
 
+  async function toggleConsent(site: OpsSite) {
+    setBusy(true);
+    setError("");
+    try {
+      const next = sites.map((row) =>
+        row.id === site.id ? { ...row, boardAdsConsent: !row.boardAdsConsent, updatedAt: new Date().toISOString() } : row
+      );
+      const res = await fetch("/api/ops/sites", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sites: next }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "저장 실패");
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "저장 실패");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   const apexHint = form.domain.trim()
     ? `메인도메인 묶음: ${apexDomain(form.domain)}`
     : "서브도메인을 넣으면 메인도메인 아래에 묶입니다.";
@@ -111,6 +133,7 @@ export function OpsLedger({ sites }: { sites: OpsSite[] }) {
             <h2>사이트 대장</h2>
             <p className="field-hint" style={{ marginTop: 0 }}>
               마스터만 볼 수 있습니다. 메인도메인으로 묶이고, 각 서브도메인의 컨셉·VM·네이버 웹문서 계정이 남습니다.
+              광고글 동의를 켠 사이트만 자유게시판 허브 광고 대상이 됩니다.
             </p>
           </div>
           <button className="btn btn-primary" type="button" onClick={startCreate}>
@@ -184,12 +207,21 @@ export function OpsLedger({ sites }: { sites: OpsSite[] }) {
                         : ""}
                     </span>
                   </div>
-                  <span>
+                    <span>
                     {site.siteUrl ? (
                       <a className="btn btn-ghost" href={site.siteUrl} target="_blank" rel="noreferrer">
                         열기
                       </a>
                     ) : null}
+                    <label className="ops-consent">
+                      <input
+                        type="checkbox"
+                        checked={Boolean(site.boardAdsConsent)}
+                        disabled={busy}
+                        onChange={() => toggleConsent(site)}
+                      />
+                      광고글 동의
+                    </label>
                     <button className="btn btn-ghost" type="button" onClick={() => setShowPw((m) => ({ ...m, [site.id]: !m[site.id] }))}>
                       {showPw[site.id] ? "비번숨김" : "비번보기"}
                     </button>

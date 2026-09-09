@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { isAdminSession } from "@/lib/auth";
-import { makeCategory } from "@/lib/categories";
+import { makeCategory, isFreeBoardSlug } from "@/lib/categories";
 import { readStore, updateStore } from "@/lib/db";
 import { persistFail } from "@/lib/persist-api";
 
@@ -53,7 +53,7 @@ export async function PATCH(request: Request) {
       if (typeof body.geminiNotes === "string") {
         cat.geminiNotes = body.geminiNotes.trim();
       }
-      if (typeof body.name === "string" && body.name.trim()) {
+      if (typeof body.name === "string" && body.name.trim() && !isFreeBoardSlug(slug)) {
         cat.name = body.name.trim();
       }
     });
@@ -70,6 +70,9 @@ export async function DELETE(request: Request) {
   }
   const slug = new URL(request.url).searchParams.get("slug") || "";
   if (!slug) return NextResponse.json({ error: "카테고리를 선택하세요." }, { status: 400 });
+  if (isFreeBoardSlug(slug)) {
+    return NextResponse.json({ error: "자유게시판은 필수 카테고리라 삭제할 수 없습니다." }, { status: 400 });
+  }
   try {
     const store = await readStore();
     const count = store.posts.filter((p) => p.category === slug).length;
