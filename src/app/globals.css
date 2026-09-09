@@ -1843,7 +1843,48 @@ body {
   justify-content: space-between;
   align-items: center;
   gap: 8px;
+  margin-bottom: 0;
+}
+
+.bulk-group.is-open header {
   margin-bottom: 16px;
+}
+
+.bulk-group-head {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  min-width: 0;
+  flex: 1;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.bulk-group-head strong {
+  font-size: 15px;
+}
+
+.bulk-group-summary {
+  color: #94a3b8;
+  font-size: 13px;
+  font-weight: 400;
+}
+
+.bulk-group-tools {
+  display: flex;
+  flex-shrink: 0;
+  gap: 8px;
+}
+
+.bulk-group-body {
+  display: grid;
+  gap: 0;
 }
 
 .bulk-group-grid,

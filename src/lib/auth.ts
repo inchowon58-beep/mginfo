@@ -49,14 +49,23 @@ export async function verifyAdminToken(token: string): Promise<boolean> {
   }
 }
 
+const ADMIN_COOKIE_OPTS = {
+  httpOnly: true,
+  sameSite: "lax" as const,
+  path: "/",
+  maxAge: 60 * 60 * 24 * 7,
+};
+
+export function applyAdminCookie(
+  res: { cookies: { set: (name: string, value: string, options?: Record<string, unknown>) => unknown } },
+  token: string
+) {
+  res.cookies.set(COOKIE, token, ADMIN_COOKIE_OPTS);
+}
+
 export async function setAdminCookie(token: string) {
   const jar = await cookies();
-  jar.set(COOKIE, token, {
-    httpOnly: true,
-    sameSite: "lax",
-    path: "/",
-    maxAge: 60 * 60 * 24 * 7,
-  });
+  jar.set(COOKIE, token, ADMIN_COOKIE_OPTS);
 }
 
 export async function setMasterCookie(token: string) {

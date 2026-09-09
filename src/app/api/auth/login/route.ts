@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { checkMasterLogin, checkSiteLogin, createAdminToken, setAdminCookie } from "@/lib/auth";
+import { applyAdminCookie, checkMasterLogin, checkSiteLogin, createAdminToken } from "@/lib/auth";
 import { getSettings } from "@/lib/db";
 
 export async function POST(request: Request) {
@@ -12,6 +12,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: "아이디 또는 비밀번호가 올바르지 않습니다." }, { status: 401 });
   }
   const token = await createAdminToken();
-  await setAdminCookie(token);
-  return NextResponse.json({ ok: true });
+  const res = NextResponse.json({ ok: true });
+  applyAdminCookie(res, token);
+  return res;
 }

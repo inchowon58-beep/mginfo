@@ -1,10 +1,16 @@
 "use client";
 
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { FormEvent, Suspense, useState } from "react";
 
+function safeAdminPath(raw: string | null) {
+  if (!raw || !raw.startsWith("/admin") || raw.startsWith("//") || raw.startsWith("/admin/login")) {
+    return "/admin";
+  }
+  return raw;
+}
+
 function LoginForm() {
-  const router = useRouter();
   const search = useSearchParams();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -23,11 +29,9 @@ function LoginForm() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "로그인 실패");
-      router.push(search.get("from") || "/admin");
-      router.refresh();
+      window.location.assign(safeAdminPath(search.get("from")));
     } catch (err) {
       setError(err instanceof Error ? err.message : "로그인 실패");
-    } finally {
       setBusy(false);
     }
   }

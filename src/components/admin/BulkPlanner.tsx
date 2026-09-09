@@ -80,6 +80,7 @@ export function BulkPlanner({
   const [tickError, setTickError] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [openGroupId, setOpenGroupId] = useState<string | null>(null);
 
   const previewAdd = useMemo(
     () => groups.reduce((sum, group) => sum + parseKeywordList(group.text).length, 0),
@@ -312,29 +313,62 @@ export function BulkPlanner({
           <button
             className="btn"
             type="button"
-            onClick={() => setGroups((rows) => [...rows, emptyGroup(categories[0]?.slug || "life")])}
+            onClick={() => {
+              const next = emptyGroup(categories[0]?.slug || "life");
+              setGroups((rows) => [...rows, next]);
+              setOpenGroupId(next.id);
+            }}
           >
             예약 칸 추가
           </button>
         </div>
 
         <div className="bulk-groups">
-          {groups.map((group, index) => (
-            <article key={group.id} className="bulk-group admin-form">
+          {groups.map((group, index) => {
+            const open = openGroupId === group.id;
+            const waiting = group.keywords.filter((k) => k.status === "queued" || k.status === "scheduled").length;
+            const published = group.keywords.filter((k) => k.status === "published").length;
+            return (
+            <article key={group.id} className={`bulk-group admin-form${open ? " is-open" : ""}`}>
               <header>
-                <strong>
-                  예약 {index + 1}
-                  {group.vendorName ? ` · ${group.vendorName}` : ""}
-                </strong>
                 <button
-                  className="btn"
+                  className="bulk-group-head"
                   type="button"
-                  onClick={() => setGroups((rows) => rows.filter((row) => row.id !== group.id))}
-                  disabled={groups.length <= 1}
+                  aria-expanded={open}
+                  onClick={() => setOpenGroupId(open ? null : group.id)}
                 >
-                  삭제
+                  <strong>
+                    예약 {index + 1}
+                    {group.vendorName ? ` · ${group.vendorName}` : ""}
+                  </strong>
+                  <span className="bulk-group-summary">
+                    대기 {waiting} · 발행 {published}
+                    {group.text.trim() ? ` · 작성 ${parseKeywordList(group.text).length}` : ""}
+                  </span>
                 </button>
+                <div className="bulk-group-tools">
+                  <button
+                    className="btn"
+                    type="button"
+                    onClick={() => setOpenGroupId(open ? null : group.id)}
+                  >
+                    {open ? "접기" : "펼치기"}
+                  </button>
+                  <button
+                    className="btn"
+                    type="button"
+                    onClick={() => {
+                      setGroups((rows) => rows.filter((row) => row.id !== group.id));
+                      setOpenGroupId((id) => (id === group.id ? null : id));
+                    }}
+                    disabled={groups.length <= 1}
+                  >
+                    삭제
+                  </button>
+                </div>
               </header>
+              {open ? (
+              <div className="bulk-group-body">
               <div className="bulk-group-grid">
                 <label>
                   카테고리
@@ -483,8 +517,11 @@ export function BulkPlanner({
                   실패분 다시 대기
                 </button>
               ) : null}
+              </div>
+              ) : null}
             </article>
-          ))}
+            );
+          })}
         </div>
         <div className="admin-actions">
           <button className="btn btn-primary" type="button" onClick={() => save()} disabled={busy}>
