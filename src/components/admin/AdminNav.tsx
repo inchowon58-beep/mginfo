@@ -14,9 +14,10 @@ const NAV = [
   { href: "/admin/banners", label: "메인 배너" },
 ];
 
-export function AdminNav() {
+export function AdminNav({ showOps = false }: { showOps?: boolean }) {
   const pathname = usePathname();
   const router = useRouter();
+  const items = showOps ? NAV : NAV.filter((item) => item.href !== "/admin/ops");
 
   async function logout() {
     await fetch("/api/auth/logout", { method: "POST" });
@@ -44,7 +45,7 @@ export function AdminNav() {
         <p>magazine.infocs.co.kr</p>
       </div>
       <nav className="admin-side-nav" aria-label="관리 메뉴">
-        {NAV.map((item) => (
+        {items.map((item) => (
           <Link key={item.href} href={item.href} className={isActive(item.href) ? "active" : ""}>
             {item.label}
           </Link>

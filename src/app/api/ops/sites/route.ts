@@ -1,3 +1,4 @@
+import { isOpsHub } from "@/lib/ops-hub";
 import { NextResponse } from "next/server";
 import { checkMasterPassword, isMasterSession } from "@/lib/auth";
 import { parseOpsSites } from "@/lib/ops-ledger";
@@ -11,6 +12,9 @@ async function authorizeOps(request: Request) {
 }
 
 export async function GET(request: Request) {
+  if (!isOpsHub()) {
+    return NextResponse.json({ error: "not found" }, { status: 404 });
+  }
   if (!(await authorizeOps(request))) {
     return NextResponse.json({ error: "마스터만 볼 수 있습니다." }, { status: 401 });
   }
@@ -18,6 +22,9 @@ export async function GET(request: Request) {
 }
 
 export async function PUT(request: Request) {
+  if (!isOpsHub()) {
+    return NextResponse.json({ error: "not found" }, { status: 404 });
+  }
   if (!(await authorizeOps(request))) {
     return NextResponse.json({ error: "마스터만 저장할 수 있습니다." }, { status: 401 });
   }
