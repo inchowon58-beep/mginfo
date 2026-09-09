@@ -481,7 +481,8 @@ export function PostEditor({ post }: { post?: Post }) {
       <div className="admin-card admin-form">
         <h2>제미나이로 작성</h2>
         <p style={{ color: "#94a3b8", fontSize: 13, marginTop: 0 }}>
-          메인 키워드로 글을 씁니다. 고른 형태 그대로 목차와 말투가 갈립니다.
+          메인 키워드와 지역 재료로 매번 새 글을 씁니다. 글방향은 시선만 정하고, 목차는 키워드에 맞게 새로 짭니다.
+          반려·맛집·미용·여행 글은 해당 지역 공공 저장본 숫자가 하단에 붙습니다.
         </p>
         <label>
           글 방향 <span className="req">*</span>

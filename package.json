@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "next dev --port 3000",
     "build": "next build",
-    "start": "next start --port 3000"
+    "start": "next start --port 3000",
+    "facts:build": "node scripts/build-public-facts.mjs"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",

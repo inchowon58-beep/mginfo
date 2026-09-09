@@ -3,8 +3,8 @@ import { articleStyleRole, articleStyleRules, articleStyleTemperature, type Arti
 import { parseFaqItems, type FaqItem } from "./faq";
 import { DEFAULT_GEMINI_MODEL } from "./gemini-models";
 import { fallbackFaqItems } from "./post-seo";
-import { extractPlaceName, getNearbyDistricts, getNearbyStations, getRegionFact, parseNameList } from "./region-geo";
-import { composeRegionInfo } from "./region-intro";
+import { extractPlaceName, formatRegionMaterials, getNearbyDistricts, getNearbyStations, parseNameList } from "./region-geo";
+import { formatPublicFactMaterials } from "./public-facts";
 import { stripGeneratedImages } from "./sanitize";
 import type { CategorySlug } from "./types";
 import { resolveWritingTone, writingTonePrompt } from "./writing-tone";
@@ -54,33 +54,28 @@ function uniquenessRules(input: GenerateInput): string {
   const experienceNotes = (input.experienceNotes || "").trim();
   const vendorName = (input.vendorName || "").trim();
   const place = extractPlaceName(region, input.focusKeyword, input.topic) || region;
-  const fact = place ? getRegionFact(place) : undefined;
-  const nearby = place ? getNearbyDistricts(place) : [];
-  const stations = place ? getNearbyStations(place) : [];
-  const factLines = fact
-    ? `- 공식 지명: ${fact.official}
-- 이 지역만의 랜드마크(사실): ${fact.landmarks.join(", ")}
-- 근방 동·구: ${nearby.join(", ") || "(없음)"}
-- 인근 역: ${stations.join(", ") || "(없음)"}
-- regionInfo는 반드시 "${fact.official}은 ${fact.landmarks.slice(0, 2).join("과 ")}가 있어 ..."처럼 그 동네만의 지명으로 시작하라.
-- 다른 지역에 그대로 붙여 넣을 수 있는 첫 문장은 금지.`
-    : place
-      ? `- 지역명: ${place}
-- 근방: ${nearby.join(", ") || "(없음)"}
-- 인근 역: ${stations.join(", ") || "(없음)"}
-- regionInfo는 ${place}의 실존 공원·역·도로·상권만 써서 2~3문장.`
-      : `- 주제에 시·구·동이 있으면 그 지명을 regionInfo와 첫 문단에 구체화하라.`;
+  const subject = (input.focusKeyword || input.topic || "").trim();
+  const materials = place ? formatRegionMaterials(place) : "";
+  const publicFacts = place ? formatPublicFactMaterials(place, subject, input.categoryName) : "";
 
-  return `유사문서 회피(네이버가 복제·유사 문서로 보지 않게):
-- 흔한 총정리/완벽가이드 제목과 똑같은 목차를 쓰지 마라. 이 글만의 각도(지역 동선, 선택 기준, 현장 관찰)로 구성한다.
-- 다른 지역에도 그대로 붙여 넣을 수 있는 문장은 줄인다. 지명, 역, 도로, 상권, 주차, 접근 동선처럼 그 동네만의 정보를 본문에 녹인다.
-- 숫자·절차·주의점은 일반론으로만 끝내지 말고, 그 지역에서 실제로 생기는 장면으로 풀어 쓴다.
-- 제목은 검색 의도를 담되, 다른 블로그와 겹치지 않는 표현을 고른다.
+  return `유사문서 회피(이 키워드·이 지역 조합으로만 성립하는 글을 쓴다):
+- 다른 키워드나 다른 동네에 붙여 넣어도 되는 문장·소제목은 쓰지 마라.
+- 분양·맛집·시공처럼 같은 업종이라도, 대상의 고유 특성(견종·시술·메뉴·공간)을 본문에 구체적으로 넣는다.
+- 일반 체크리스트(건강, 위생, 계약, 접종을 같은 순서로 나열)로 글을 채우지 마라. 이 키워드에서 실제로 갈리는 기준부터 쓴다.
+- 요일, 날씨, ‘검색량이 꾸준’, ‘메모입니다’, ‘오늘 기준으로 다시’, ‘한 곳만 보기보다 주변을 이어서’ 같은 상투 문장 금지.
+- 제목은 검색 의도를 담되 흔한 ‘완벽가이드·총정리·필수체크’ 패턴은 피한다.
 
-지역 정보:
+regionInfo(글 상단, 3~5문장):
+- 아래 지역 재료의 공식 지명·랜드마크·역·근방을 재료로, 이 키워드를 그 동네에서 찾는 사람 이야기로 자연스럽게 쓴다.
+- 재료 목록을 나열하거나 ‘A와 B가 있어 … 지역입니다’ 틀로 시작하지 마라.
+- 메인 키워드를 한 번은 문장 안에 자연스럽게 넣는다. 문장마다 반복하지 마라.
+- 없는 가게, 없는 거리 풍경, 없는 방문 일기는 만들지 마라. 재료에 있는 지명만 사실로 쓴다.
+
+${materials || "- 지역이 키워드에 있으면 그 지명을 regionInfo와 본문에 구체화하라."}
+${publicFacts ? `\n${publicFacts}` : ""}
 - 지역 입력값: ${region || "(없음)"}
 - 현장·지역 메모: ${localNotes || "(없음)"}
-${factLines}
+- 이 글의 고유 조합: ${[subject, place, vendorName].filter(Boolean).join(" · ") || "(키워드만)"}
 
 공통 문체:
 - 과장 광고, 이모지, 영어 해시태그, ‘지금 클릭’ 식 문장은 쓰지 않는다.
@@ -91,10 +86,10 @@ ${factLines}
 - 업체명: ${vendorName || "(없음)"}
 ${
   vendorName
-    ? `- 본문에 "${vendorName}"을 2~4회, 광고 문장 없이 자연스럽게 녹인다. 예: 이 지역에서 기준을 맞춰 본 곳, 동선이 편한 현장 등.
+    ? `- 본문에 "${vendorName}"을 2~3회, 그 지역·그 키워드 맥락에서만 자연스럽게 녹인다.
 - 최저가, 지금 예약, 클릭, 상담 폭주 같은 홍보 문구는 금지.
 - 전화번호, 홈페이지, 카카오 주소, tel/http 링크는 본문 HTML에 넣지 마라. 연락은 글 하단 버튼으로 따로 붙는다.
-- 마지막 소제목은 이 지역에서 고를 때 확인할 체크리스트로 닫고, 업체를 한 줄로 자연스럽게 언급해도 된다.`
+- 마지막 소제목을 업체 홍보나 공통 체크리스트로 닫지 마라.`
     : "- 특정 업체 홍보 문장은 넣지 않는다."
 }`;
 }
@@ -104,15 +99,16 @@ function seoRules(focusKeyword: string): string {
     return `메인 키워드가 없으면 카테고리와 주제에 맞는 자연스러운 정보형 제목을 쓴다.`;
   }
   return `메인 키워드: "${focusKeyword}"
-네이버 SEO 규칙(반드시 지킬 것):
-- 제목 앞쪽에 메인 키워드를 자연스럽게 넣는다. 제목은 검색 의도에 맞게 28~48자.
-- 리드(excerpt) 첫 문장에 메인 키워드를 포함한다.
-- 본문 첫 <p>는 regionInfo를 반복하지 말고, 그 다음 선택 기준부터 시작한다.
-- h2 소제목 3~5개 중 1~2개에 메인 키워드 또는 핵심 의미의 자연스러운 변형을 넣는다.
-- 본문 전체에 메인 키워드를 6~10회, 문맥에 맞게 분산해서 쓴다. 한 문장에 두 번 넣지 않는다.
-- faqItems 질문 3~4개 중 최소 2개는 메인 키워드로 시작하고, 지역이 있으면 1개는 지역명을 넣는다.
+키워드를 글의 주제로 정확히 다루되, 검색용으로 끼워 넣지 마라.
+- 제목 앞쪽에 메인 키워드를 자연스럽게 넣는다. 제목 28~48자, 이 키워드의 실제 검색 의도(비교, 주의, 동선, 조건 등)가 보이게.
+- excerpt 첫 문장에 메인 키워드를 포함하고, 바로 이어서 이 글만의 핵심 한 줄을 쓴다.
+- regionInfo에도 메인 키워드를 한 번만 자연스럽게 넣는다.
+- 본문 첫 <p>는 regionInfo를 반복하지 말고, 이 키워드에서 가장 중요한 판단 포인트부터 시작한다.
+- h2 3~5개 중 1~2개만 메인 키워드 또는 핵심 의미의 자연스러운 변형. 나머지 h2는 키워드 없이 구체적으로.
+- 본문 전체 메인 키워드 4~7회. 한 문장에 두 번 넣지 말고, 연속 문장이 같은 키워드로 시작하지 마라.
+- faqItems 3~4개. 질문은 실제로 검색될 법한 말로. 2개만 메인 키워드를 포함하고, 전부 같은 문장 틀로 시작하지 마라.
 - 키워드 나열, 숨은 텍스트, 의미 없는 반복, 광고 문구는 금지한다.
-- 지역·서비스명이 키워드에 있으면 실제 선택 기준, 절차, 주의점을 정보로 풀어 쓴다.`;
+- 키워드에 지역·품종·시술·메뉴가 있으면 그 대상의 고유 기준을 본문의 중심으로 삼는다.`;
 }
 
 export async function generateArticle(input: GenerateInput): Promise<GenerateResult> {
@@ -145,27 +141,27 @@ ${writingTonePrompt(resolveWritingTone(writingStyle, input.writingTone), input.w
 
 ${uniquenessRules(input)}
 
-작업: 메인 키워드를 대상으로, 선택한 글 형태의 골격·말투·소제목 순서대로 새로 작성한다. 형태를 무시하고 평범한 정보글로 바꾸지 마라.
+작업: 이 메인 키워드만으로 완결된 새 글을 쓴다. 글방향은 시선만 참고하고, 소제목과 전개는 키워드·지역·대상에 맞게 매번 새로 짠다. 다른 글의 목차를 채우지 마라.
 
 반드시 JSON만 출력한다. 설명 문장이나 마크다운 울타리는 넣지 않는다.
 형식:
 {
   "title": "한국어 제목",
-  "excerpt": "2~3문장 리드. 검색 스니펫으로도 읽히게. 첫 문장은 메인 키워드로 시작. 지역이 있으면 지역명을 자연스럽게 포함",
-  "bodyHtml": "HTML only. Use <h2>, <h3>, <p>, <strong>, <blockquote>, <ul><li>. 본문 2000~2800자. h2 소제목 3~5개. 인용 박스 1~2개. 이미지 태그 금지",
+  "excerpt": "2~3문장. 첫 문장은 메인 키워드로 시작. 이 글만의 핵심이 보이게. 지역이 있으면 지역명을 자연스럽게 포함",
+  "bodyHtml": "HTML only. Use <h2>, <h3>, <p>, <strong>, <blockquote>, <ul><li>. 본문 2200~3200자. h2 소제목 3~5개. 인용 박스 1~2개. 이미지 태그 금지",
   "tags": ["태그1", "태그2", "태그3"],
   "slugHint": "english-kebab-case-slug",
-  "regionInfo": "공식 지명과 그 동네 랜드마크로 시작하는 2~3문장",
+  "regionInfo": "지역 재료를 녹인 3~5문장. 상투 템플릿 금지. 메인 키워드 한 번",
   "nearbyAreas": ["근방동1", "근방동2", "근방동3", "근방동4", "근방동5"],
   "nearbyStations": ["역1", "역2", "역3", "역4", "역5"],
   "faqItems": [
-    { "question": "메인 키워드로 시작하는 질문", "answer": "2~3문장 답변" }
+    { "question": "실제로 검색될 법한 질문", "answer": "2~3문장 답변" }
   ]
 }
 
 본문 HTML 규칙:
 - <html>, <body> 없이 본문 조각만
-- 지역 소개 문단은 regionInfo에만 넣고 본문에서 반복하지 말 것
+- 지역 소개 문단은 regionInfo에만 넣고 본문에서 같은 문장을 반복하지 말 것. 본문에는 그 동네 동선·역·공간을 판단 기준으로 녹인다.
 - 중요한 기준·숫자·조건·결론은 <strong>으로 강조한다. 한 문단에 한 곳, 글 전체 4~8회. 문장 전체를 굵게 하지 말 것.
 - <img>, <figure>, 이미지 URL 금지
 - 연락처·URL은 본문에 넣지 않기`;
@@ -206,14 +202,7 @@ ${uniquenessRules(input)}
       input.categoryName
     );
   const place = extractPlaceName(input.region, focusKeyword, input.topic, parsed.title) || (input.region || "").trim();
-  const regionInfo =
-    String((parsed as GenerateResult).regionInfo || "").trim() ||
-    composeRegionInfo({
-      place,
-      keyword: focusKeyword || parsed.title,
-      categoryName: input.categoryName,
-      localNotes: input.localNotes,
-    });
+  const regionInfo = String((parsed as GenerateResult).regionInfo || "").trim();
   const nearbyAreas = parseNameList((parsed as GenerateResult).nearbyAreas) || (place ? getNearbyDistricts(place) : undefined);
   const nearbyStations =
     parseNameList((parsed as GenerateResult).nearbyStations) || (place ? getNearbyStations(place) : undefined);

@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import { CategoryManager } from "@/components/admin/CategoryManager";
+import { HubMasterSettings } from "@/components/admin/HubMasterSettings";
 import { DEFAULT_GEMINI_MODEL, GEMINI_MODELS } from "@/lib/gemini-models";
 import { SITE_THEMES } from "@/lib/site-theme";
 import { DEFAULT_WRITING_TONE, WRITING_TONES, isWritingToneId, type WritingToneId } from "@/lib/writing-tone";
@@ -55,12 +56,14 @@ export default function SettingsPage() {
   const [extraImagesEnabled, setExtraImagesEnabled] = useState(false);
   const [siteUsername, setSiteUsername] = useState("blog");
   const [sitePassword, setSitePassword] = useState("blog1234");
+  const [opsHub, setOpsHub] = useState(false);
 
   useEffect(() => {
     fetch("/api/settings")
       .then((r) => r.json())
       .then((data) => {
         const s = data.settings || {};
+        setOpsHub(Boolean(data.opsHub));
         setGeminiModel(s.geminiModel || DEFAULT_GEMINI_MODEL);
         setHasKey(Boolean(s.hasKey));
         if (s.geminiApiKey) setGeminiApiKey(s.geminiApiKey);
@@ -464,7 +467,9 @@ export default function SettingsPage() {
         </form>
       ) : null}
 
-      {tab === "master" && geminiUnlocked ? (
+      {tab === "master" && geminiUnlocked && opsHub ? <HubMasterSettings /> : null}
+
+      {tab === "master" && geminiUnlocked && !opsHub ? (
         <form className="admin-card admin-form" onSubmit={saveMaster} style={{ maxWidth: 640 }}>
           <h2>마스터 설정</h2>
           <p style={{ color: "#94a3b8", fontSize: 14 }}>

@@ -332,6 +332,27 @@ export function getRegionFact(label: string): RegionFact | undefined {
   return lookupMap(REGION_FACTS, label);
 }
 
+export function formatRegionMaterials(place: string): string {
+  const label = String(place || "").trim();
+  if (!label) return "";
+  const fact = getRegionFact(label);
+  const nearby = getNearbyDistricts(label);
+  const stations = getNearbyStations(label);
+  const hints = fact ? [fact.hook, ...(fact.hooks || [])].filter(Boolean) : [];
+  if (!fact) {
+    return `지역 재료(사실만. 문장 틀로 복사하지 말고 이 글 배경으로만 쓸 것):
+- 지역명: ${label}
+- 근방: ${nearby.join(", ") || "(없음)"}
+- 인근 역: ${stations.join(", ") || "(없음)"}`;
+  }
+  return `지역 재료(카탈로그 사실. 문장 틀로 복사하지 말고, 이 키워드를 이 동네에서 찾는 이야기로 녹일 것):
+- 공식 지명: ${fact.official}
+- 랜드마크: ${fact.landmarks.join(", ")}
+- 지역 힌트: ${hints.join(" / ") || "(없음)"}
+- 근방 동·구: ${nearby.join(", ") || "(없음)"}
+- 인근 역: ${stations.join(", ") || "(없음)"}`;
+}
+
 export function lookupRegionCoords(label: string): { lat: number; lng: number } | null {
   return lookupMap(REGION_COORDS, label) || null;
 }

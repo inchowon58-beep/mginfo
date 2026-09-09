@@ -7,6 +7,7 @@ import { generateArticle } from "@/lib/gemini";
 import { resolveGeminiNotes } from "@/lib/gemini-notes";
 import { ensureCategorySlug, getCategory } from "@/lib/categories";
 import { extractPlaceName } from "@/lib/region-geo";
+import { bannedContentError, collectPublishText } from "@/lib/banned-keywords";
 
 export async function POST(request: Request) {
   if (!(await isAdminSession())) {
@@ -28,6 +29,17 @@ export async function POST(request: Request) {
   const category = ensureCategorySlug(body.category, cats);
   const cat = getCategory(category, cats);
   const settings = await getSettings();
+  const banned = bannedContentError(
+    settings.publishBannedKeywords,
+    collectPublishText({
+      topic,
+      focusKeyword,
+      keywords: String(body.keywords || ""),
+      notes: String(body.notes || ""),
+      region: String(body.region || ""),
+    })
+  );
+  if (banned) return NextResponse.json({ error: banned }, { status: 400 });
   const region =
     String(body.region || "").trim() ||
     extractPlaceName(focusKeyword, topic, String(body.keywords || ""));
@@ -57,6 +69,18 @@ export async function POST(request: Request) {
       apiKey,
       model: settings.geminiModel || DEFAULT_GEMINI_MODEL,
     });
+    const generatedBan = bannedContentError(
+      settings.publishBannedKeywords,
+      collectPublishText({
+        title: article.title,
+        excerpt: article.excerpt,
+        bodyHtml: article.bodyHtml,
+        focusKeyword: article.tags?.join(" "),
+      })
+    );
+    if (generatedBan) {
+      return NextResponse.json({ error: generatedBan }, { status: 400 });
+    }
     return NextResponse.json({
       ok: true,
       article,

@@ -5,6 +5,7 @@ import { parseFaqItems } from "./faq";
 import { FREE_BOARD_SLUG } from "./categories";
 import { generateArticle } from "./gemini";
 import { DEFAULT_GEMINI_MODEL } from "./gemini-models";
+import { bannedContentError, collectPublishText } from "./banned-keywords";
 import { resolveGeminiNotes } from "./gemini-notes";
 import type { OpsSite } from "./ops-ledger";
 import { seoulDateKey } from "./publish-limits";
@@ -319,6 +320,8 @@ export async function generateHubBoardArticle(
 ) {
   const apiKey = settings.geminiApiKey || process.env.GEMINI_API_KEY || "";
   if (!apiKey) throw new Error("허브 마스터설정에 제미나이 API 키가 없습니다.");
+  const keywordBan = bannedContentError(settings.publishBannedKeywords, keyword.keyword, campaign.vendorName);
+  if (keywordBan) throw new Error(keywordBan);
   const voice = await fetchSiteVoice(site);
   const writingStyle = resolveArticleStyle(campaign.writingStyle || "random", keyword.keyword);
   const siteName = voice.siteName || site.siteName || site.domain;
@@ -339,6 +342,17 @@ export async function generateHubBoardArticle(
     apiKey,
     model: settings.geminiModel || DEFAULT_GEMINI_MODEL,
   });
+  const generatedBan = bannedContentError(
+    settings.publishBannedKeywords,
+    collectPublishText({
+      title: article.title,
+      excerpt: article.excerpt,
+      bodyHtml: article.bodyHtml,
+      focusKeyword: keyword.keyword,
+      tags: article.tags,
+    })
+  );
+  if (generatedBan) throw new Error(generatedBan);
   return {
     hubCampaignId: `${campaign.id}:${keyword.id}`,
     title: article.title,

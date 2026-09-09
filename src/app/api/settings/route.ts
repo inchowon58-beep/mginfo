@@ -10,11 +10,8 @@ import {
   orderedRange,
 } from "@/lib/engagement";
 import { persistFail } from "@/lib/persist-api";
-import {
-  normalizeDailyPostLimit,
-  normalizeUsableUntil,
-} from "@/lib/publish-limits";
-import { parseNaverVerification } from "@/lib/seo";
+import { isOpsHub } from "@/lib/ops-hub";
+import { applyMasterSettingsPatch } from "@/lib/settings-apply";
 import { isSiteThemeId } from "@/lib/site-theme";
 import { isWritingToneId } from "@/lib/writing-tone";
 
@@ -24,8 +21,9 @@ export async function GET() {
   }
   const settings = await getSettings();
   const master = await isMasterSession();
-  const { geminiApiKey, geminiModel, naverSiteVerification, sitePassword, ...rest } = settings;
+  const { geminiApiKey, geminiModel, naverSiteVerification, sitePassword, publishBannedKeywords, ...rest } = settings;
   return NextResponse.json({
+    opsHub: await isOpsHub(),
     settings: {
       ...rest,
       geminiApiKey: master && geminiApiKey ? `${geminiApiKey.slice(0, 6)}••••${geminiApiKey.slice(-4)}` : "",
@@ -33,6 +31,7 @@ export async function GET() {
       hasKey: master ? Boolean(geminiApiKey) : undefined,
       naverSiteVerification: master ? naverSiteVerification || "" : undefined,
       sitePassword: master ? sitePassword : undefined,
+      publishBannedKeywords: master ? publishBannedKeywords || [] : undefined,
     },
   });
 }
@@ -53,7 +52,8 @@ export async function POST(request: Request) {
     body.naverSiteVerification !== undefined ||
     body.extraImagesEnabled !== undefined ||
     body.siteUsername !== undefined ||
-    body.sitePassword !== undefined;
+    body.sitePassword !== undefined ||
+    body.publishBannedKeywords !== undefined;
   if (wantsMaster && !(await isMasterSession())) {
     return NextResponse.json(
       { error: "마스터 관리자만 마스터 설정을 바꿀 수 있습니다." },
@@ -73,39 +73,7 @@ export async function POST(request: Request) {
   }
   try {
     await updateStore((s) => {
-      if (typeof body.geminiApiKey === "string" && body.geminiApiKey && !body.geminiApiKey.includes("•")) {
-        s.settings.geminiApiKey = body.geminiApiKey.trim();
-      }
-      if (typeof body.geminiModel === "string" && body.geminiModel.trim()) {
-        s.settings.geminiModel = body.geminiModel.trim();
-      }
-      if (body.usableUntil !== undefined) {
-        s.settings.usableUntil = normalizeUsableUntil(body.usableUntil);
-      }
-      if (body.dailyPostLimit !== undefined) {
-        s.settings.dailyPostLimit = normalizeDailyPostLimit(body.dailyPostLimit, s.settings.dailyPostLimit);
-      }
-      if (typeof body.naverRankWork === "boolean") {
-        s.settings.naverRankWork = body.naverRankWork;
-      } else if (body.naverRankWork === "true" || body.naverRankWork === "1") {
-        s.settings.naverRankWork = true;
-      } else if (body.naverRankWork === "false" || body.naverRankWork === "0") {
-        s.settings.naverRankWork = false;
-      }
-      if (typeof body.extraImagesEnabled === "boolean") {
-        s.settings.extraImagesEnabled = body.extraImagesEnabled;
-      } else if (body.extraImagesEnabled === "true" || body.extraImagesEnabled === "1") {
-        s.settings.extraImagesEnabled = true;
-      } else if (body.extraImagesEnabled === "false" || body.extraImagesEnabled === "0") {
-        s.settings.extraImagesEnabled = false;
-      }
-      if (typeof body.naverSiteVerification === "string") {
-        s.settings.naverSiteVerification = parseNaverVerification(body.naverSiteVerification);
-      }
-      if (nextSiteUser && nextSitePass) {
-        s.settings.siteUsername = nextSiteUser;
-        s.settings.sitePassword = nextSitePass;
-      }
+      applyMasterSettingsPatch(s, body);
       const textKeys = [
         "siteName",
         "siteTagline",

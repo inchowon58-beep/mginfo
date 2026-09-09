@@ -13,7 +13,8 @@ import {
   type HubBoardKeyword,
 } from "./hub-board";
 import { hasRemoteStore, kvGetHubBoardJson, kvSetHubBoardJson } from "./kv";
-import { getOpsSites } from "./ops-store";
+import { getOpsSites, getBannedKeywords } from "./ops-store";
+import { bannedContentError, collectPublishText } from "./banned-keywords";
 
 const LOCAL_PATH = path.join(process.cwd(), "data", "hub-board.json");
 const MAX_PER_TICK = 2;
@@ -107,6 +108,9 @@ async function publishOneKeyword(campaign: HubBoardCampaign, keyword: HubBoardKe
   const current = next.keywords.find((row) => row.id === keyword.id) || assigned.keyword;
   try {
     const settings = await getSettings();
+    const bannedList = await getBannedKeywords();
+    const keywordBan = bannedContentError(bannedList, current.keyword, next.vendorName);
+    if (keywordBan) throw new Error(keywordBan);
     const article = await generateHubBoardArticle(next, current, assigned.site, settings);
     const pushed = await pushBoardPost(assigned.site, article);
     next = patchKeyword(next, keyword.id, {

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { BrandMark, BrandText } from "@/components/Brand";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { displaySiteName, footerBizLines } from "@/lib/categories";
+import { FOOTER_DISCLAIMER } from "@/lib/publish-disclaimer";
 import { getThemeChrome } from "@/lib/theme-chrome";
 import type { Category, Settings, SiteThemeId } from "@/lib/types";
 
@@ -69,6 +70,7 @@ export function Footer({
         <p className="footer-copy">
           © {new Date().getFullYear()} {siteName}
         </p>
+        <p className="footer-disclaimer">{FOOTER_DISCLAIMER}</p>
         <p className="footer-maker">
           블로그 사이트 제작 배포{" "}
           <a href="https://www.infocs.co.kr" target="_blank" rel="noopener noreferrer">

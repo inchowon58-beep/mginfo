@@ -306,15 +306,8 @@ export function resolveRegionContext(
     extractPlaceName(post.region, post.focusKeyword, post.title) || (post.region || "").trim();
   const keyword = (post.focusKeyword || post.title || "").trim();
   const seed = seedNumber(post.id, post.slug, post.publishedAt, keyword, place);
-  const regionInfo = composeRegionInfo({
-    place,
-    keyword,
-    categoryName: extra?.categoryName,
-    localNotes: extra?.localNotes,
-    seed,
-    publishedAt: post.publishedAt,
-    weatherLine: extra?.weatherLine,
-  });
+  const stored = String(post.regionInfo || "").trim();
+  const regionInfo = stored;
   if (!place) return null;
 
   const nearbyAreas = rotate(post.nearbyAreas?.length ? post.nearbyAreas : place ? getNearbyDistricts(place) : [], seed);

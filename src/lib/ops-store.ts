@@ -4,22 +4,28 @@ import { blobGetOpsJson, blobSetOpsJson, hasBlobStore } from "./blob-store";
 import { hasRemoteStore, kvGetOpsJson, kvSetOpsJson } from "./kv";
 import { PersistError } from "./db";
 import { cleanHost, parseOpsSite, parseOpsSites, type OpsSite } from "./ops-ledger";
+import { DEFAULT_BANNED_KEYWORDS, normalizeBannedKeywords } from "./banned-keywords";
 
 const LOCAL_PATH = path.join(process.cwd(), "data", "ops-ledger.json");
 
-type OpsStore = { sites: OpsSite[] };
+type OpsStore = { sites: OpsSite[]; bannedKeywords: string[] };
 
 function normalize(raw: unknown): OpsStore {
-  if (!raw || typeof raw !== "object") return { sites: [] };
-  return { sites: parseOpsSites((raw as { sites?: unknown }).sites) };
+  if (!raw || typeof raw !== "object") return { sites: [], bannedKeywords: DEFAULT_BANNED_KEYWORDS };
+  const row = raw as { sites?: unknown; bannedKeywords?: unknown };
+  return {
+    sites: parseOpsSites(row.sites),
+    bannedKeywords:
+      row.bannedKeywords === undefined ? DEFAULT_BANNED_KEYWORDS : normalizeBannedKeywords(row.bannedKeywords),
+  };
 }
 
 function readFile(): OpsStore {
   try {
-    if (!fs.existsSync(LOCAL_PATH)) return { sites: [] };
+    if (!fs.existsSync(LOCAL_PATH)) return normalize({});
     return normalize(JSON.parse(fs.readFileSync(LOCAL_PATH, "utf8")));
   } catch {
-    return { sites: [] };
+    return normalize({});
   }
 }
 
@@ -32,12 +38,12 @@ async function loadOps(): Promise<OpsStore> {
   if (hasBlobStore()) {
     const remote = await blobGetOpsJson<OpsStore>();
     if (remote) return normalize(remote);
-    return { sites: [] };
+    return normalize({});
   }
   if (hasRemoteStore()) {
     const remote = await kvGetOpsJson<OpsStore>();
     if (remote) return normalize(remote);
-    return { sites: [] };
+    return normalize({});
   }
   return readFile();
 }
@@ -67,9 +73,9 @@ export async function getOpsSites(): Promise<OpsSite[]> {
 }
 
 export async function setOpsSites(sites: OpsSite[]): Promise<OpsSite[]> {
-  const prev = (await loadOps()).sites;
-  const byId = new Map(prev.map((row) => [row.id, row]));
-  const byDomain = new Map(prev.map((row) => [row.domain, row]));
+  const prev = await loadOps();
+  const byId = new Map(prev.sites.map((row) => [row.id, row]));
+  const byDomain = new Map(prev.sites.map((row) => [row.domain, row]));
   const out: OpsSite[] = [];
   const seen = new Set<string>();
   for (const item of Array.isArray(sites) ? sites : []) {
@@ -82,6 +88,17 @@ export async function setOpsSites(sites: OpsSite[]): Promise<OpsSite[]> {
     seen.add(site.domain);
     out.push(site);
   }
-  await saveOps({ sites: out });
+  await saveOps({ ...prev, sites: out });
   return out;
+}
+
+export async function getBannedKeywords(): Promise<string[]> {
+  return (await loadOps()).bannedKeywords;
+}
+
+export async function setBannedKeywords(keywords: unknown): Promise<string[]> {
+  const prev = await loadOps();
+  const bannedKeywords = normalizeBannedKeywords(keywords);
+  await saveOps({ ...prev, bannedKeywords });
+  return bannedKeywords;
 }

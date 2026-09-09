@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
 import { checkMasterPassword } from "@/lib/auth";
+import { bannedContentError, unpublishBannedPosts } from "@/lib/banned-keywords";
 import { FREE_BOARD_SLUG, withFreeBoard } from "@/lib/categories";
 import { getSettings, updateStore } from "@/lib/db";
 import { alreadyHasCampaign, makeBoardPost } from "@/lib/hub-board";
 import { notifyPostIndexed } from "@/lib/indexnow";
 import { persistFail } from "@/lib/persist-api";
+import { applyMasterSettingsPatch, publicMasterSettings } from "@/lib/settings-apply";
 import { isSiteThemeId } from "@/lib/site-theme";
 import { isWritingToneId } from "@/lib/writing-tone";
 
@@ -16,13 +18,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "마스터만 볼 수 있습니다." }, { status: 401 });
   }
   const settings = await getSettings();
-  return NextResponse.json({
-    writingTone: settings.writingTone || "",
-    writingPersona: settings.writingPersona || "",
-    siteTheme: settings.siteTheme || "",
-    siteName: settings.siteName || "",
-    siteTagline: settings.siteTagline || "",
-  });
+  return NextResponse.json(publicMasterSettings(settings));
 }
 
 export async function PATCH(request: Request) {
@@ -33,18 +29,24 @@ export async function PATCH(request: Request) {
   const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
   const writingTone = isWritingToneId(body.writingTone) ? body.writingTone : "";
   const siteTheme = isSiteThemeId(body.siteTheme) ? body.siteTheme : "";
-  if (!writingTone && !siteTheme) {
-    return NextResponse.json({ error: "말투 또는 디자인을 보내 주세요." }, { status: 400 });
-  }
+  const unpublishBanned = body.unpublishBanned === true || body.unpublishBanned === "true";
   try {
-    let next = { writingTone: "", siteTheme: "" };
+    let unpublished = 0;
+    let next = publicMasterSettings(await getSettings());
     await updateStore((store) => {
       if (writingTone) store.settings.writingTone = writingTone;
       if (siteTheme) store.settings.siteTheme = siteTheme;
-      next = { writingTone: store.settings.writingTone, siteTheme: store.settings.siteTheme };
+      applyMasterSettingsPatch(store, body);
+      if (unpublishBanned) {
+        unpublished = unpublishBannedPosts(store.posts, store.settings.publishBannedKeywords);
+      }
+      next = publicMasterSettings(store.settings);
     });
-    return NextResponse.json({ ok: true, ...next });
+    return NextResponse.json({ ok: true, unpublished, ...next });
   } catch (err) {
+    if (err instanceof Error && /아이디|비밀번호/.test(err.message)) {
+      return NextResponse.json({ error: err.message }, { status: 400 });
+    }
     return persistFail(err);
   }
 }
@@ -63,6 +65,8 @@ export async function POST(request: Request) {
     let post = null as ReturnType<typeof makeBoardPost> | null;
     let duplicate = false;
     await updateStore((store) => {
+      const banned = bannedContentError(store.settings.publishBannedKeywords, title, String(body.focusKeyword || ""), String(body.excerpt || ""), String(body.bodyHtml || ""));
+      if (banned) throw new Error(banned);
       store.categories = withFreeBoard(store.categories);
       if (hubCampaignId && alreadyHasCampaign(store.posts, hubCampaignId)) {
         duplicate = true;
@@ -78,6 +82,9 @@ export async function POST(request: Request) {
     }
     return NextResponse.json({ ok: true, duplicate, post });
   } catch (err) {
+    if (err instanceof Error && err.message.includes("발행금지")) {
+      return NextResponse.json({ error: err.message }, { status: 400 });
+    }
     return persistFail(err);
   }
 }

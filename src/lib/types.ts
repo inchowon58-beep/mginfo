@@ -145,6 +145,7 @@ export type Settings = {
   address: string;
   phone: string;
   email: string;
+  publishBannedKeywords?: string[];
 };
 
 export type BulkKeywordStatus = "queued" | "scheduled" | "processing" | "published" | "failed";

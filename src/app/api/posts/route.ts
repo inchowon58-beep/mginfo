@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { ensureCategorySlug } from "@/lib/categories";
 import { isAdminSession } from "@/lib/auth";
 import { getPublishedPosts, readStore, updateStore } from "@/lib/db";
+import { bannedContentError, collectPublishText } from "@/lib/banned-keywords";
 import { checkCanCreatePost, checkCanPublish } from "@/lib/publish-limits";
 import { notifyPostIndexed } from "@/lib/indexnow";
 import { persistFail } from "@/lib/persist-api";
@@ -38,6 +39,19 @@ export async function POST(request: Request) {
   if (status === "published") {
     const publishBlock = checkCanPublish(store.settings);
     if (publishBlock) return NextResponse.json({ error: publishBlock }, { status: 403 });
+    const banned = bannedContentError(
+      store.settings.publishBannedKeywords,
+      collectPublishText({
+        title,
+        excerpt: String(body.excerpt || ""),
+        bodyHtml: String(body.bodyHtml || ""),
+        focusKeyword: String(body.focusKeyword || ""),
+        tags: Array.isArray(body.tags) ? body.tags.map((t: string) => String(t)) : String(body.tags || "").split(","),
+        topic: String(body.topic || ""),
+        region: String(body.region || ""),
+      })
+    );
+    if (banned) return NextResponse.json({ error: banned }, { status: 400 });
   }
   const category = ensureCategorySlug(body.category, store.categories || []);
   if (store.posts.some((p) => p.slug === slug)) slug = `${slug}-${Date.now().toString(36)}`;

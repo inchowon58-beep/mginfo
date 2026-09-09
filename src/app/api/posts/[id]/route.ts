@@ -3,6 +3,7 @@ import { isAdminSession } from "@/lib/auth";
 import { getPostById, getCategories, getSettings, updateStore } from "@/lib/db";
 import { extraImageLimit, parsePostImages } from "@/lib/post-images";
 import { checkCanPublish } from "@/lib/publish-limits";
+import { bannedContentError, collectPublishText } from "@/lib/banned-keywords";
 import { ensureCategorySlug } from "@/lib/categories";
 import { notifyPostIndexed } from "@/lib/indexnow";
 import { persistFail } from "@/lib/persist-api";
@@ -26,9 +27,26 @@ export async function PUT(
   const body = await request.json().catch(() => ({}));
   const now = new Date().toISOString();
   const status: PostStatus = body.status === "published" ? "published" : body.status === "draft" ? "draft" : current.status;
+  const settings = await getSettings();
   if (status === "published") {
-    const publishBlock = checkCanPublish(await getSettings(), current.status === "published");
+    const publishBlock = checkCanPublish(settings, current.status === "published");
     if (publishBlock) return NextResponse.json({ error: publishBlock }, { status: 403 });
+    const banned = bannedContentError(
+      settings.publishBannedKeywords,
+      collectPublishText({
+        title: String(body.title ?? current.title),
+        excerpt: String(body.excerpt ?? current.excerpt ?? ""),
+        bodyHtml: String(body.bodyHtml ?? current.bodyHtml ?? ""),
+        focusKeyword: String(body.focusKeyword ?? current.focusKeyword ?? ""),
+        tags: Array.isArray(body.tags)
+          ? body.tags.map((t: string) => String(t))
+          : body.tags != null
+            ? String(body.tags).split(",")
+            : current.tags,
+        region: String(body.region ?? current.region ?? ""),
+      })
+    );
+    if (banned) return NextResponse.json({ error: banned }, { status: 400 });
   }
   const cats = await getCategories();
   const category = ensureCategorySlug(body.category, cats, current.category);

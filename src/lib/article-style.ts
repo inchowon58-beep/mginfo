@@ -496,14 +496,17 @@ export function articleStyleRole(style: ArticleStyle): string {
 
 export function articleStyleRules(style: ArticleStyle): string {
   const def = getArticleStyleDef(style);
-  return `${def.rules}
+  return `글 각도: ${def.label} · ${def.hint}
+${def.role}
 
-형태 준수(반드시):
-- 위 글 형태의 구성 순서를 본문 h2에 반영한다. 다른 형태(단순 정보 나열, 광고 소개문)로 바꾸지 않는다.
-- 제목·리드·소제목·blockquote 톤이 이 형태와 맞아야 한다.
-- 공통 SEO·유사문서 규칙보다, 형태 골격이 먼저다.`;
+각도만 유지하고, 목차는 이 글만의 것으로 새로 짠다:
+- ${def.label}의 시선만 따른다. 정보성이면 판단 기준, 주의사항형이면 실수 예방, 후기형이면 둘러보고 고르는 시선.
+- 형태 설명에 나온 구성·소제목을 본문 h2에 복사하지 마라.
+- 금지 소제목 예: 무엇을 보나, 어떤 순서로, 조건과 주의, 정리, 자주 생기는 실수, 왜 이런 실수가, 현장에서 확인, 계약과 결정 전.
+- 소제목 3~5개는 이 메인 키워드와 이 지역·대상에만 성립하는 말로 만든다. 다른 키워드 글에 그대로 옮기면 어색해야 한다.
+- 제목·리드의 톤만 이 각도와 맞으면 된다. 골격 복붙보다 이 키워드에 맞는 완결된 글이 먼저다.`;
 }
 
 export function articleStyleTemperature(style: ArticleStyle): number {
-  return getArticleStyleDef(style).cool ? 0.72 : 0.88;
+  return getArticleStyleDef(style).cool ? 0.84 : 0.9;
 }

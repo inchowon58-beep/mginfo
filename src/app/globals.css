@@ -960,6 +960,42 @@ body {
   padding-left: 18px;
 }
 
+.magazine-root .article-facts {
+  margin: 40px 0 8px;
+  padding: 22px 22px 16px;
+  background: #f7f7f7;
+}
+
+.magazine-root .article-facts h2 {
+  margin: 0 0 8px;
+  font-size: 20px;
+}
+
+.magazine-root .article-facts p {
+  margin: 0 0 12px;
+  color: var(--text-muted);
+}
+
+.magazine-root .article-facts ul {
+  margin: 0 0 12px;
+  padding-left: 18px;
+}
+
+.magazine-root .article-facts-note {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.magazine-root .article-disclaimer {
+  margin: 36px 0 8px;
+  padding: 16px 18px;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--text-muted);
+  background: #f7f7f7;
+}
+
 .magazine-root .article-faq {
   margin: 40px 0 8px;
 }
@@ -2345,6 +2381,28 @@ body {
   color: #fff;
 }
 
+.keyword-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 12px;
+}
+
+.keyword-chip {
+  border: 1px solid #334155;
+  background: #0b1220;
+  color: #e2e8f0;
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.keyword-chip:hover {
+  border-color: #ef4444;
+  color: #fecaca;
+}
+
 .admin-subhead {
   margin: 24px 0 4px;
   font-size: 15px;
@@ -3542,6 +3600,13 @@ body {
 
 .magazine-root .site-footer .footer-maker a:hover {
   color: var(--accent);
+}
+
+.magazine-root .site-footer .footer-disclaimer {
+  margin: 10px 0 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text-sub, #9ca3af);
 }
 
 .vendor-logo-preview {

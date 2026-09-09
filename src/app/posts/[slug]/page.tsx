@@ -20,9 +20,10 @@ import {
 } from "@/lib/post-seo";
 import { buildBreadcrumbJsonLd, buildFaqPageJsonLd } from "@/lib/site-jsonld";
 import { ArticlePhoto } from "@/components/ArticlePhoto";
-import { resolveRegionContext, seedNumber } from "@/lib/region-intro";
+import { resolveRegionContext } from "@/lib/region-intro";
+import { buildPublicFactSection } from "@/lib/public-facts";
+import { PUBLISH_DISCLAIMER } from "@/lib/publish-disclaimer";
 import { placeInlineImages } from "@/lib/post-images";
-import { getPlaceWeather, weatherSentence } from "@/lib/weather";
 import { hasVendorCta } from "@/lib/vendor";
 
 export const dynamic = "force-dynamic";
@@ -97,13 +98,13 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
   const description = buildPostSeoDescription(post);
   const keywords = buildPostKeywords(post, cat?.name);
   const faqs = resolveFaqItems(post, cat?.name);
-  const geoBase = resolveRegionContext(post, { categoryName: cat?.name });
-  const weather = geoBase?.place ? await getPlaceWeather(geoBase.place) : null;
-  const geo = resolveRegionContext(post, {
+  const geo = resolveRegionContext(post, { categoryName: cat?.name });
+  const publicFacts = buildPublicFactSection({
+    place: geo?.place || post.region,
+    keyword,
     categoryName: cat?.name,
-    weatherLine: geoBase?.place
-      ? weatherSentence(geoBase.place, weather, seedNumber(post.id, post.slug, post.publishedAt))
-      : "",
+    postId: post.id,
+    slug: post.slug,
   });
   const extras = post.extraImages || [];
   const placed = placeInlineImages(post.bodyHtml, extras, keyword, { hasCover: Boolean(post.coverImage) });
@@ -182,6 +183,19 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
             ))}
           </div>
         )}
+        {publicFacts ? (
+          <section className="article-facts">
+            <h2>{publicFacts.heading}</h2>
+            <p>{publicFacts.lead}</p>
+            <ul>
+              {publicFacts.items.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+            <p className="article-facts-note">{publicFacts.note}</p>
+          </section>
+        ) : null}
+        <p className="article-disclaimer">{PUBLISH_DISCLAIMER}</p>
         {related.length > 0 && (
           <div className="related-posts">
             {related.map((cluster) => (

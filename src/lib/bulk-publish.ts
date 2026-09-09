@@ -6,6 +6,7 @@ import { DEFAULT_GEMINI_MODEL } from "./gemini-models";
 import { resolveGeminiNotes } from "./gemini-notes";
 import { notifyPostIndexed } from "./indexnow";
 import { checkCanCreatePost, checkCanPublish, countPostsCreatedToday, seoulDateKey } from "./publish-limits";
+import { bannedContentError, collectPublishText } from "./banned-keywords";
 import { extractPlaceName, parseNameList } from "./region-geo";
 import { cleanHtml } from "./sanitize";
 import { articleSlug, uid } from "./slug";
@@ -367,6 +368,8 @@ function findKeyword(store: Store, id: string) {
 }
 
 async function generateAndSave(store: Store, group: BulkGroup, item: BulkKeyword): Promise<Post> {
+  const keywordBan = bannedContentError(store.settings.publishBannedKeywords, item.keyword, group.vendorName);
+  if (keywordBan) throw new Error(keywordBan);
   const cats = store.categories || [];
   const category = ensureCategorySlug(group.category, cats);
   const cat = getCategory(category, cats);
@@ -387,6 +390,17 @@ async function generateAndSave(store: Store, group: BulkGroup, item: BulkKeyword
     apiKey,
     model: store.settings.geminiModel || DEFAULT_GEMINI_MODEL,
   });
+  const generatedBan = bannedContentError(
+    store.settings.publishBannedKeywords,
+    collectPublishText({
+      title: article.title,
+      excerpt: article.excerpt,
+      bodyHtml: article.bodyHtml,
+      focusKeyword: item.keyword,
+      tags: article.tags,
+    })
+  );
+  if (generatedBan) throw new Error(generatedBan);
   const now = new Date().toISOString();
   let slug = articleSlug(article.slugHint, item.keyword);
   if (store.posts.some((p) => p.slug === slug)) slug = `${slug}-${Date.now().toString(36)}`;
