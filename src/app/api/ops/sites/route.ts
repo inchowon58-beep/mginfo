@@ -12,7 +12,7 @@ async function authorizeOps(request: Request) {
 }
 
 export async function GET(request: Request) {
-  if (!isOpsHub()) {
+  if (!(await isOpsHub())) {
     return NextResponse.json({ error: "not found" }, { status: 404 });
   }
   if (!(await authorizeOps(request))) {
@@ -22,7 +22,7 @@ export async function GET(request: Request) {
 }
 
 export async function PUT(request: Request) {
-  if (!isOpsHub()) {
+  if (!(await isOpsHub())) {
     return NextResponse.json({ error: "not found" }, { status: 404 });
   }
   if (!(await authorizeOps(request))) {

@@ -50,7 +50,12 @@ async function pushOpsLedger(cfg) {
     body: JSON.stringify({ sites: cfg.sites || [] }),
   });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error || `웹 대장 동기화 실패 (${res.status})`);
+  if (!res.ok) {
+    if (res.status === 404) {
+      throw new Error("웹 대장을 찾지 못했습니다. 계정 설정의 웹 대장 주소가 https://magazine.infocs.co.kr 인지 확인하세요.");
+    }
+    throw new Error(data.error || `웹 대장 동기화 실패 (${res.status})`);
+  }
   return { ok: true, count: (cfg.sites || []).length };
 }
 
@@ -62,7 +67,12 @@ async function pullOpsLedger(cfg) {
     headers: { "x-infocs-master": password },
   });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error || `웹 대장을 가져오지 못했습니다. (${res.status})`);
+  if (!res.ok) {
+    if (res.status === 404) {
+      throw new Error("웹 대장을 찾지 못했습니다. 계정 설정의 웹 대장 주소가 https://magazine.infocs.co.kr 인지 확인하세요.");
+    }
+    throw new Error(data.error || `웹 대장을 가져오지 못했습니다. (${res.status})`);
+  }
   return Array.isArray(data.sites) ? data.sites : [];
 }
 

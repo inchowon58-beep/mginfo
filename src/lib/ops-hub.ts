@@ -1,13 +1,45 @@
-export function isOpsHub() {
-  const flag = String(process.env.OPS_LEDGER || "").trim().toLowerCase();
-  if (flag === "1" || flag === "true") return true;
-  if (flag === "0" || flag === "false") return false;
-  const domain = String(process.env.SITE_DOMAIN || process.env.NEXT_PUBLIC_SITE_DOMAIN || "")
+const HUB_HOST = "magazine.infocs.co.kr";
+
+function normalizeHost(raw: string) {
+  return String(raw || "")
     .trim()
     .toLowerCase()
+    .split(",")[0]
+    .trim()
     .replace(/^https?:\/\//, "")
     .replace(/\/.*$/, "")
+    .replace(/:\d+$/, "")
     .replace(/^www\./, "");
-  if (domain === "magazine.infocs.co.kr") return true;
-  return !process.env.VERCEL && !domain;
+}
+
+function flagValue() {
+  return String(process.env.OPS_LEDGER || "").trim().toLowerCase();
+}
+
+function envHostCandidates() {
+  return [
+    process.env.SITE_DOMAIN,
+    process.env.NEXT_PUBLIC_SITE_DOMAIN,
+    process.env.VERCEL_PROJECT_PRODUCTION_URL,
+  ].map((value) => normalizeHost(String(value || "")));
+}
+
+export function isHubHost(host?: string | null) {
+  return normalizeHost(String(host || "")) === HUB_HOST;
+}
+
+export async function isOpsHub() {
+  const flag = flagValue();
+  if (flag === "1" || flag === "true") return true;
+  if (flag === "0" || flag === "false") return false;
+  if (envHostCandidates().some((host) => host === HUB_HOST)) return true;
+  try {
+    const { headers } = await import("next/headers");
+    const h = await headers();
+    if (isHubHost(h.get("x-forwarded-host") || h.get("host"))) return true;
+  } catch {
+    /* no request context */
+  }
+  const siteDomain = envHostCandidates()[0];
+  return !process.env.VERCEL && !siteDomain;
 }

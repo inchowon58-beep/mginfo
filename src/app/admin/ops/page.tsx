@@ -7,7 +7,7 @@ import { notFound } from "next/navigation";
 export const dynamic = "force-dynamic";
 
 export default async function AdminOpsPage() {
-  if (!isOpsHub()) notFound();
+  if (!(await isOpsHub())) notFound();
   if (!(await isMasterSession())) return <OpsUnlock />;
   const sites = await getOpsSites();
   return <OpsLedger sites={sites} />;
