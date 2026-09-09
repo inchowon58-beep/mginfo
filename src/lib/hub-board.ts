@@ -287,6 +287,30 @@ export function hubCampaignStats(campaign: HubBoardCampaign) {
   };
 }
 
+export async function fetchSiteVoice(site: OpsSite) {
+  try {
+    const res = await fetch(`https://${site.domain}/api/ops/board`, {
+      headers: { "x-infocs-master": masterSecret() },
+      signal: AbortSignal.timeout(8000),
+    });
+    const data = (await res.json().catch(() => ({}))) as {
+      writingTone?: string;
+      writingPersona?: string;
+      siteName?: string;
+      siteTagline?: string;
+    };
+    if (!res.ok) return {};
+    return {
+      writingTone: String(data.writingTone || "").trim(),
+      writingPersona: String(data.writingPersona || "").trim(),
+      siteName: String(data.siteName || "").trim(),
+      siteTagline: String(data.siteTagline || "").trim(),
+    };
+  } catch {
+    return {};
+  }
+}
+
 export async function generateHubBoardArticle(
   campaign: HubBoardCampaign,
   keyword: HubBoardKeyword,
@@ -295,21 +319,23 @@ export async function generateHubBoardArticle(
 ) {
   const apiKey = settings.geminiApiKey || process.env.GEMINI_API_KEY || "";
   if (!apiKey) throw new Error("허브 마스터설정에 제미나이 API 키가 없습니다.");
+  const voice = await fetchSiteVoice(site);
   const writingStyle = resolveArticleStyle(campaign.writingStyle || "random", keyword.keyword);
+  const siteName = voice.siteName || site.siteName || site.domain;
   const article = await generateArticle({
     topic: keyword.keyword,
     writingStyle,
     category: FREE_BOARD_SLUG,
     categoryName: "자유게시판",
     notes: resolveGeminiNotes(
-      `이 글은 ${site.siteName || site.domain} 자유게시판 광고 글이다. 사이트 컨셉: ${site.concept || "생활 정보 매거진"}. 업체 ${campaign.vendorName || ""}를 자연스럽게 소개하되 과장 광고 문장은 피한다.`,
+      `이 글은 ${siteName} (${site.domain}) 자유게시판 광고 글이다. 사이트 컨셉: ${site.concept || "생활 정보 매거진"}${voice.siteTagline ? `. 소개: ${voice.siteTagline}` : ""}. 업체 ${campaign.vendorName || ""}를 자연스럽게 소개하되 과장 광고 문장은 피한다. 말투는 이 사이트 설정(합니다체/했어요체 등)을 그대로 따른다.`,
       ""
     ),
     focusKeyword: keyword.keyword,
-    region: extractPlaceName(keyword.keyword, site.concept, site.siteName) || "",
+    region: extractPlaceName(keyword.keyword, site.concept, siteName) || "",
     vendorName: campaign.vendorName,
-    writingTone: settings.writingTone,
-    writingPersona: settings.writingPersona,
+    writingTone: voice.writingTone || settings.writingTone,
+    writingPersona: voice.writingPersona || settings.writingPersona,
     apiKey,
     model: settings.geminiModel || DEFAULT_GEMINI_MODEL,
   });

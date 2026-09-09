@@ -121,6 +121,33 @@ export function OpsLedger({ sites }: { sites: OpsSite[] }) {
     }
   }
 
+  const visibleSites = useMemo(() => filtered.flatMap((group) => group.sites), [filtered]);
+  const allConsented = visibleSites.length > 0 && visibleSites.every((site) => site.boardAdsConsent);
+
+  async function setConsentAll(value: boolean) {
+    const ids = new Set(visibleSites.map((site) => site.id));
+    if (!ids.size) return;
+    setBusy(true);
+    setError("");
+    try {
+      const next = sites.map((row) =>
+        ids.has(row.id) ? { ...row, boardAdsConsent: value, updatedAt: new Date().toISOString() } : row
+      );
+      const res = await fetch("/api/ops/sites", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sites: next }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "저장 실패");
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "저장 실패");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   const apexHint = form.domain.trim()
     ? `메인도메인 묶음: ${apexDomain(form.domain)}`
     : "서브도메인을 넣으면 메인도메인 아래에 묶입니다.";
@@ -136,9 +163,14 @@ export function OpsLedger({ sites }: { sites: OpsSite[] }) {
               광고글 동의를 켠 사이트만 자유게시판 허브 광고 대상이 됩니다.
             </p>
           </div>
-          <button className="btn btn-primary" type="button" onClick={startCreate}>
-            대장에 추가
-          </button>
+          <div className="admin-actions" style={{ margin: 0 }}>
+            <button className="btn btn-ghost" type="button" disabled={busy || !visibleSites.length} onClick={() => setConsentAll(!allConsented)}>
+              {allConsented ? "광고글 동의 전체 해제" : "광고글 동의 전체 선택"}
+            </button>
+            <button className="btn btn-primary" type="button" onClick={startCreate}>
+              대장에 추가
+            </button>
+          </div>
         </div>
         <input
           value={query}
