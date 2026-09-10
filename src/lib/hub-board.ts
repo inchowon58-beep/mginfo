@@ -14,6 +14,8 @@ import { cleanHtml } from "./sanitize";
 import { articleSlug, slugify, uid } from "./slug";
 import type { Post, Settings } from "./types";
 import { parseVendorFields } from "./vendor";
+import { ensureVendorSlots } from "./vendor-slots";
+import { pickRandomPostImages, mergeImageUrls } from "./image-pool";
 
 export type HubBoardResult = {
   siteId: string;
@@ -50,7 +52,10 @@ export type HubBoardCampaign = {
   vendorPhone?: string;
   vendorWebsite?: string;
   vendorKakao?: string;
+  vendorId?: string;
+  vendorIds?: string[];
   writingStyle: string;
+  imagePool?: string[];
   dailyLimit: number;
   siteIds: string[];
   nextSiteIndex: number;
@@ -125,6 +130,14 @@ export function parseHubCampaign(raw: unknown, current?: HubBoardCampaign): HubB
     vendorPhone: vendor.vendorPhone || current?.vendorPhone,
     vendorWebsite: vendor.vendorWebsite || current?.vendorWebsite,
     vendorKakao: vendor.vendorKakao || current?.vendorKakao,
+    vendorId: vendor.vendorId || current?.vendorId,
+    vendorIds: vendor.vendorIds?.length ? vendor.vendorIds : current?.vendorIds,
+    imagePool: mergeImageUrls(
+      [],
+      Array.isArray(row.imagePool)
+        ? row.imagePool.map((item) => String(item || ""))
+        : current?.imagePool || (current?.coverImage ? [current.coverImage] : [])
+    ),
     writingStyle: trimText(row.writingStyle ?? current?.writingStyle) || "random",
     dailyLimit: Math.max(1, Math.min(40, Math.floor(Number(row.dailyLimit ?? current?.dailyLimit) || 1))),
     siteIds,
@@ -353,13 +366,14 @@ export async function generateHubBoardArticle(
     })
   );
   if (generatedBan) throw new Error(generatedBan);
+  const photos = pickRandomPostImages(campaign.imagePool || (campaign.coverImage ? [campaign.coverImage] : []), 1, 3);
   return {
     hubCampaignId: `${campaign.id}:${keyword.id}`,
     title: article.title,
     excerpt: article.excerpt || keyword.keyword,
-    bodyHtml: cleanHtml(article.bodyHtml || ""),
-    coverImage: "",
-    extraImages: [],
+    bodyHtml: cleanHtml(ensureVendorSlots(article.bodyHtml || "")),
+    coverImage: photos.cover || "",
+    extraImages: photos.extras,
     focusKeyword: keyword.keyword,
     faqItems: article.faqItems,
     regionInfo: article.regionInfo,
@@ -370,6 +384,8 @@ export async function generateHubBoardArticle(
     vendorPhone: campaign.vendorPhone || "",
     vendorWebsite: campaign.vendorWebsite || "",
     vendorKakao: campaign.vendorKakao || "",
+    vendorId: campaign.vendorId || "",
+    vendorIds: campaign.vendorIds || (campaign.vendorId ? [campaign.vendorId] : []),
     region: extractPlaceName(article.title, keyword.keyword) || "",
   };
 }
@@ -402,10 +418,19 @@ export function makeBoardPost(body: Record<string, unknown>, existing: Post[]): 
     slug,
     title,
     excerpt: trimText(body.excerpt) || title,
-    bodyHtml: cleanHtml(String(body.bodyHtml || "")),
+    bodyHtml: cleanHtml(ensureVendorSlots(String(body.bodyHtml || ""))),
     category: FREE_BOARD_SLUG,
     tags: Array.isArray(body.tags) ? body.tags.map((item) => String(item)).filter(Boolean) : ["자유게시판"],
     coverImage: trimText(body.coverImage) || undefined,
+    extraImages: Array.isArray(body.extraImages)
+      ? body.extraImages
+          .map((item) => {
+            if (typeof item === "string") return { url: item };
+            if (item && typeof item === "object" && "url" in item) return { url: String((item as { url?: string }).url || "") };
+            return null;
+          })
+          .filter((item): item is { url: string } => Boolean(item?.url))
+      : undefined,
     focusKeyword: trimText(body.focusKeyword) || undefined,
     faqItems: parseFaqItems(body.faqItems),
     status: "published",

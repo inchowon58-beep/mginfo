@@ -6,6 +6,7 @@ import { parseKeywordList } from "@/lib/bulk-keywords";
 import { mergeImageUrls } from "@/lib/image-pool";
 import { pickImageFiles, prepareUploadImage } from "@/lib/prepare-upload-image";
 import { uid } from "@/lib/slug";
+import { MAX_LISTING_VENDORS } from "@/lib/vendor-ads";
 import { MultiFileButton } from "@/components/admin/MultiFileButton";
 import { VendorPicker } from "@/components/admin/VendorPicker";
 import type { BulkGroup, BulkPublishState, BulkSchedule, Category } from "@/lib/types";
@@ -49,6 +50,8 @@ function emptyGroup(category: string): GroupDraft {
     vendorWebsite: "",
     vendorKakao: "",
     vendorPlaceUrl: "",
+    vendorId: "",
+    vendorIds: [],
     writingStyle: "random" as ArticleStyleChoice,
     extraPrompt: "",
     imagePool: [],
@@ -117,6 +120,8 @@ export function BulkPlanner({
             vendorWebsite: group.vendorWebsite,
             vendorKakao: group.vendorKakao,
             vendorPlaceUrl: group.vendorPlaceUrl,
+            vendorId: group.vendorId,
+            vendorIds: group.vendorIds,
             writingStyle: group.writingStyle || "random",
             extraPrompt: group.extraPrompt || "",
             imagePool: group.imagePool || [],
@@ -417,14 +422,20 @@ export function BulkPlanner({
                 <div className="bulk-vendor-pick">
                   <span>소개 업체</span>
                   <VendorPicker
-                    onPick={(fields) =>
+                    label={(group.vendorIds || []).length ? "업체 추가" : "업체선택"}
+                    onPick={(fields) => {
+                      const current = group.vendorIds || (group.vendorId ? [group.vendorId] : []);
+                      if (current.includes(fields.vendorId) || current.length >= MAX_LISTING_VENDORS) return;
+                      const next = [...current, fields.vendorId];
                       updateGroup(group.id, {
-                        vendorName: fields.vendorName,
-                        vendorPhone: fields.vendorPhone,
-                        vendorWebsite: fields.vendorWebsite,
-                        vendorKakao: fields.vendorKakao,
-                      })
-                    }
+                        vendorId: next[0],
+                        vendorIds: next,
+                        vendorName: current.length ? group.vendorName : fields.vendorName,
+                        vendorPhone: current.length ? group.vendorPhone : fields.vendorPhone,
+                        vendorWebsite: current.length ? group.vendorWebsite : fields.vendorWebsite,
+                        vendorKakao: current.length ? group.vendorKakao : fields.vendorKakao,
+                      });
+                    }}
                   />
                 </div>
                 <label>

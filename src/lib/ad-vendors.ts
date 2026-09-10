@@ -1,6 +1,7 @@
 import { normalizeHttpUrl, normalizePhone } from "./vendor";
 import type { AdVendor, Partner } from "./types";
 import { uid } from "./slug";
+import { parseYoutubeUrlPair } from "./youtube";
 
 function trimOrUndef(value: unknown): string | undefined {
   const text = String(value ?? "").trim();
@@ -11,6 +12,7 @@ export function parseAdVendor(body: Record<string, unknown>, current?: AdVendor)
   const name = String(body.name ?? current?.name ?? "").trim();
   if (!name) return { error: "업체명을 입력하세요." };
   const now = new Date().toISOString();
+  const youtube = parseYoutubeUrlPair(body, current);
   return {
     id: current?.id || uid(),
     name,
@@ -19,8 +21,12 @@ export function parseAdVendor(body: Record<string, unknown>, current?: AdVendor)
     phone: body.phone !== undefined ? normalizePhone(body.phone) : current?.phone,
     website: body.website !== undefined ? normalizeHttpUrl(body.website) : current?.website,
     kakao: body.kakao !== undefined ? normalizeHttpUrl(body.kakao) : current?.kakao,
+    bizNo: body.bizNo !== undefined ? trimOrUndef(body.bizNo) : current?.bizNo,
+    address: body.address !== undefined ? trimOrUndef(body.address) : current?.address,
     notes: body.notes !== undefined ? trimOrUndef(body.notes) : current?.notes,
     imageUrl: body.imageUrl !== undefined ? trimOrUndef(body.imageUrl) : current?.imageUrl,
+    youtubeUrl1: youtube.youtubeUrl1,
+    youtubeUrl2: youtube.youtubeUrl2,
     createdAt: current?.createdAt || now,
     updatedAt: now,
   };
@@ -40,9 +46,14 @@ export function adVendorToPartner(vendor: AdVendor): Partner {
 
 export function vendorFieldsFromAd(vendor: AdVendor) {
   return {
+    vendorId: vendor.id,
     vendorName: vendor.name || "",
     vendorPhone: vendor.phone || "",
     vendorWebsite: vendor.website || "",
     vendorKakao: vendor.kakao || "",
+    youtubeUrl1: vendor.youtubeUrl1 || "",
+    youtubeUrl2: vendor.youtubeUrl2 || "",
+    vendorBizNo: vendor.bizNo || "",
+    vendorAddress: vendor.address || "",
   };
 }

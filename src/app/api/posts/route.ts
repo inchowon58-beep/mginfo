@@ -12,6 +12,7 @@ import { parseFaqItems } from "@/lib/faq";
 import { extraImageLimit, parsePostImages } from "@/lib/post-images";
 import { extractPlaceName, parseNameList } from "@/lib/region-geo";
 import { parseVendorFields } from "@/lib/vendor";
+import { ensureVendorSlots } from "@/lib/vendor-slots";
 import type { PostStatus } from "@/lib/types";
 
 export async function GET(request: Request) {
@@ -62,7 +63,7 @@ export async function POST(request: Request) {
     slug,
     title,
     excerpt: String(body.excerpt || ""),
-    bodyHtml: cleanHtml(String(body.bodyHtml || "")),
+    bodyHtml: cleanHtml(ensureVendorSlots(String(body.bodyHtml || ""))),
     category,
     tags: Array.isArray(body.tags)
       ? body.tags.map((t: string) => String(t)).filter(Boolean)

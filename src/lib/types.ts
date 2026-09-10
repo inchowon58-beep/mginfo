@@ -1,11 +1,23 @@
 export type CategorySlug = string;
 
+export type CategoryVendorMode = "all" | "region";
+
+export type CategoryVendorAd = {
+  vendorId: string;
+  mode: CategoryVendorMode;
+  regions?: string[];
+  excludes?: string[];
+};
+
 export type Category = {
   slug: string;
   name: string;
   color: string;
   filterClass: string;
   geminiNotes?: string;
+  vendorSlotCount?: number;
+  vendorAds?: CategoryVendorAd[];
+  vendorRecruitSlot?: boolean;
 };
 
 export type PostStatus = "draft" | "published";
@@ -47,6 +59,12 @@ export type Post = {
   vendorWebsite?: string;
   vendorKakao?: string;
   vendorPlaceUrl?: string;
+  vendorId?: string;
+  vendorIds?: string[];
+  youtubeUrl1?: string;
+  youtubeUrl2?: string;
+  vendorBizNo?: string;
+  vendorAddress?: string;
   hubCampaignId?: string;
 };
 
@@ -80,6 +98,10 @@ export type AdVendor = {
   kakao?: string;
   notes?: string;
   imageUrl?: string;
+  youtubeUrl1?: string;
+  youtubeUrl2?: string;
+  bizNo?: string;
+  address?: string;
   createdAt: string;
   updatedAt: string;
 };
@@ -136,6 +158,7 @@ export type Settings = {
   naverRankWork: boolean;
   naverSiteVerification: string;
   extraImagesEnabled: boolean;
+  vendorRegisterUrl: string;
   writingTone: string;
   writingPersona: string;
   siteUsername: string;
@@ -174,6 +197,8 @@ export type BulkGroup = {
   vendorWebsite?: string;
   vendorKakao?: string;
   vendorPlaceUrl?: string;
+  vendorId?: string;
+  vendorIds?: string[];
   writingStyle?: string;
   extraPrompt?: string;
   imagePool?: string[];

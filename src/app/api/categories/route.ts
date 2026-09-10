@@ -3,6 +3,7 @@ import { isAdminSession } from "@/lib/auth";
 import { makeCategory, isFreeBoardSlug } from "@/lib/categories";
 import { readStore, updateStore } from "@/lib/db";
 import { persistFail } from "@/lib/persist-api";
+import { parseCategoryVendorAds, slotCountForCategory } from "@/lib/category-vendor-ads";
 
 export async function GET() {
   const store = await readStore();
@@ -52,6 +53,15 @@ export async function PATCH(request: Request) {
       found = true;
       if (typeof body.geminiNotes === "string") {
         cat.geminiNotes = body.geminiNotes.trim();
+      }
+      if (body.vendorSlotCount !== undefined) {
+        cat.vendorSlotCount = slotCountForCategory({ vendorSlotCount: Number(body.vendorSlotCount) });
+      }
+      if (body.vendorAds !== undefined) {
+        cat.vendorAds = parseCategoryVendorAds(body.vendorAds);
+      }
+      if (body.vendorRecruitSlot !== undefined) {
+        cat.vendorRecruitSlot = Boolean(body.vendorRecruitSlot);
       }
       if (typeof body.name === "string" && body.name.trim() && !isFreeBoardSlug(slug)) {
         cat.name = body.name.trim();

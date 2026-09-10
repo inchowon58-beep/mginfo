@@ -14,6 +14,7 @@ import { isOpsHub } from "@/lib/ops-hub";
 import { applyMasterSettingsPatch } from "@/lib/settings-apply";
 import { isSiteThemeId } from "@/lib/site-theme";
 import { isWritingToneId } from "@/lib/writing-tone";
+import { normalizeHttpUrl } from "@/lib/vendor";
 
 export async function GET() {
   if (!(await isAdminSession())) {
@@ -99,6 +100,9 @@ export async function POST(request: Request) {
         if (typeof body[key] === "string") {
           s.settings[key] = body[key].trim();
         }
+      }
+      if (typeof body.vendorRegisterUrl === "string") {
+        s.settings.vendorRegisterUrl = normalizeHttpUrl(body.vendorRegisterUrl) || "";
       }
       if (isSiteThemeId(body.siteTheme)) {
         s.settings.siteTheme = body.siteTheme;

@@ -14,6 +14,7 @@ import { StudioHome } from "@/components/themes/StudioHome";
 import { displaySiteName, parseCarrotKeywords, siteBrand } from "@/lib/categories";
 import { pickRandomBanner } from "@/lib/banners";
 import { getEnabledBanners, getPartners, getPublishedPosts, getSettings } from "@/lib/db";
+import { visitSeed } from "@/lib/shuffle";
 import { siteUrl } from "@/lib/seo";
 import type { Metadata } from "next";
 
@@ -51,6 +52,7 @@ export default async function HomePage() {
   const rest = posts.slice(1, 7);
   const partners = await getPartners();
   const banner = pickRandomBanner(await getEnabledBanners());
+  const seed = visitSeed();
 
   if (theme.id === "studio") {
     const settings = await getSettings();
@@ -62,6 +64,7 @@ export default async function HomePage() {
           banner={banner}
           siteName={displaySiteName(settings.siteName)}
           tagline={settings.siteTagline}
+          seed={seed}
         />
       </SiteFrame>
     );
@@ -76,6 +79,7 @@ export default async function HomePage() {
           partners={partners}
           banner={banner}
           keywords={parseCarrotKeywords(settings.carrotKeywords)}
+          seed={seed}
         />
       </SiteFrame>
     );
@@ -84,7 +88,7 @@ export default async function HomePage() {
   if (theme.id === "portal") {
     return (
       <SiteFrame active="home">
-        <PortalHome posts={posts} partners={partners} banner={banner} />
+        <PortalHome posts={posts} partners={partners} banner={banner} seed={seed} />
       </SiteFrame>
     );
   }
@@ -122,7 +126,7 @@ export default async function HomePage() {
   if (theme.id === "night") {
     return (
       <SiteFrame active="home">
-        <NightHome posts={posts} partners={partners} banner={banner} />
+        <NightHome posts={posts} partners={partners} banner={banner} seed={seed} />
       </SiteFrame>
     );
   }

@@ -61,6 +61,9 @@ export function withFreeBoard(categories: Category[] = []): Category[] {
       color: found?.color || FREE_BOARD_CATEGORY.color,
       filterClass: found?.filterClass || FREE_BOARD_CATEGORY.filterClass,
       geminiNotes: found?.geminiNotes || "",
+      vendorSlotCount: found?.vendorSlotCount,
+      vendorAds: found?.vendorAds,
+      vendorRecruitSlot: found?.vendorRecruitSlot,
     },
   ];
 }

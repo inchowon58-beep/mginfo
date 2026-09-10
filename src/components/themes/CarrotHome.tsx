@@ -9,33 +9,25 @@ import { SearchForm } from "@/components/SearchForm";
 import { CarrotList } from "@/components/themes/CarrotList";
 import { getCategory } from "@/lib/categories";
 import { formatAgo } from "@/lib/format";
+import { shuffleItems } from "@/lib/shuffle";
 import type { Banner, Partner, Post } from "@/lib/types";
-
-function pickRandomPosts(posts: Post[], count: number) {
-  const pool = posts.slice();
-  for (let i = pool.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(Math.random() * (i + 1));
-    const current = pool[i];
-    pool[i] = pool[j];
-    pool[j] = current;
-  }
-  return pool.slice(0, count);
-}
 
 export function CarrotHome({
   posts,
   partners,
   banner,
   keywords = [],
+  seed = 1,
 }: {
   posts: Post[];
   partners: Partner[];
   banner?: Banner | null;
   keywords?: string[];
+  seed?: number;
 }) {
   const categories = useCategories();
   const listings = posts.slice(0, 12);
-  const hot = pickRandomPosts(posts, 10);
+  const hot = shuffleItems(posts, seed).slice(0, 10);
 
   return (
     <div className="carrot-home">

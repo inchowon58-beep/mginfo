@@ -5,13 +5,24 @@ import { vendorFieldsFromAd } from "@/lib/ad-vendors";
 import type { AdVendor } from "@/lib/types";
 
 export type VendorPickFields = {
+  vendorId: string;
   vendorName: string;
   vendorPhone: string;
   vendorWebsite: string;
   vendorKakao: string;
+  youtubeUrl1: string;
+  youtubeUrl2: string;
+  vendorBizNo: string;
+  vendorAddress: string;
 };
 
-export function VendorPicker({ onPick }: { onPick: (fields: VendorPickFields) => void }) {
+export function VendorPicker({
+  onPick,
+  label = "업체선택",
+}: {
+  onPick: (fields: VendorPickFields) => void;
+  label?: string;
+}) {
   const [open, setOpen] = useState(false);
   const [vendors, setVendors] = useState<AdVendor[]>([]);
   const [loaded, setLoaded] = useState(false);
@@ -34,7 +45,7 @@ export function VendorPicker({ onPick }: { onPick: (fields: VendorPickFields) =>
   return (
     <div className="vendor-picker">
       <button className="btn btn-ghost" type="button" onClick={() => setOpen((value) => !value)}>
-        업체선택
+        {label}
       </button>
       {open ? (
         <div className="vendor-picker-menu">

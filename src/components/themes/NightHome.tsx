@@ -7,32 +7,27 @@ import { PartnerMedia } from "@/components/PartnerMedia";
 import { NightList } from "@/components/themes/NightList";
 import { getCategory } from "@/lib/categories";
 import { formatDate } from "@/lib/format";
+import { shuffleItems } from "@/lib/shuffle";
 import type { Banner, Partner, Post } from "@/lib/types";
-
-function pickRandomWithImages(posts: Post[], count: number, excludeId?: string) {
-  const pool = posts.filter((p) => p.coverImage && p.id !== excludeId);
-  for (let i = pool.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(Math.random() * (i + 1));
-    const current = pool[i];
-    pool[i] = pool[j];
-    pool[j] = current;
-  }
-  return pool.slice(0, count);
-}
 
 export function NightHome({
   posts,
   partners,
   banner,
+  seed = 1,
 }: {
   posts: Post[];
   partners: Partner[];
   banner?: Banner | null;
+  seed?: number;
 }) {
   const categories = useCategories();
   const cover = posts[0];
   const cue = posts.slice(1, 7);
-  const stills = pickRandomWithImages(posts, 8, cover?.id);
+  const stills = shuffleItems(
+    posts.filter((p) => p.coverImage && p.id !== cover?.id),
+    seed
+  ).slice(0, 8);
   const cat = cover ? getCategory(cover.category, categories) : undefined;
 
   return (

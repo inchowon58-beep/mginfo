@@ -364,8 +364,15 @@
 
 .theme-studio .studio-partners .partner-avatar {
   width: 100%;
-  height: 44px;
+  height: auto;
+  aspect-ratio: 4 / 3;
+  min-height: 96px;
   border-radius: 10px;
+  background: #fff;
+}
+
+.theme-studio .studio-partners .partner-avatar.has-photo {
+  padding: 8px;
 }
 
 .theme-studio .studio-partners b {

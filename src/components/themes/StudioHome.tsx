@@ -1,12 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
 import { useCategories } from "@/components/CategoriesContext";
 import { EngagementBar } from "@/components/EngagementBar";
 import { PromoBanner } from "@/components/PromoBanner";
 import { PartnerMedia } from "@/components/PartnerMedia";
 import { StudioList } from "@/components/themes/StudioList";
+import { shuffleItems } from "@/lib/shuffle";
 import type { Banner, Partner, Post } from "@/lib/types";
 
 export function StudioHome({
@@ -15,17 +15,17 @@ export function StudioHome({
   banner,
   siteName,
   tagline,
+  seed = 1,
 }: {
   posts: Post[];
   partners: Partner[];
   banner?: Banner | null;
   siteName: string;
   tagline?: string;
+  seed?: number;
 }) {
   const categories = useCategories();
-  const [featured] = useState(() =>
-    posts.length ? posts[Math.floor(Math.random() * posts.length)] : undefined
-  );
+  const featured = posts.length ? shuffleItems(posts, seed)[0] : undefined;
   const rest = posts.filter((post) => post.id !== featured?.id).slice(0, 6);
   const dek =
     (tagline || "").trim() || "필요한 기능만 골라 익히고, 실생활에 바로 쓰는 가이드를 단계별로 만나보세요.";

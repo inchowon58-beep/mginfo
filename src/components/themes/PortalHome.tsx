@@ -9,18 +9,8 @@ import { useSiteName } from "@/components/SiteNameContext";
 import { PortalRank } from "@/components/themes/PortalRank";
 import { PartnerMedia } from "@/components/PartnerMedia";
 import { getCategory } from "@/lib/categories";
+import { shuffleItems } from "@/lib/shuffle";
 import type { Banner, Partner, Post } from "@/lib/types";
-
-function pickRandomPosts(posts: Post[], count: number) {
-  const pool = posts.slice();
-  for (let i = pool.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(Math.random() * (i + 1));
-    const current = pool[i];
-    pool[i] = pool[j];
-    pool[j] = current;
-  }
-  return pool.slice(0, count);
-}
 
 function PortalNewsGrid({ posts, className = "" }: { posts: Post[]; className?: string }) {
   const categories = useCategories();
@@ -51,17 +41,19 @@ export function PortalHome({
   posts,
   partners,
   banner,
+  seed = 1,
 }: {
   posts: Post[];
   partners: Partner[];
   banner?: Banner | null;
+  seed?: number;
 }) {
   const categories = useCategories();
   const siteName = useSiteName();
   const topNews = posts.slice(0, 8);
   const headlines = posts.slice(8, 22);
   const bottomNews = posts.slice(22, 26);
-  const ranking = pickRandomPosts(posts, 12);
+  const ranking = shuffleItems(posts, seed).slice(0, 12);
 
   return (
     <div className="portal-home">

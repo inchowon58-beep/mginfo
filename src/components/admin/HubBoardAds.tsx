@@ -3,6 +3,9 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { ARTICLE_STYLE_OPTIONS } from "@/lib/article-style";
 import { VendorPicker } from "@/components/admin/VendorPicker";
+import { MultiFileButton } from "@/components/admin/MultiFileButton";
+import { pickImageFiles, prepareUploadImage } from "@/lib/prepare-upload-image";
+import { mergeImageUrls } from "@/lib/image-pool";
 
 type BoardSite = { id: string; siteName: string; domain: string; apexDomain: string; concept?: string };
 
@@ -24,7 +27,9 @@ type Campaign = {
   vendorPhone?: string;
   vendorWebsite?: string;
   vendorKakao?: string;
+  vendorId?: string;
   writingStyle?: string;
+  imagePool?: string[];
   dailyLimit: number;
   siteIds: string[];
   keywords: Keyword[];
@@ -42,7 +47,9 @@ function emptyCampaign(siteIds: string[]): Campaign {
     vendorPhone: "",
     vendorWebsite: "",
     vendorKakao: "",
+    vendorId: "",
     writingStyle: "random",
+    imagePool: [],
     dailyLimit: 3,
     siteIds,
     keywords: [],
@@ -68,6 +75,7 @@ export function HubBoardAds() {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [sitesOpen, setSitesOpen] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
   async function load() {
     const res = await fetch("/api/ops/board-campaigns");
@@ -123,6 +131,9 @@ export function HubBoardAds() {
           vendorPhone: form.vendorPhone,
           vendorWebsite: form.vendorWebsite,
           vendorKakao: form.vendorKakao,
+          vendorId: form.vendorId,
+          imagePool: form.imagePool || [],
+          coverImage: (form.imagePool || [])[0] || "",
           writingStyle: form.writingStyle,
           dailyLimit: form.dailyLimit,
           siteIds: form.siteIds,
@@ -253,6 +264,7 @@ export function HubBoardAds() {
             onPick={(fields) =>
               setForm((prev) => ({
                 ...prev,
+                vendorId: fields.vendorId,
                 vendorName: fields.vendorName,
                 vendorPhone: fields.vendorPhone,
                 vendorWebsite: fields.vendorWebsite,
@@ -268,6 +280,62 @@ export function HubBoardAds() {
         <input value={form.vendorWebsite || ""} onChange={(e) => setForm({ ...form, vendorWebsite: e.target.value })} />
         <label>카카오</label>
         <input value={form.vendorKakao || ""} onChange={(e) => setForm({ ...form, vendorKakao: e.target.value })} />
+
+        <label>광고 이미지</label>
+        <div className="cover-upload">
+          <MultiFileButton
+            label={uploading ? "올리는 중…" : "이미지 올리기"}
+            busy={uploading}
+            onFiles={async (files) => {
+              const images = pickImageFiles(files);
+              if (!images.length) {
+                setError("선택한 파일에서 사진을 찾지 못했습니다.");
+                return;
+              }
+              setUploading(true);
+              setError("");
+              try {
+                const urls: string[] = [];
+                for (const file of images) {
+                  const prepared = await prepareUploadImage(file);
+                  const dataForm = new FormData();
+                  dataForm.append("file", prepared);
+                  const res = await fetch("/api/upload", { method: "POST", body: dataForm });
+                  const data = await res.json();
+                  if (!res.ok) throw new Error(data.error || "업로드 실패");
+                  if (data.url) urls.push(String(data.url));
+                }
+                setForm((prev) => ({ ...prev, imagePool: mergeImageUrls(prev.imagePool || [], urls) }));
+                setMessage(`${urls.length}장을 올렸습니다. 발행 때 대표·본문 사진으로 들어갑니다.`);
+              } catch (err) {
+                setError(err instanceof Error ? err.message : "업로드 실패");
+              } finally {
+                setUploading(false);
+              }
+            }}
+          />
+        </div>
+        <p className="field-hint">올린 사진이 자유게시판 광고 글의 대표 이미지와 본문 사진으로 쓰입니다.</p>
+        {(form.imagePool || []).length ? (
+          <ul className="bulk-thumbs">
+            {(form.imagePool || []).map((url) => (
+              <li key={url}>
+                <img src={url} alt="" />
+                <button
+                  type="button"
+                  onClick={() =>
+                    setForm((prev) => ({
+                      ...prev,
+                      imagePool: (prev.imagePool || []).filter((item) => item !== url),
+                    }))
+                  }
+                >
+                  빼기
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : null}
 
         <div className="bulk-group-grid">
           <label>

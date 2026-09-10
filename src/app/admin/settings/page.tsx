@@ -44,6 +44,7 @@ export default function SettingsPage() {
   const [writingTone, setWritingTone] = useState<WritingToneId>(DEFAULT_WRITING_TONE);
   const [writingPersona, setWritingPersona] = useState("");
   const [naverSiteVerification, setNaverSiteVerification] = useState("");
+  const [vendorRegisterUrl, setVendorRegisterUrl] = useState("");
   const [hasKey, setHasKey] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -95,6 +96,7 @@ export default function SettingsPage() {
         setNaverRankWork(Boolean(s.naverRankWork));
         setExtraImagesEnabled(Boolean(s.extraImagesEnabled));
         if (typeof s.naverSiteVerification === "string") setNaverSiteVerification(s.naverSiteVerification);
+        if (typeof s.vendorRegisterUrl === "string") setVendorRegisterUrl(s.vendorRegisterUrl);
         if (typeof s.siteUsername === "string" && s.siteUsername) setSiteUsername(s.siteUsername);
         if (typeof s.sitePassword === "string" && s.sitePassword) setSitePassword(s.sitePassword);
         if (isWritingToneId(s.writingTone)) setWritingTone(s.writingTone);
@@ -151,6 +153,7 @@ export default function SettingsPage() {
       popupCta,
       popupHref,
       popupImage,
+      vendorRegisterUrl,
       likeCountMin,
       likeCountMax,
       commentCountMin,
@@ -316,6 +319,15 @@ export default function SettingsPage() {
           <p style={{ color: "#94a3b8", fontSize: 14 }}>
             고른 디자인이 로고, 색, 홈 구성까지 한꺼번에 바뀝니다. 지금은 1~9번입니다.
           </p>
+          <label>업체 등록안내 링크</label>
+          <input
+            value={vendorRegisterUrl}
+            onChange={(e) => setVendorRegisterUrl(e.target.value)}
+            placeholder="https://..."
+          />
+          <p className="field-hint">
+            글 광고 배너 오른쪽 ‘등록안내’에 연결됩니다. 비워 두면 링크를 숨깁니다.
+          </p>
           <div className="theme-picker">
             {SITE_THEMES.map((theme) => (
               <button
@@ -347,7 +359,7 @@ export default function SettingsPage() {
                 checked={popupEnabled}
                 onChange={(e) => setPopupEnabled(e.target.checked)}
               />
-              팝업 사용
+              입장 팝업 사용
             </label>
             <label>제목</label>
             <input

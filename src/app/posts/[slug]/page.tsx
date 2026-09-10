@@ -4,9 +4,10 @@ import { notFound } from "next/navigation";
 import { SiteFrame } from "@/components/SiteFrame";
 import { VendorCta } from "@/components/VendorCta";
 import { PlaceCard } from "@/components/PlaceCard";
+import { ArticleBodySlots } from "@/components/ArticleBodySlots";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { displaySiteName, getCategory } from "@/lib/categories";
-import { getCategories, getPostBySlug, getPublishedPosts, getSettings } from "@/lib/db";
+import { getAdVendors, getCategories, getPostBySlug, getPublishedPosts, getSettings } from "@/lib/db";
 import { formatDate } from "@/lib/format";
 import {
   buildArticleJsonLd,
@@ -25,7 +26,9 @@ import { resolveRegionContext } from "@/lib/region-intro";
 import { buildPublicFactSection } from "@/lib/public-facts";
 import { PUBLISH_DISCLAIMER } from "@/lib/publish-disclaimer";
 import { placeInlineImages } from "@/lib/post-images";
-import { hasVendorCta } from "@/lib/vendor";
+import { hasAnyVendorSticky, liveVendorView } from "@/lib/vendor";
+import { listingVendorsForPost, pickVisibleVendors } from "@/lib/vendor-ads";
+import { categoryRecruitEnabled, slotCountForCategory } from "@/lib/category-vendor-ads";
 
 export const dynamic = "force-dynamic";
 
@@ -37,9 +40,8 @@ export async function generateMetadata({
   const { slug } = await params;
   const post = await getPostBySlug(slug);
   if (!post || post.status !== "published") return { title: "글을 찾을 수 없습니다" };
-  const settings = await getSettings();
+  const [settings, categories] = await Promise.all([getSettings(), getCategories()]);
   const siteName = displaySiteName(settings.siteName);
-  const categories = await getCategories();
   const cat = getCategory(post.category, categories);
   const title = buildPostSeoTitle(post);
   const description = buildPostSeoDescription(post);
@@ -86,10 +88,11 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
   const { slug } = await params;
   const post = await getPostBySlug(slug);
   if (!post || post.status !== "published") notFound();
-  const [categories, settings, published] = await Promise.all([
+  const [categories, settings, published, vendors] = await Promise.all([
     getCategories(),
     getSettings(),
     getPublishedPosts(),
+    getAdVendors(),
   ]);
   const cat = getCategory(post.category, categories);
   const siteName = displaySiteName(settings.siteName);
@@ -109,7 +112,26 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
   });
   const extras = post.extraImages || [];
   const placed = placeInlineImages(post.bodyHtml, extras, keyword, { hasCover: Boolean(post.coverImage) });
-  const showVendor = hasVendorCta(post);
+  const liveVendor = liveVendorView(
+    post,
+    post.vendorId ? vendors.find((row) => row.id === post.vendorId) : undefined
+  );
+  const slotCount = slotCountForCategory(cat);
+  const listingVendors = pickVisibleVendors(
+    listingVendorsForPost(post, vendors, cat),
+    slotCount,
+    Math.floor(Math.random() * 0x7fffffff) + 1
+  );
+  const showRecruit = categoryRecruitEnabled(cat);
+  const showVendor = hasAnyVendorSticky(listingVendors, liveVendor);
+  const ctaPost = {
+    ...post,
+    vendorName: liveVendor.vendorName,
+    vendorPhone: liveVendor.vendorPhone,
+    vendorWebsite: liveVendor.vendorWebsite,
+    vendorKakao: liveVendor.vendorKakao,
+    vendorPlaceUrl: liveVendor.vendorPlaceUrl,
+  };
   const crumbs = [
     { name: "홈", path: "/" },
     { name: cat?.name || "글", path: `/category/${post.category}` },
@@ -161,9 +183,23 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
             alt={post.focusKeyword || post.title}
           />
         ) : null}
-        <div className="article-body" dangerouslySetInnerHTML={{ __html: placed.html }} />
-        <PlaceCard post={post} />
-        <VendorCta post={post} />
+        <ArticleBodySlots
+          html={placed.html}
+          keyword={keyword}
+          vendor={liveVendor}
+          listingVendors={listingVendors}
+          registerUrl={settings.vendorRegisterUrl}
+          showRecruit={showRecruit}
+          postId={post.id}
+          slug={post.slug}
+        />
+        <PlaceCard post={ctaPost} />
+        <VendorCta
+          post={ctaPost}
+          vendors={listingVendors}
+          registerUrl={settings.vendorRegisterUrl}
+          showRecruit={showRecruit}
+        />
         {faqs.length > 0 && (
           <section className="article-faq">
             <h2>{keyword} 자주 묻는 질문</h2>

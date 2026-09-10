@@ -12,6 +12,7 @@ import { cleanHtml } from "./sanitize";
 import { articleSlug, uid } from "./slug";
 import { mergeImageUrls, pickRandomPostImages } from "./image-pool";
 import { parseVendorFields } from "./vendor";
+import { ensureVendorSlots } from "./vendor-slots";
 import type {
   BulkGroup,
   BulkKeyword,
@@ -82,6 +83,8 @@ function normalizeGroup(raw: Partial<BulkGroup>): BulkGroup | null {
     vendorWebsite: vendor.vendorWebsite,
     vendorKakao: vendor.vendorKakao,
     vendorPlaceUrl: vendor.vendorPlaceUrl,
+    vendorId: vendor.vendorId,
+    vendorIds: vendor.vendorIds,
     writingStyle: String(raw.writingStyle || "random").trim() || "random",
     extraPrompt: String(raw.extraPrompt || "").trim() || undefined,
     imagePool: mergeImageUrls([], Array.isArray(raw.imagePool) ? raw.imagePool.map((item) => String(item || "")) : []),
@@ -418,7 +421,7 @@ async function generateAndSave(store: Store, group: BulkGroup, item: BulkKeyword
     slug,
     title: article.title,
     excerpt: article.excerpt || "",
-    bodyHtml: cleanHtml(article.bodyHtml || ""),
+    bodyHtml: cleanHtml(ensureVendorSlots(article.bodyHtml || "")),
     category,
     tags: article.tags || [],
     coverImage: photos.cover,
@@ -439,6 +442,8 @@ async function generateAndSave(store: Store, group: BulkGroup, item: BulkKeyword
     vendorWebsite: group.vendorWebsite,
     vendorKakao: group.vendorKakao,
     vendorPlaceUrl: group.vendorPlaceUrl,
+    vendorId: group.vendorId,
+    vendorIds: group.vendorIds || (group.vendorId ? [group.vendorId] : []),
   };
 }
 

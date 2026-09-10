@@ -14,6 +14,8 @@ import { pickImageFiles, prepareUploadImage } from "@/lib/prepare-upload-image";
 import { extractPlaceName } from "@/lib/region-geo";
 import { MultiFileButton } from "@/components/admin/MultiFileButton";
 import { VendorPicker } from "@/components/admin/VendorPicker";
+import { MAX_LISTING_VENDORS } from "@/lib/vendor-ads";
+import { ensureVendorSlots } from "@/lib/vendor-slots";
 import type { Category, CategorySlug, FaqItem, Post, PostImage, PostStatus } from "@/lib/types";
 
 const EMPTY_FAQ: FaqItem = { question: "", answer: "" };
@@ -48,6 +50,14 @@ export function PostEditor({ post }: { post?: Post }) {
   const [vendorWebsite, setVendorWebsite] = useState(post?.vendorWebsite || "");
   const [vendorKakao, setVendorKakao] = useState(post?.vendorKakao || "");
   const [vendorPlaceUrl, setVendorPlaceUrl] = useState(post?.vendorPlaceUrl || "");
+  const [vendorId, setVendorId] = useState(post?.vendorId || "");
+  const [vendorIds, setVendorIds] = useState<string[]>(
+    post?.vendorIds?.length ? post.vendorIds : post?.vendorId ? [post.vendorId] : []
+  );
+  const [youtubeUrl1, setYoutubeUrl1] = useState(post?.youtubeUrl1 || "");
+  const [youtubeUrl2, setYoutubeUrl2] = useState(post?.youtubeUrl2 || "");
+  const [vendorBizNo, setVendorBizNo] = useState(post?.vendorBizNo || "");
+  const [vendorAddress, setVendorAddress] = useState(post?.vendorAddress || "");
   const [writingStyle, setWritingStyle] = useState<ArticleStyleChoice>("info");
   const [keywords, setKeywords] = useState("");
   const [notes, setNotes] = useState(DEFAULT_GEMINI_NOTES);
@@ -59,10 +69,34 @@ export function PostEditor({ post }: { post?: Post }) {
   const [error, setError] = useState("");
   const [categories, setCategories] = useState<Category[]>([]);
   const [vendorOpen, setVendorOpen] = useState(
-    Boolean(post?.vendorName || post?.vendorPhone || post?.vendorWebsite || post?.vendorKakao || post?.vendorPlaceUrl)
+    Boolean(
+      post?.vendorName ||
+        post?.vendorPhone ||
+        post?.vendorWebsite ||
+        post?.vendorKakao ||
+        post?.vendorPlaceUrl ||
+        post?.vendorId
+    )
   );
   const [faqOpen, setFaqOpen] = useState(Boolean(post?.faqItems?.some((item) => item.question && item.answer)));
+  const [vendorCatalog, setVendorCatalog] = useState<{ id: string; name: string }[]>([]);
   const notesForCategory = useRef("");
+
+  useEffect(() => {
+    fetch("/api/ad-vendors")
+      .then((res) => res.json())
+      .then((data) => {
+        setVendorCatalog(
+          Array.isArray(data.vendors)
+            ? data.vendors.map((row: { id: string; name: string }) => ({
+                id: row.id,
+                name: row.name,
+              }))
+            : []
+        );
+      })
+      .catch(() => undefined);
+  }, []);
 
   useEffect(() => {
     fetch("/api/categories")
@@ -120,7 +154,7 @@ export function PostEditor({ post }: { post?: Post }) {
       if (!res.ok) throw new Error(data.error || "생성 실패");
       setTitle(data.article.title);
       setExcerpt(data.article.excerpt || "");
-      setBodyHtml(data.article.bodyHtml || "");
+      setBodyHtml(ensureVendorSlots(data.article.bodyHtml || ""));
       setTags((data.article.tags || []).join(", "));
       if (data.article.faqItems) setFaqItems(padFaqs(data.article.faqItems));
       if (data.article.regionInfo) setRegionInfo(data.article.regionInfo);
@@ -230,7 +264,7 @@ export function PostEditor({ post }: { post?: Post }) {
         title: resolvedTitle,
         slug,
         excerpt,
-        bodyHtml,
+        bodyHtml: ensureVendorSlots(bodyHtml),
         category,
         tags,
         coverImage,
@@ -249,6 +283,12 @@ export function PostEditor({ post }: { post?: Post }) {
         vendorWebsite,
         vendorKakao,
         vendorPlaceUrl,
+        vendorId,
+        vendorIds,
+        youtubeUrl1,
+        youtubeUrl2,
+        vendorBizNo,
+        vendorAddress,
       };
       const res = await fetch(post ? `/api/posts/${post.id}` : "/api/posts", {
         method: post ? "PUT" : "POST",
@@ -313,12 +353,27 @@ export function PostEditor({ post }: { post?: Post }) {
             <small>{vendorOpen ? "접기" : "펼침"}</small>
           </button>
           <VendorPicker
+            label={vendorIds.length ? "업체 추가" : "업체선택"}
             onPick={(fields) => {
-              setVendorName(fields.vendorName);
-              setVendorPhone(fields.vendorPhone);
-              setVendorWebsite(fields.vendorWebsite);
-              setVendorKakao(fields.vendorKakao);
               setVendorOpen(true);
+              if (vendorIds.includes(fields.vendorId)) return;
+              if (vendorIds.length >= MAX_LISTING_VENDORS) {
+                setError(`안내 업체는 ${MAX_LISTING_VENDORS}곳까지입니다.`);
+                return;
+              }
+              const next = [...vendorIds, fields.vendorId];
+              setVendorIds(next);
+              setVendorId(next[0]);
+              if (!vendorIds.length) {
+                setVendorName(fields.vendorName);
+                setVendorPhone(fields.vendorPhone);
+                setVendorWebsite(fields.vendorWebsite);
+                setVendorKakao(fields.vendorKakao);
+                setYoutubeUrl1(fields.youtubeUrl1);
+                setYoutubeUrl2(fields.youtubeUrl2);
+                setVendorBizNo(fields.vendorBizNo);
+                setVendorAddress(fields.vendorAddress);
+              }
             }}
           />
         </div>
@@ -326,9 +381,34 @@ export function PostEditor({ post }: { post?: Post }) {
           <div className="vendor-admin">
             <h3>소개 업체</h3>
             <p className="field-hint" style={{ marginTop: 0 }}>
-              저장된 업체를 고르거나, 이번 글만 직접 적을 수 있습니다. 전화·홈페이지·카카오를 넣으면 글 하단에 버튼이
-              생깁니다. 네이버 플레이스 주소를 넣으면 사용한 사진과 바로가기 버튼이 붙습니다.
+              안내 업체는 {MAX_LISTING_VENDORS}곳까지 넣을 수 있습니다. 여기에 넣으면 이 글에는 카테고리 업체가 나가지
+              않고, 넣은 업체만 중간·하단 배너로 보입니다. 제휴업체모집중 칸은 카테고리 설정에서 켠 경우에만 맨 아래에
+              하나 더 붙습니다.
             </p>
+            {vendorIds.length ? (
+              <ul className="vendor-pick-chips">
+                {vendorIds.map((id, index) => {
+                  const row = vendorCatalog.find((item) => item.id === id);
+                  return (
+                    <li key={id}>
+                      <b>{index + 1}</b>
+                      {row?.name || id}
+                      <button
+                        className="btn btn-ghost"
+                        type="button"
+                        onClick={() => {
+                          const next = vendorIds.filter((item) => item !== id);
+                          setVendorIds(next);
+                          setVendorId(next[0] || "");
+                        }}
+                      >
+                        빼기
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : null}
             <label>업체명</label>
             <input value={vendorName} onChange={(e) => setVendorName(e.target.value)} placeholder="예: 인포씨에스" />
             <label>전화번호</label>

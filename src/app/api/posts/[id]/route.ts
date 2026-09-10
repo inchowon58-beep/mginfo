@@ -12,6 +12,7 @@ import { slugify } from "@/lib/slug";
 import { parseFaqItems } from "@/lib/faq";
 import { extractPlaceName, parseNameList } from "@/lib/region-geo";
 import { parseVendorFields } from "@/lib/vendor";
+import { ensureVendorSlots } from "@/lib/vendor-slots";
 import type { PostStatus } from "@/lib/types";
 
 export async function PUT(
@@ -65,7 +66,7 @@ export async function PUT(
         title: String(body.title ?? s.posts[idx].title).trim() || s.posts[idx].title,
         slug,
         excerpt: body.excerpt != null ? String(body.excerpt) : s.posts[idx].excerpt,
-        bodyHtml: body.bodyHtml != null ? cleanHtml(String(body.bodyHtml)) : s.posts[idx].bodyHtml,
+        bodyHtml: body.bodyHtml != null ? cleanHtml(ensureVendorSlots(String(body.bodyHtml))) : s.posts[idx].bodyHtml,
         category,
         tags: Array.isArray(body.tags)
           ? body.tags.map((t: string) => String(t)).filter(Boolean)

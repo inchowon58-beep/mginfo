@@ -47,6 +47,7 @@ function defaultSettings(): Settings {
     naverRankWork: false,
     naverSiteVerification: "",
     extraImagesEnabled: true,
+    vendorRegisterUrl: "",
     staffNoticeEnabled: false,
     staffNoticeTitle: "",
     staffNoticeBody: "",
@@ -93,7 +94,13 @@ function normalize(parsed: Store): Store {
   parsed.banners = parsed.banners?.length ? parsed.banners : seedBanners;
   parsed.categories = withFreeBoard(
     parsed.categories?.length ? parsed.categories : DEFAULT_CATEGORIES.map((c) => ({ ...c }))
-  ).map((c) => ({ ...c, geminiNotes: c.geminiNotes || "" }));
+  ).map((c) => ({
+    ...c,
+    geminiNotes: c.geminiNotes || "",
+    vendorSlotCount: c.vendorSlotCount,
+    vendorAds: Array.isArray(c.vendorAds) ? c.vendorAds : undefined,
+    vendorRecruitSlot: Boolean(c.vendorRecruitSlot),
+  }));
   parsed.settings = { ...defaultSettings(), ...parsed.settings };
   const account = siteAccountFrom(parsed.settings);
   parsed.settings.siteUsername = account.username;

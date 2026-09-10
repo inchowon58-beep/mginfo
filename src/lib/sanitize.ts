@@ -21,12 +21,14 @@ export function cleanHtml(html: string): string {
       "figure",
       "figcaption",
       "span",
+      "div",
     ],
     allowedAttributes: {
       a: ["href", "target", "rel"],
       img: ["src", "alt"],
       span: ["class"],
       blockquote: ["class"],
+      div: ["class", "data-mw-slot"],
     },
     allowedSchemes: ["http", "https", "mailto"],
   });

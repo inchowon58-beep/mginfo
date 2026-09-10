@@ -11,8 +11,12 @@ const emptyForm = {
   phone: "",
   website: "",
   kakao: "",
+  bizNo: "",
+  address: "",
   notes: "",
   imageUrl: "",
+  youtubeUrl1: "",
+  youtubeUrl2: "",
 };
 
 export function AdVendorManager({ vendors }: { vendors: AdVendor[] }) {
@@ -55,8 +59,12 @@ export function AdVendorManager({ vendors }: { vendors: AdVendor[] }) {
       phone: vendor.phone || "",
       website: vendor.website || "",
       kakao: vendor.kakao || "",
+      bizNo: vendor.bizNo || "",
+      address: vendor.address || "",
       notes: vendor.notes || "",
       imageUrl: vendor.imageUrl || "",
+      youtubeUrl1: vendor.youtubeUrl1 || "",
+      youtubeUrl2: vendor.youtubeUrl2 || "",
     });
     setError("");
     setMessage("");
@@ -167,6 +175,34 @@ export function AdVendorManager({ vendors }: { vendors: AdVendor[] }) {
               onChange={(e) => setForm({ ...form, kakao: e.target.value })}
               placeholder="https://pf.kakao.com/..."
             />
+            <label>사업자등록번호</label>
+            <input
+              value={form.bizNo}
+              onChange={(e) => setForm({ ...form, bizNo: e.target.value })}
+              placeholder="예: 123-45-67890"
+            />
+            <label>주소</label>
+            <input
+              value={form.address}
+              onChange={(e) => setForm({ ...form, address: e.target.value })}
+              placeholder="예: 경기도 부천시 …"
+            />
+            <label>유튜브 영상 주소 1 (글 중간)</label>
+            <input
+              value={form.youtubeUrl1}
+              onChange={(e) => setForm({ ...form, youtubeUrl1: e.target.value })}
+              placeholder="https://www.youtube.com/watch?v=..."
+            />
+            <label>유튜브 영상 주소 2 (글 하단)</label>
+            <input
+              value={form.youtubeUrl2}
+              onChange={(e) => setForm({ ...form, youtubeUrl2: e.target.value })}
+              placeholder="두 번째 영상이 있으면 넣습니다"
+            />
+            <p className="field-hint">
+              글 작성 때 중간·하단 자리가 미리 만들어집니다. 주소를 빼면 그 자리의 영상만 사라집니다. 나중에 여기만
+              고쳐도 이미 쓴 글에 그대로 반영됩니다.
+            </p>
             <label>업체 이미지</label>
             <div className="cover-upload">
               <label className="btn btn-ghost cover-file-btn">
@@ -232,6 +268,7 @@ export function AdVendorManager({ vendors }: { vendors: AdVendor[] }) {
                   <strong>
                     {vendor.name}
                     {vendor.category ? <small>{vendor.category}</small> : null}
+                    {vendor.youtubeUrl1 || vendor.youtubeUrl2 ? <small>유튜브</small> : null}
                   </strong>
                 </span>
                 <span>
