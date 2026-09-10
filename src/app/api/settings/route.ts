@@ -53,7 +53,11 @@ export async function POST(request: Request) {
     body.extraImagesEnabled !== undefined ||
     body.siteUsername !== undefined ||
     body.sitePassword !== undefined ||
-    body.publishBannedKeywords !== undefined;
+    body.publishBannedKeywords !== undefined ||
+    body.staffNotice !== undefined ||
+    body.staffNoticeEnabled !== undefined ||
+    body.staffNoticeTitle !== undefined ||
+    body.staffNoticeBody !== undefined;
   if (wantsMaster && !(await isMasterSession())) {
     return NextResponse.json(
       { error: "마스터 관리자만 마스터 설정을 바꿀 수 있습니다." },

@@ -5,18 +5,22 @@ import { hasRemoteStore, kvGetOpsJson, kvSetOpsJson } from "./kv";
 import { PersistError } from "./db";
 import { cleanHost, parseOpsSite, parseOpsSites, type OpsSite } from "./ops-ledger";
 import { DEFAULT_BANNED_KEYWORDS, normalizeBannedKeywords } from "./banned-keywords";
+import { emptyStaffNotice, normalizeStaffNotice, type StaffNotice } from "./staff-notice";
 
 const LOCAL_PATH = path.join(process.cwd(), "data", "ops-ledger.json");
 
-type OpsStore = { sites: OpsSite[]; bannedKeywords: string[] };
+type OpsStore = { sites: OpsSite[]; bannedKeywords: string[]; staffNotice: StaffNotice };
 
 function normalize(raw: unknown): OpsStore {
-  if (!raw || typeof raw !== "object") return { sites: [], bannedKeywords: DEFAULT_BANNED_KEYWORDS };
-  const row = raw as { sites?: unknown; bannedKeywords?: unknown };
+  if (!raw || typeof raw !== "object") {
+    return { sites: [], bannedKeywords: DEFAULT_BANNED_KEYWORDS, staffNotice: emptyStaffNotice() };
+  }
+  const row = raw as { sites?: unknown; bannedKeywords?: unknown; staffNotice?: unknown };
   return {
     sites: parseOpsSites(row.sites),
     bannedKeywords:
       row.bannedKeywords === undefined ? DEFAULT_BANNED_KEYWORDS : normalizeBannedKeywords(row.bannedKeywords),
+    staffNotice: row.staffNotice === undefined ? emptyStaffNotice() : normalizeStaffNotice(row.staffNotice),
   };
 }
 
@@ -101,4 +105,15 @@ export async function setBannedKeywords(keywords: unknown): Promise<string[]> {
   const bannedKeywords = normalizeBannedKeywords(keywords);
   await saveOps({ ...prev, bannedKeywords });
   return bannedKeywords;
+}
+
+export async function getStaffNotice(): Promise<StaffNotice> {
+  return (await loadOps()).staffNotice;
+}
+
+export async function setStaffNotice(raw: unknown): Promise<StaffNotice> {
+  const prev = await loadOps();
+  const staffNotice = normalizeStaffNotice(raw, true);
+  await saveOps({ ...prev, staffNotice });
+  return staffNotice;
 }

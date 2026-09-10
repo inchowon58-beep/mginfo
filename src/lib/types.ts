@@ -147,6 +147,10 @@ export type Settings = {
   phone: string;
   email: string;
   publishBannedKeywords?: string[];
+  staffNoticeEnabled?: boolean;
+  staffNoticeTitle?: string;
+  staffNoticeBody?: string;
+  staffNoticeUpdatedAt?: string;
 };
 
 export type BulkKeywordStatus = "queued" | "scheduled" | "processing" | "published" | "failed";

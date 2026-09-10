@@ -4,8 +4,9 @@ import { unpublishBannedPosts } from "@/lib/banned-keywords";
 import { updateStore } from "@/lib/db";
 import { pushToClones } from "@/lib/clone-remote";
 import { isOpsHub } from "@/lib/ops-hub";
-import { getBannedKeywords, getOpsSites, setBannedKeywords } from "@/lib/ops-store";
+import { getBannedKeywords, getOpsSites, getStaffNotice, setBannedKeywords, setStaffNotice } from "@/lib/ops-store";
 import { persistFail } from "@/lib/persist-api";
+import { staffNoticePatch } from "@/lib/staff-notice";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -23,7 +24,10 @@ export async function GET(request: Request) {
   if (!(await authorizeOps(request))) {
     return NextResponse.json({ error: "마스터만 볼 수 있습니다." }, { status: 401 });
   }
-  return NextResponse.json({ bannedKeywords: await getBannedKeywords() });
+  return NextResponse.json({
+    bannedKeywords: await getBannedKeywords(),
+    staffNotice: await getStaffNotice(),
+  });
 }
 
 export async function PUT(request: Request) {
@@ -33,20 +37,43 @@ export async function PUT(request: Request) {
   if (!(await authorizeOps(request))) {
     return NextResponse.json({ error: "마스터만 저장할 수 있습니다." }, { status: 401 });
   }
-  const body = (await request.json().catch(() => ({}))) as { bannedKeywords?: unknown; push?: unknown };
+  const body = (await request.json().catch(() => ({}))) as {
+    bannedKeywords?: unknown;
+    staffNotice?: unknown;
+    push?: unknown;
+  };
   try {
-    const bannedKeywords = await setBannedKeywords(body.bannedKeywords);
-    let unpublished = 0;
-    await updateStore((store) => {
-      store.settings.publishBannedKeywords = bannedKeywords;
-      unpublished = unpublishBannedPosts(store.posts, bannedKeywords);
-    });
     const push = body.push !== false;
-    const results = push ? await pushToClones(await getOpsSites(), { publishBannedKeywords: bannedKeywords, unpublishBanned: true }) : [];
+    const sites = await getOpsSites();
+    let bannedKeywords = await getBannedKeywords();
+    let staffNotice = await getStaffNotice();
+    let unpublished = 0;
+    const pushBody: Record<string, unknown> = {};
+
+    if (body.bannedKeywords !== undefined) {
+      bannedKeywords = await setBannedKeywords(body.bannedKeywords);
+      await updateStore((store) => {
+        store.settings.publishBannedKeywords = bannedKeywords;
+        unpublished = unpublishBannedPosts(store.posts, bannedKeywords);
+      });
+      pushBody.publishBannedKeywords = bannedKeywords;
+      pushBody.unpublishBanned = true;
+    }
+
+    if (body.staffNotice !== undefined) {
+      staffNotice = await setStaffNotice(body.staffNotice);
+      await updateStore((store) => {
+        Object.assign(store.settings, staffNoticePatch(staffNotice));
+      });
+      Object.assign(pushBody, staffNoticePatch(staffNotice));
+    }
+
+    const results = push && Object.keys(pushBody).length ? await pushToClones(sites, pushBody) : [];
     const updated = results.filter((row) => row.ok).length;
     return NextResponse.json({
       ok: true,
       bannedKeywords,
+      staffNotice,
       unpublished,
       pushed: push,
       total: results.length,

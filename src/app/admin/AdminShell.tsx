@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { AdminNav } from "@/components/admin/AdminNav";
+import { AdminStaffNotice } from "@/components/admin/AdminStaffNotice";
 
 export function AdminShell({
   children,
@@ -23,6 +24,7 @@ export function AdminShell({
           {keepWide ? children : <div className="admin-narrow">{children}</div>}
         </main>
       </div>
+      <AdminStaffNotice />
     </div>
   );
 }

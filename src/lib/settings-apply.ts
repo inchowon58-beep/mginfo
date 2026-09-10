@@ -2,6 +2,7 @@ import { siteAccountFrom, validateSiteAccount } from "./auth";
 import { normalizeBannedKeywords } from "./banned-keywords";
 import { parseNaverVerification } from "./seo";
 import { normalizeDailyPostLimit, normalizeUsableUntil } from "./publish-limits";
+import { normalizeStaffNotice, staffNoticePatch } from "./staff-notice";
 import type { Settings, Store } from "./types";
 
 export type MasterSettingsPatch = {
@@ -15,6 +16,11 @@ export type MasterSettingsPatch = {
   geminiApiKey?: unknown;
   geminiModel?: unknown;
   publishBannedKeywords?: unknown;
+  staffNotice?: unknown;
+  staffNoticeEnabled?: unknown;
+  staffNoticeTitle?: unknown;
+  staffNoticeBody?: unknown;
+  staffNoticeUpdatedAt?: unknown;
 };
 
 function asBool(value: unknown, fallback: boolean) {
@@ -58,6 +64,28 @@ export function applyMasterSettingsPatch(store: Store, body: MasterSettingsPatch
   if (body.publishBannedKeywords !== undefined) {
     store.settings.publishBannedKeywords = normalizeBannedKeywords(body.publishBannedKeywords);
   }
+  if (
+    body.staffNotice !== undefined ||
+    body.staffNoticeEnabled !== undefined ||
+    body.staffNoticeTitle !== undefined ||
+    body.staffNoticeBody !== undefined ||
+    body.staffNoticeUpdatedAt !== undefined
+  ) {
+    const current = {
+      enabled: Boolean(store.settings.staffNoticeEnabled),
+      title: store.settings.staffNoticeTitle || "",
+      body: store.settings.staffNoticeBody || "",
+      updatedAt: store.settings.staffNoticeUpdatedAt || "",
+    };
+    const incoming = body.staffNotice && typeof body.staffNotice === "object" ? (body.staffNotice as Record<string, unknown>) : {};
+    const notice = normalizeStaffNotice({
+      enabled: body.staffNoticeEnabled ?? incoming.enabled ?? current.enabled,
+      title: body.staffNoticeTitle ?? incoming.title ?? current.title,
+      body: body.staffNoticeBody ?? incoming.body ?? current.body,
+      updatedAt: body.staffNoticeUpdatedAt ?? incoming.updatedAt ?? current.updatedAt,
+    });
+    Object.assign(store.settings, staffNoticePatch(notice));
+  }
 }
 
 export function publicMasterSettings(settings: Settings) {
@@ -79,5 +107,9 @@ export function publicMasterSettings(settings: Settings) {
     geminiApiKey: key ? `${key.slice(0, 6)}••••${key.slice(-4)}` : "",
     hasKey: Boolean(key),
     publishBannedKeywords: Array.isArray(settings.publishBannedKeywords) ? settings.publishBannedKeywords : undefined,
+    staffNoticeEnabled: Boolean(settings.staffNoticeEnabled),
+    staffNoticeTitle: settings.staffNoticeTitle || "",
+    staffNoticeBody: settings.staffNoticeBody || "",
+    staffNoticeUpdatedAt: settings.staffNoticeUpdatedAt || "",
   };
 }

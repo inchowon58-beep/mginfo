@@ -7,12 +7,12 @@ import { usePathname, useRouter } from "next/navigation";
 const NAV = [
   { href: "/admin", label: "대시보드" },
   { href: "/admin/settings", label: "설정" },
+  { href: "/admin/posts/new", label: "새 글 작성" },
+  { href: "/admin/bulk", label: "대량발행예약" },
   { href: "/admin/vendors", label: "광고업체정보설정" },
   { href: "/admin/ops", label: "사이트 대장" },
   { href: "/admin/ops/board", label: "자유게시판 광고" },
   { href: "/admin/posts", label: "글 목록" },
-  { href: "/admin/posts/new", label: "새 글 작성" },
-  { href: "/admin/bulk", label: "대량발행예약" },
   { href: "/admin/banners", label: "메인 배너" },
 ];
 
@@ -111,6 +111,29 @@ export function AdminNav({ showOps = false }: { showOps?: boolean }) {
         <button className="linkish" type="button" onClick={logout}>
           로그아웃
         </button>
+      </nav>
+      <nav className="admin-quick-dock" aria-label="바로가기">
+        <Link
+          href="/admin/posts/new"
+          className={`admin-quick-write${isActive(pathname, "/admin/posts/new") ? " active" : ""}`}
+        >
+          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+            <path
+              fill="currentColor"
+              d="M4 20h4.6L19.4 9.2l-4.6-4.6L4 15.4V20zm2-3.2L15.2 7.6l1.2 1.2L7.2 18H6v-1.2zM20.7 7.3c.4-.4.4-1 0-1.4l-2.6-2.6c-.4-.4-1-.4-1.4 0l-1.2 1.2 4 4 1.2-1.2z"
+            />
+          </svg>
+          <span>새 글 작성</span>
+        </Link>
+        <Link href="/admin/bulk" className={`admin-quick-bulk${isActive(pathname, "/admin/bulk") ? " active" : ""}`}>
+          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+            <path
+              fill="currentColor"
+              d="M7 2h2v3h6V2h2v3h3v17H4V5h3V2zm12 7H5v11h14V9zM8 12h3v3H8v-3zm5 0h3v3h-3v-3zM8 16h3v3H8v-3zm5 0h3v3h-3v-3z"
+            />
+          </svg>
+          <span>대량발행예약</span>
+        </Link>
       </nav>
     </aside>
   );

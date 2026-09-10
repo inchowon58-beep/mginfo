@@ -2,6 +2,7 @@
 
 import { useSearchParams } from "next/navigation";
 import { FormEvent, Suspense, useState } from "react";
+import { markStaffNoticePending } from "@/components/admin/AdminStaffNotice";
 
 function safeAdminPath(raw: string | null) {
   if (!raw || !raw.startsWith("/admin") || raw.startsWith("//") || raw.startsWith("/admin/login")) {
@@ -29,6 +30,7 @@ function LoginForm() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "로그인 실패");
+      markStaffNoticePending();
       window.location.assign(safeAdminPath(search.get("from")));
     } catch (err) {
       setError(err instanceof Error ? err.message : "로그인 실패");

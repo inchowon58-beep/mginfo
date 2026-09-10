@@ -3,6 +3,7 @@
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { DEFAULT_BANNED_KEYWORDS } from "@/lib/banned-keywords";
 import { DEFAULT_GEMINI_MODEL, GEMINI_MODELS } from "@/lib/gemini-models";
+import { emptyStaffNotice, type StaffNotice } from "@/lib/staff-notice";
 
 type OpsSiteRow = {
   id: string;
@@ -60,6 +61,7 @@ export function HubMasterSettings() {
   const [form, setForm] = useState<MasterForm>(emptyForm);
   const [banned, setBanned] = useState<string[]>(DEFAULT_BANNED_KEYWORDS);
   const [draftWord, setDraftWord] = useState("");
+  const [notice, setNotice] = useState<StaffNotice>(emptyStaffNotice);
   const [busy, setBusy] = useState(false);
   const [loadingSite, setLoadingSite] = useState(false);
   const [error, setError] = useState("");
@@ -82,6 +84,14 @@ export function HubMasterSettings() {
         const list = Array.isArray(sitesData.sites) ? (sitesData.sites as OpsSiteRow[]) : [];
         setSites(list.filter((row) => row.domain && row.domain !== HUB_HOST));
         if (Array.isArray(policyData.bannedKeywords)) setBanned(policyData.bannedKeywords);
+        if (policyData.staffNotice && typeof policyData.staffNotice === "object") {
+          setNotice({
+            enabled: Boolean(policyData.staffNotice.enabled),
+            title: String(policyData.staffNotice.title || ""),
+            body: String(policyData.staffNotice.body || ""),
+            updatedAt: String(policyData.staffNotice.updatedAt || ""),
+          });
+        }
       })
       .catch(() => setError("사이트 목록을 불러오지 못했습니다."));
     loadHubForm().catch(() => undefined);
@@ -213,8 +223,82 @@ export function HubMasterSettings() {
     }
   }
 
+  async function saveNotice(e: FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    setError("");
+    setMessage("");
+    try {
+      const res = await fetch("/api/ops/policy", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          staffNotice: {
+            enabled: notice.enabled,
+            title: notice.title,
+            body: notice.body,
+          },
+          push: true,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "저장 실패");
+      if (data.staffNotice) {
+        setNotice({
+          enabled: Boolean(data.staffNotice.enabled),
+          title: String(data.staffNotice.title || ""),
+          body: String(data.staffNotice.body || ""),
+          updatedAt: String(data.staffNotice.updatedAt || ""),
+        });
+      }
+      setMessage(
+        `운영진 공지를 저장하고 전체 사이트에 반영했습니다. 적용 ${data.updated || 0}/${data.total || 0}곳.`
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "저장 실패");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <div className="settings-stack">
+      <form className="admin-card admin-form" onSubmit={saveNotice} style={{ maxWidth: 640 }}>
+        <h2>운영진 공지</h2>
+        <p style={{ color: "#94a3b8", fontSize: 14 }}>
+          허브와 모든 클론 관리자 페이지에 로그인하면 이 팝업이 뜹니다. 운영자에게 전달할 공지·안내를 적으세요.
+        </p>
+        <label className="admin-check-all">
+          <input
+            type="checkbox"
+            checked={notice.enabled}
+            onChange={(e) => setNotice((prev) => ({ ...prev, enabled: e.target.checked }))}
+          />
+          관리자 로그인 시 팝업 보이기
+        </label>
+        <label>제목</label>
+        <input
+          value={notice.title}
+          onChange={(e) => setNotice((prev) => ({ ...prev, title: e.target.value }))}
+          placeholder="예: 이번 주 발행 안내"
+        />
+        <label>내용</label>
+        <textarea
+          value={notice.body}
+          onChange={(e) => setNotice((prev) => ({ ...prev, body: e.target.value }))}
+          placeholder="운영자에게 전할 내용을 적습니다."
+          style={{ minHeight: 140 }}
+        />
+        <p className="field-hint">저장하면 허브와 등록된 모든 사이트 관리자 화면에 같이 반영됩니다.</p>
+        {error ? <p className="notice">{error}</p> : null}
+        {message ? <p className="notice ok">{message}</p> : null}
+        <div className="admin-actions">
+          <button className="btn btn-primary" disabled={busy}>
+            {busy ? "저장 중…" : "운영진 공지 저장 · 전체 반영"}
+          </button>
+        </div>
+      </form>
+
       <form className="admin-card admin-form" onSubmit={savePolicy} style={{ maxWidth: 640 }}>
         <h2>발행금지 키워드</h2>
         <p style={{ color: "#94a3b8", fontSize: 14 }}>
