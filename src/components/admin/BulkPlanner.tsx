@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ARTICLE_STYLE_OPTIONS, type ArticleStyleChoice } from "@/lib/article-style";
 import { parseKeywordList } from "@/lib/bulk-keywords";
 import { mergeImageUrls } from "@/lib/image-pool";
@@ -88,6 +88,10 @@ export function BulkPlanner({
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [openGroupId, setOpenGroupId] = useState<string | null>(null);
+  const persistLock = useRef(false);
+  const saveGen = useRef(0);
+  const groupsRef = useRef(groups);
+  groupsRef.current = groups;
 
   const previewAdd = useMemo(
     () => groups.reduce((sum, group) => sum + parseKeywordList(group.text).length, 0),
@@ -95,6 +99,8 @@ export function BulkPlanner({
   );
 
   async function save(nextGroups = groups, nextSchedule = schedule, resetPlan = false) {
+    const gen = ++saveGen.current;
+    persistLock.current = true;
     setBusy(true);
     setError("");
     setMessage("");
@@ -134,6 +140,7 @@ export function BulkPlanner({
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "저장 실패");
+      if (gen !== saveGen.current) return;
       setSchedule(data.bulk.schedule);
       setGroups(data.bulk.groups.map((g: BulkGroup) => ({ ...g, text: "" })));
       setStats(data.stats);
@@ -144,9 +151,13 @@ export function BulkPlanner({
           : "예약 목록을 저장했습니다."
       );
     } catch (err) {
+      if (gen !== saveGen.current) return;
       setError(err instanceof Error ? err.message : "저장 실패");
     } finally {
-      setBusy(false);
+      if (gen === saveGen.current) {
+        persistLock.current = false;
+        setBusy(false);
+      }
     }
   }
 
@@ -176,7 +187,7 @@ export function BulkPlanner({
       );
       const fresh = await fetch("/api/admin/bulk");
       const body = await fresh.json();
-      if (fresh.ok) {
+      if (fresh.ok && !persistLock.current) {
         setGroups(body.bulk.groups.map((g: BulkGroup) => ({ ...g, text: "" })));
         setStats(body.stats);
         setSchedule(body.bulk.schedule);
@@ -229,13 +240,25 @@ export function BulkPlanner({
   }
 
   function removeKeyword(groupId: string, keywordId: string) {
-    setGroups((rows) =>
-      rows.map((row) =>
-        row.id === groupId
-          ? { ...row, keywords: row.keywords.filter((item) => item.id !== keywordId) }
-          : row
-      )
+    const next = groupsRef.current.map((row) =>
+      row.id === groupId ? { ...row, keywords: row.keywords.filter((item) => item.id !== keywordId) } : row
     );
+    groupsRef.current = next;
+    setGroups(next);
+    void save(next, schedule);
+  }
+
+  function removeGroup(groupId: string) {
+    const group = groupsRef.current.find((row) => row.id === groupId);
+    if (!group) return;
+    const waiting = group.keywords.filter((item) => item.status === "queued" || item.status === "scheduled").length;
+    if (waiting && !confirm(`이 예약 칸을 삭제할까요? 대기·예약 키워드 ${waiting}개도 함께 지워집니다.`)) return;
+    const filtered = groupsRef.current.filter((row) => row.id !== groupId);
+    const next = filtered.length ? filtered : [emptyGroup(categories[0]?.slug || "life")];
+    groupsRef.current = next;
+    setGroups(next);
+    setOpenGroupId((id) => (id === groupId ? null : id));
+    void save(next, schedule);
   }
 
   function retryFailed(groupId: string) {
@@ -365,15 +388,7 @@ export function BulkPlanner({
                   >
                     {open ? "접기" : "펼치기"}
                   </button>
-                  <button
-                    className="btn"
-                    type="button"
-                    onClick={() => {
-                      setGroups((rows) => rows.filter((row) => row.id !== group.id));
-                      setOpenGroupId((id) => (id === group.id ? null : id));
-                    }}
-                    disabled={groups.length <= 1}
-                  >
+                  <button className="btn" type="button" onClick={() => removeGroup(group.id)} disabled={busy}>
                     삭제
                   </button>
                 </div>
@@ -546,8 +561,8 @@ export function BulkPlanner({
                           >
                             {nowId === item.id ? "발행 중…" : "즉시발행"}
                           </button>
-                          <button type="button" onClick={() => removeKeyword(group.id, item.id)}>
-                            빼기
+                          <button type="button" disabled={busy} onClick={() => removeKeyword(group.id, item.id)}>
+                            삭제
                           </button>
                         </span>
                       ) : null}
