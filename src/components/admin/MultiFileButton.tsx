@@ -1,7 +1,5 @@
 "use client";
 
-import { useRef } from "react";
-
 export function MultiFileButton({
   label,
   busy,
@@ -11,31 +9,25 @@ export function MultiFileButton({
 }: {
   label: string;
   busy?: boolean;
-  onFiles: (files: FileList) => void;
+  onFiles: (files: File[]) => void;
   multiple?: boolean;
   folder?: boolean;
 }) {
-  const inputRef = useRef<HTMLInputElement>(null);
-
   return (
-    <>
+    <label className={`btn btn-ghost cover-file-btn${busy ? " is-disabled" : ""}`}>
+      {label}
       <input
-        ref={inputRef}
-        className="admin-file-input"
         type="file"
-        accept="image/*"
+        accept="image/jpeg,image/png,image/webp,image/gif,image/heic,image/heif,image/*"
         multiple={multiple}
         disabled={busy}
         {...(folder ? { webkitdirectory: "", directory: "" } : {})}
         onChange={(e) => {
-          const files = e.target.files;
+          const picked = Array.from(e.target.files || []);
           e.target.value = "";
-          if (files?.length) onFiles(files);
+          if (picked.length) onFiles(picked);
         }}
       />
-      <button className="btn btn-ghost" type="button" disabled={busy} onClick={() => inputRef.current?.click()}>
-        {label}
-      </button>
-    </>
+    </label>
   );
 }

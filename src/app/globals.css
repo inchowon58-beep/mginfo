@@ -1155,11 +1155,15 @@ body {
   margin: 0;
 }
 
+.admin-side-bar {
+  display: contents;
+}
+
 .admin-screen-title {
   display: none;
 }
 
-.admin-nav-short {
+.admin-menu-toggle {
   display: none;
 }
 
@@ -1264,6 +1268,8 @@ body {
 
 .admin-narrow {
   max-width: 860px;
+  min-width: 0;
+  width: 100%;
 }
 
 .admin-alert {
@@ -1897,6 +1903,8 @@ body {
   display: grid;
   gap: 16px;
   max-width: 860px;
+  min-width: 0;
+  width: 100%;
 }
 
 .bulk-schedule {
@@ -1950,6 +1958,8 @@ body {
   border: 1px solid #1f2937;
   border-radius: 12px;
   background: #111827;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .bulk-group header {
@@ -1999,6 +2009,8 @@ body {
 .bulk-group-body {
   display: grid;
   gap: 0;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .bulk-group-grid,
@@ -2424,14 +2436,12 @@ body {
   inset: 0;
   opacity: 0;
   cursor: pointer;
+  font-size: 16px;
 }
 
-.admin-file-input {
-  position: absolute;
-  width: 0;
-  height: 0;
-  opacity: 0;
+.cover-file-btn.is-disabled {
   pointer-events: none;
+  opacity: 0.65;
 }
 
 .settings-stack {
@@ -3306,58 +3316,80 @@ body {
     border-bottom: 1px solid #1e293b;
     background: #020617;
   }
-  .admin-side-brand {
-    display: block;
+  .admin-side-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
   }
   .admin-side a.admin-side-logo {
+    flex: 0 0 auto;
     margin: 0;
+    min-width: 0;
   }
   .admin-side h1 {
     margin: 0;
     font-size: 15px;
   }
+  .admin-side-logo p,
   .admin-side p {
+    display: none;
     margin: 0;
     font-size: 11px;
   }
-  .admin-screen-title {
+  .admin-screen-title,
+  .admin-side p.admin-screen-title {
     display: block;
+    flex: 1 1 auto;
+    min-width: 0;
     margin: 0;
-    padding: 8px 2px 2px;
+    padding: 0 4px;
     color: #f8fafc;
-    font-size: 18px;
+    font-size: 16px;
     font-weight: 800;
     letter-spacing: -0.03em;
     line-height: 1.25;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-align: center;
   }
-  .admin-nav-home {
-    display: none !important;
-  }
-  .admin-nav-full {
-    display: none;
-  }
-  .admin-nav-short {
-    display: inline;
+  .admin-menu-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    width: 44px;
+    height: 44px;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 10px;
+    background: #1e293b;
+    color: #f8fafc;
+    cursor: pointer;
   }
   .admin-side-nav {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 6px;
+    display: none;
+    grid-template-columns: none;
+  }
+  .admin-side.is-menu-open .admin-side-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding-top: 8px;
   }
   .admin-side-nav a,
   .admin-side-nav button.linkish {
     width: 100%;
     max-width: none;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
+    display: block;
     margin: 0;
-    padding: 9px 6px;
-    font-size: 12px;
-    line-height: 1.25;
+    padding: 12px 14px;
+    font-size: 15px;
+    line-height: 1.35;
     white-space: normal;
-    text-align: center;
-    min-height: 40px;
+    text-align: left;
+    min-height: 44px;
   }
   .admin-tabs {
     display: grid;
@@ -3394,20 +3426,37 @@ body {
   .admin-dash-grid {
     grid-template-columns: 1fr;
   }
+  .bulk-page,
+  .bulk-groups,
+  .bulk-group,
+  .bulk-group-body,
+  .bulk-images,
+  .admin-card {
+    min-width: 0;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
   .bulk-group header {
     display: grid;
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     align-items: stretch;
     gap: 10px;
   }
   .bulk-group-head {
     flex: none;
     width: 100%;
+    max-width: 100%;
     padding: 2px 0 0;
+  }
+  .bulk-group-head strong,
+  .bulk-group-summary {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    word-break: keep-all;
   }
   .bulk-group-tools {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     width: 100%;
     gap: 8px;
   }
@@ -3415,11 +3464,51 @@ body {
     width: 100%;
     min-width: 0;
   }
+  .bulk-group .bulk-group-grid,
+  .bulk-group .bulk-vendor-grid,
   .bulk-group-grid,
   .bulk-vendor-grid,
   .bulk-schedule-row,
   .bulk-folder-row {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
+    width: 100%;
+  }
+  .bulk-group.admin-form input,
+  .bulk-group.admin-form select,
+  .bulk-group.admin-form textarea,
+  .bulk-file input {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
+  .bulk-vendor-pick {
+    flex-wrap: wrap;
+    width: 100%;
+  }
+  .bulk-group .cover-upload {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .bulk-group .cover-upload .btn {
+    width: 100%;
+  }
+  .vendor-picker,
+  .vendor-picker-menu {
+    max-width: 100%;
+  }
+  .vendor-picker-menu {
+    left: 0;
+    right: auto;
+    min-width: 0;
+    width: 100%;
+  }
+  .bulk-keys li {
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: start;
+  }
+  .bulk-key-actions {
+    flex-wrap: wrap;
+    white-space: normal;
   }
   .bulk-image-hint {
     grid-column: auto;

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ARTICLE_STYLE_OPTIONS, type ArticleStyleChoice } from "@/lib/article-style";
 import { parseKeywordList } from "@/lib/bulk-keywords";
 import { mergeImageUrls } from "@/lib/image-pool";
+import { pickImageFiles, prepareUploadImage } from "@/lib/prepare-upload-image";
 import { uid } from "@/lib/slug";
 import { MultiFileButton } from "@/components/admin/MultiFileButton";
 import { VendorPicker } from "@/components/admin/VendorPicker";
@@ -589,15 +590,19 @@ function GroupImagePool({
   const [folderBase, setFolderBase] = useState("");
 
   async function uploadFiles(files: FileList | File[]) {
-    const list = Array.from(files).filter((file) => file.type.startsWith("image/"));
-    if (!list.length) return;
+    const list = pickImageFiles(Array.from(files));
+    if (!list.length) {
+      alert("선택한 파일에서 사진을 찾지 못했습니다. 앨범에서 사진을 다시 골라 주세요.");
+      return;
+    }
     setBusy(true);
     const added: string[] = [];
     try {
       for (let i = 0; i < list.length; i += 1) {
         setProgress(`${i + 1}/${list.length}`);
+        const prepared = await prepareUploadImage(list[i]);
         const form = new FormData();
-        form.append("file", list[i]);
+        form.append("file", prepared);
         const res = await fetch("/api/upload", { method: "POST", body: form });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || "업로드 실패");

@@ -10,6 +10,7 @@ import {
 } from "@/lib/article-style";
 import { DEFAULT_GEMINI_NOTES, resolveGeminiNotes } from "@/lib/gemini-notes";
 import { extraImageLimit, MAX_POST_IMAGES } from "@/lib/post-images";
+import { pickImageFiles, prepareUploadImage } from "@/lib/prepare-upload-image";
 import { extractPlaceName } from "@/lib/region-geo";
 import { MultiFileButton } from "@/components/admin/MultiFileButton";
 import { VendorPicker } from "@/components/admin/VendorPicker";
@@ -141,8 +142,9 @@ export function PostEditor({ post }: { post?: Post }) {
   }
 
   async function uploadImage(file: File) {
+    const prepared = await prepareUploadImage(file);
     const form = new FormData();
-    form.append("file", file);
+    form.append("file", prepared);
     const res = await fetch("/api/upload", { method: "POST", body: form });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "업로드 실패");
@@ -164,11 +166,12 @@ export function PostEditor({ post }: { post?: Post }) {
     }
   }
 
-  async function uploadMany(files: FileList | File[]) {
-    const images = Array.from(files).filter(
-      (file) => file.type.startsWith("image/") || /\.(jpe?g|png|webp|gif)$/i.test(file.name)
-    );
-    if (!images.length) return;
+  async function uploadMany(files: File[]) {
+    const images = pickImageFiles(files);
+    if (!images.length) {
+      setError("선택한 파일에서 사진을 찾지 못했습니다. 앨범에서 사진을 다시 골라 주세요.");
+      return;
+    }
     setError("");
     setMessage("");
     setUploading(true);
@@ -192,7 +195,7 @@ export function PostEditor({ post }: { post?: Post }) {
       }
       setCoverImage(nextCover);
       setExtraImages(nextExtras);
-      const kept = (nextCover ? 1 : 0) + nextExtras.length;
+      const kept = urls.length - skipped;
       setMessage(
         skipped
           ? `${kept}장을 올렸습니다. 대표 포함 최대 ${MAX_POST_IMAGES}장이라 ${skipped}장은 건너뛰었습니다.`
@@ -477,13 +480,13 @@ export function PostEditor({ post }: { post?: Post }) {
             </div>
           ))}
           {extraImages.length < extraImageLimit(true) ? (
-            <button
-              className="btn btn-ghost"
-              type="button"
-              onClick={() => setExtraImages((rows) => [...rows, { url: "", caption: "" }])}
-            >
-              사진 추가 ({extraImages.length + 1}/7)
-            </button>
+            <div className="cover-upload">
+              <MultiFileButton
+                label={uploading ? "올리는 중…" : `사진 추가 (${extraImages.length + 1}/7)`}
+                busy={uploading}
+                onFiles={(files) => void uploadMany(files)}
+              />
+            </div>
           ) : null}
         </div>
         <label>본문 테마</label>

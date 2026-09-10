@@ -6,9 +6,22 @@ import { hasBlobStore } from "@/lib/blob-store";
 const ALLOWED = new Set(["image/jpeg", "image/png", "image/webp", "image/gif", "image/jpg", "image/svg+xml"]);
 const MAX_BYTES = 4 * 1024 * 1024;
 
+function guessType(file: File) {
+  const type = (file.type || "").toLowerCase();
+  if (ALLOWED.has(type)) return type;
+  const ext = path.extname(file.name || "").toLowerCase();
+  if (ext === ".jpg" || ext === ".jpeg") return "image/jpeg";
+  if (ext === ".png") return "image/png";
+  if (ext === ".webp") return "image/webp";
+  if (ext === ".gif") return "image/gif";
+  if (ext === ".svg") return "image/svg+xml";
+  return "";
+}
+
 export function assertCoverFile(file: File) {
-  if (!ALLOWED.has(file.type)) {
-    throw new Error("jpg, png, webp, gif, svg만 올릴 수 있습니다.");
+  const type = guessType(file);
+  if (!type) {
+    throw new Error("jpg, png, webp, gif만 올릴 수 있습니다. 휴대폰 사진은 여러 장 선택으로 다시 올려 보세요.");
   }
   if (file.size > MAX_BYTES) {
     throw new Error("이미지는 4MB 이하만 올릴 수 있습니다.");
@@ -29,6 +42,7 @@ export async function saveCoverFile(file: File): Promise<string> {
   assertCoverFile(file);
   const filename = safeFileName(file.name);
   const pathname = `covers/${filename}`;
+  const contentType = guessType(file) || file.type || "image/jpeg";
 
   if (hasBlobStore()) {
     const body = Buffer.from(await file.arrayBuffer());
@@ -36,7 +50,7 @@ export async function saveCoverFile(file: File): Promise<string> {
       const blob = await put(pathname, body, {
         access: "public",
         addRandomSuffix: false,
-        contentType: file.type || "image/jpeg",
+        contentType,
       });
       return blob.url;
     } catch {
@@ -44,7 +58,7 @@ export async function saveCoverFile(file: File): Promise<string> {
         access: "private",
         addRandomSuffix: false,
         allowOverwrite: true,
-        contentType: file.type || "image/jpeg",
+        contentType,
       });
       return `/api/media/${pathname}`;
     }
