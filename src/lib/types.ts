@@ -201,6 +201,8 @@ export type BulkGroup = {
   vendorPlaceUrl?: string;
   vendorId?: string;
   vendorIds?: string[];
+  youtubeUrl1?: string;
+  youtubeUrl2?: string;
   writingStyle?: string;
   extraPrompt?: string;
   imagePool?: string[];

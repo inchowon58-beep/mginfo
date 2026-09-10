@@ -52,6 +52,8 @@ function emptyGroup(category: string): GroupDraft {
     vendorPlaceUrl: "",
     vendorId: "",
     vendorIds: [],
+    youtubeUrl1: "",
+    youtubeUrl2: "",
     writingStyle: "random" as ArticleStyleChoice,
     extraPrompt: "",
     imagePool: [],
@@ -128,6 +130,8 @@ export function BulkPlanner({
             vendorPlaceUrl: group.vendorPlaceUrl,
             vendorId: group.vendorId,
             vendorIds: group.vendorIds,
+            youtubeUrl1: group.youtubeUrl1,
+            youtubeUrl2: group.youtubeUrl2,
             writingStyle: group.writingStyle || "random",
             extraPrompt: group.extraPrompt || "",
             imagePool: group.imagePool || [],
@@ -449,6 +453,8 @@ export function BulkPlanner({
                         vendorPhone: current.length ? group.vendorPhone : fields.vendorPhone,
                         vendorWebsite: current.length ? group.vendorWebsite : fields.vendorWebsite,
                         vendorKakao: current.length ? group.vendorKakao : fields.vendorKakao,
+                        youtubeUrl1: current.length ? group.youtubeUrl1 : fields.youtubeUrl1,
+                        youtubeUrl2: current.length ? group.youtubeUrl2 : fields.youtubeUrl2,
                       });
                     }}
                   />
@@ -493,9 +499,26 @@ export function BulkPlanner({
                     placeholder="https://naver.me/ 또는 플레이스 주소"
                   />
                 </label>
+                <label>
+                  유튜브 영상 주소 1 (글 중간)
+                  <input
+                    value={group.youtubeUrl1 || ""}
+                    onChange={(e) => updateGroup(group.id, { youtubeUrl1: e.target.value })}
+                    placeholder="https://www.youtube.com/watch?v=..."
+                  />
+                </label>
+                <label>
+                  유튜브 영상 주소 2 (글 하단)
+                  <input
+                    value={group.youtubeUrl2 || ""}
+                    onChange={(e) => updateGroup(group.id, { youtubeUrl2: e.target.value })}
+                    placeholder="두 번째 영상이 있으면 넣습니다"
+                  />
+                </label>
               </div>
               <p className="field-hint">
                 플레이스 주소를 넣으면 발행 글 하단에 사용한 사진, 짧은 소개, 네이버 플레이스 바로가기 버튼이 붙습니다.
+                유튜브 주소를 넣으면 글 중간·하단에 영상이 나갑니다. 업체를 고르면 그 업체에 저장된 주소가 채워집니다.
               </p>
               <GroupImagePool
                 urls={group.imagePool || []}
