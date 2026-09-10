@@ -145,7 +145,7 @@ export function parseHubCampaign(raw: unknown, current?: HubBoardCampaign): HubB
     writingStyle: trimText(row.writingStyle ?? current?.writingStyle) || "random",
     extraPrompt: trimText(row.extraPrompt ?? current?.extraPrompt) || undefined,
     imageFolderUrl: trimText(row.imageFolderUrl ?? current?.imageFolderUrl) || undefined,
-    dailyLimit: Math.max(1, Math.min(40, Math.floor(Number(row.dailyLimit ?? current?.dailyLimit) || 1))),
+    dailyLimit: Math.max(1, Math.min(9999, Math.floor(Number(row.dailyLimit ?? current?.dailyLimit) || 1))),
     siteIds,
     nextSiteIndex: Math.max(0, Math.floor(Number(row.nextSiteIndex ?? current?.nextSiteIndex) || 0)),
     keywords,
@@ -168,7 +168,24 @@ export function parseHubCampaign(raw: unknown, current?: HubBoardCampaign): HubB
 
 export function parseHubCampaigns(raw: unknown): HubBoardCampaign[] {
   if (!Array.isArray(raw)) return [];
-  return raw.map((row) => parseHubCampaign(row)).filter((row): row is HubBoardCampaign => Boolean(row));
+  return raw
+    .map((row) => parseHubCampaign(row))
+    .filter((row): row is HubBoardCampaign => Boolean(row))
+    .map((row) => pruneStalePublishedKeywords(row));
+}
+
+/** 발행 완료 후 하루가 지난 키워드는 목록에서 제거(저장 시에도 정리). */
+export function pruneStalePublishedKeywords(campaign: HubBoardCampaign, now = new Date()): HubBoardCampaign {
+  const today = seoulDateKey(now);
+  if (!today) return campaign;
+  const keywords = campaign.keywords.filter((item) => {
+    if (item.status !== "published") return true;
+    const day = seoulDateKey(item.publishedAt || item.scheduledAt || "");
+    if (!day) return true;
+    return day >= today;
+  });
+  if (keywords.length === campaign.keywords.length) return campaign;
+  return { ...campaign, keywords, updatedAt: now.toISOString() };
 }
 
 export function consentedSites(sites: OpsSite[]) {

@@ -8,6 +8,7 @@ import {
   generateHubBoardArticle,
   parseHubCampaigns,
   planHubCampaign,
+  pruneStalePublishedKeywords,
   pushBoardPost,
   type HubBoardCampaign,
   type HubBoardKeyword,
@@ -75,7 +76,11 @@ async function saveHubBoard(store: HubBoardStore) {
 }
 
 export async function getHubCampaigns(): Promise<HubBoardCampaign[]> {
-  return (await loadHubBoard()).campaigns;
+  const store = await loadHubBoard();
+  const campaigns = store.campaigns.map((row) => pruneStalePublishedKeywords(row));
+  const changed = campaigns.some((row, i) => row.keywords.length !== store.campaigns[i]?.keywords.length);
+  if (changed) await saveHubBoard({ campaigns });
+  return campaigns;
 }
 
 export async function setHubCampaigns(campaigns: HubBoardCampaign[]): Promise<HubBoardCampaign[]> {

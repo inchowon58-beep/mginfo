@@ -18,6 +18,7 @@ type Keyword = {
   error?: string;
   title?: string;
   scheduledAt?: string;
+  publishedAt?: string;
 };
 
 type Campaign = {
@@ -55,7 +56,7 @@ function emptyCampaign(siteIds: string[]): Campaign {
     imagePool: [],
     imageFolderUrl: "",
     extraPrompt: "",
-    dailyLimit: 3,
+    dailyLimit: 100,
     siteIds,
     keywords: [],
     schedule: { enabled: true, startHour: 9 },
@@ -71,6 +72,77 @@ function statusLabel(status: string) {
   return "대기";
 }
 
+function formatScheduleTime(iso?: string) {
+  if (!iso) return "";
+  return new Intl.DateTimeFormat("ko-KR", {
+    timeZone: "Asia/Seoul",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).format(new Date(iso));
+}
+
+function seoulTodayKey() {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Seoul",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const year = parts.find((part) => part.type === "year")?.value;
+  const month = parts.find((part) => part.type === "month")?.value;
+  const day = parts.find((part) => part.type === "day")?.value;
+  return year && month && day ? `${year}-${month}-${day}` : "";
+}
+
+function seoulDayKey(iso?: string) {
+  if (!iso) return "";
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Seoul",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date(iso));
+  const year = parts.find((part) => part.type === "year")?.value;
+  const month = parts.find((part) => part.type === "month")?.value;
+  const day = parts.find((part) => part.type === "day")?.value;
+  return year && month && day ? `${year}-${month}-${day}` : "";
+}
+
+const PAGE_SIZE = 30;
+
+function PageNav({
+  page,
+  total,
+  onChange,
+}: {
+  page: number;
+  total: number;
+  onChange: (page: number) => void;
+}) {
+  const pages = Math.max(1, Math.ceil(total / PAGE_SIZE) || 1);
+  if (pages <= 1) return null;
+  return (
+    <div className="admin-pager">
+      {Array.from({ length: pages }, (_, i) => i + 1).map((num) => (
+        <button
+          key={num}
+          type="button"
+          className={`admin-page-btn${num === page ? " active" : ""}`}
+          onClick={() => onChange(num)}
+        >
+          {num}
+        </button>
+      ))}
+      <span className="admin-page-ellipsis">
+        {total}개 · {page}/{pages}페이지
+      </span>
+    </div>
+  );
+}
+
 export function HubBoardAds() {
   const [sites, setSites] = useState<BoardSite[]>([]);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
@@ -83,6 +155,8 @@ export function HubBoardAds() {
   const [sitesOpen, setSitesOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [folderBusy, setFolderBusy] = useState(false);
+  const [activePage, setActivePage] = useState(1);
+  const [donePage, setDonePage] = useState(1);
 
   async function load() {
     const res = await fetch("/api/ops/board-campaigns");
@@ -114,6 +188,52 @@ export function HubBoardAds() {
     }
     return [...map.entries()];
   }, [sites]);
+
+  const todayKey = seoulTodayKey();
+  const activeKeywords = useMemo(
+    () =>
+      form.keywords.filter(
+        (row) => row.status === "queued" || row.status === "scheduled" || row.status === "processing" || row.status === "failed"
+      ),
+    [form.keywords]
+  );
+  const doneToday = useMemo(
+    () =>
+      form.keywords.filter((row) => {
+        if (row.status !== "published") return false;
+        const day = seoulDayKey(row.publishedAt || row.scheduledAt);
+        return Boolean(day && day === todayKey);
+      }),
+    [form.keywords, todayKey]
+  );
+  const activeSlice = activeKeywords.slice((activePage - 1) * PAGE_SIZE, activePage * PAGE_SIZE);
+  const doneSlice = doneToday.slice((donePage - 1) * PAGE_SIZE, donePage * PAGE_SIZE);
+
+  useEffect(() => {
+    setActivePage(1);
+    setDonePage(1);
+  }, [form.id]);
+
+  useEffect(() => {
+    const max = Math.max(1, Math.ceil(activeKeywords.length / PAGE_SIZE) || 1);
+    if (activePage > max) setActivePage(max);
+  }, [activeKeywords.length, activePage]);
+
+  useEffect(() => {
+    const max = Math.max(1, Math.ceil(doneToday.length / PAGE_SIZE) || 1);
+    if (donePage > max) setDonePage(max);
+  }, [doneToday.length, donePage]);
+
+  const perSiteHint = useMemo(() => {
+    const n = Math.max(1, form.siteIds.length || 1);
+    const total = Math.max(1, form.dailyLimit || 1);
+    if (total >= 9999) return "사실상 무제한";
+    const base = Math.floor(total / n);
+    const rem = total % n;
+    return n > 1
+      ? `전체 ${total}개 · 사이트 ${n}개 → 대략 각 ${base}개${rem ? ` (앞 ${rem}곳은 +1)` : ""}`
+      : `하루 ${total}개`;
+  }, [form.dailyLimit, form.siteIds.length]);
 
   async function importFolder() {
     const folder = (form.imageFolderUrl || "").trim();
@@ -430,11 +550,11 @@ export function HubBoardAds() {
 
         <div className="bulk-group-grid">
           <label>
-            하루발행수량
+            하루 전체 발행 수량
             <input
               type="number"
               min={1}
-              max={40}
+              max={9999}
               value={form.dailyLimit}
               onChange={(e) => setForm({ ...form, dailyLimit: Number(e.target.value) || 1 })}
             />
@@ -473,6 +593,9 @@ export function HubBoardAds() {
             </select>
           </label>
         </div>
+        <p className="field-hint">
+          사이트 전체에 대한 하루 총량입니다. {perSiteHint}. 9999면 사실상 무제한.
+        </p>
 
         <label>대량 키워드 (줄 또는 쉼표)</label>
         <textarea
@@ -557,29 +680,65 @@ export function HubBoardAds() {
       </form>
 
       <div className="admin-card">
-        <h2>키워드 순차 현황</h2>
-        {form.keywords.length === 0 ? (
-          <p className="field-hint">키워드를 넣고 저장하면, 위에서부터 사이트 하나씩 배정됩니다.</p>
+        <h2>예약·대기 현황</h2>
+        <p className="field-hint">아직 안 나간 글만 보입니다. 대량발행처럼 예약발행시간을 함께 표시합니다.</p>
+        {activeKeywords.length === 0 ? (
+          <p className="field-hint">키워드를 넣고 저장하면, 위에서부터 사이트 하나씩 배정·예약됩니다.</p>
         ) : (
-          <ul className="hub-board-log">
-            {form.keywords.map((row) => (
-              <li key={row.id}>
-                <strong>{row.keyword}</strong>
-                <span>
-                  {statusLabel(row.status)}
-                  {row.domain ? ` · ${row.domain}` : " · 아직 배정 전"}
-                  {row.title ? ` · ${row.title}` : ""}
-                  {row.error ? ` · ${row.error}` : ""}
-                </span>
-                {row.status !== "published" && row.status !== "processing" ? (
-                  <button className="btn btn-ghost" type="button" disabled={Boolean(nowId) || busy} onClick={() => publishNow(row.id)}>
-                    {nowId === row.id ? "작성 중…" : "지금 이 사이트에 발행"}
-                  </button>
-                ) : null}
-              </li>
-            ))}
-          </ul>
+          <>
+            <ul className="hub-board-log">
+              {activeSlice.map((row) => (
+                <li key={row.id}>
+                  <strong>{row.keyword}</strong>
+                  <span>
+                    {statusLabel(row.status)}
+                    {row.scheduledAt && (row.status === "scheduled" || row.status === "queued" || row.status === "processing")
+                      ? ` · 예약발행시간 ${formatScheduleTime(row.scheduledAt)}`
+                      : ""}
+                    {row.domain ? ` · ${row.domain}` : " · 아직 배정 전"}
+                    {row.title ? ` · ${row.title}` : ""}
+                    {row.error ? ` · ${row.error}` : ""}
+                  </span>
+                  {row.status !== "published" && row.status !== "processing" ? (
+                    <button className="btn btn-ghost" type="button" disabled={Boolean(nowId) || busy} onClick={() => publishNow(row.id)}>
+                      {nowId === row.id ? "작성 중…" : "지금 이 사이트에 발행"}
+                    </button>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+            <PageNav page={activePage} total={activeKeywords.length} onChange={setActivePage} />
+          </>
         )}
+      </div>
+
+      <div className="admin-card">
+        <details className="hub-board-done">
+          <summary>
+            완료된 글 (오늘 {doneToday.length}건)
+            <span className="field-hint"> · 하루 지나면 자동으로 숨김</span>
+          </summary>
+          {doneToday.length === 0 ? (
+            <p className="field-hint">오늘 발행 완료된 글이 없습니다.</p>
+          ) : (
+            <>
+              <ul className="hub-board-log">
+                {doneSlice.map((row) => (
+                  <li key={row.id}>
+                    <strong>{row.keyword}</strong>
+                    <span>
+                      발행
+                      {row.publishedAt ? ` · ${formatScheduleTime(row.publishedAt)}` : ""}
+                      {row.domain ? ` · ${row.domain}` : ""}
+                      {row.title ? ` · ${row.title}` : ""}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              <PageNav page={donePage} total={doneToday.length} onChange={setDonePage} />
+            </>
+          )}
+        </details>
       </div>
     </div>
   );

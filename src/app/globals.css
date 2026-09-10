@@ -3189,6 +3189,35 @@ body {
   margin-top: 4px;
 }
 
+.hub-board-done {
+  border: 0;
+}
+.hub-board-done > summary {
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 16px;
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: baseline;
+}
+.hub-board-done > summary::-webkit-details-marker {
+  display: none;
+}
+.hub-board-done > summary::before {
+  content: "▸ ";
+  color: #60a5fa;
+}
+.hub-board-done[open] > summary::before {
+  content: "▾ ";
+}
+.hub-board-done .hub-board-log,
+.hub-board-done .field-hint,
+.hub-board-done .admin-pager {
+  margin-top: 12px;
+}
+
 .ops-consent {
   display: inline-flex;
   align-items: center;
