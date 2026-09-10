@@ -147,7 +147,7 @@ function BoardHead({ registerUrl }: { registerUrl?: string }) {
   const register = (registerUrl || "").trim();
   return (
     <div className="vendor-ad-head">
-      <p>알아보면 좋을만한 업체를 안내합니다.</p>
+      <p>바로 알아보면 좋을만한 업체를 안내합니다.</p>
       {register ? (
         <a className="vendor-ad-register" href={register} target="_blank" rel="noopener noreferrer">
           등록안내
