@@ -164,7 +164,7 @@ export async function publishDueHubBoard() {
   for (const item of due) {
     const latest = (await getHubCampaigns()).find((row) => row.id === item.campaign.id);
     const keyword = latest?.keywords.find((row) => row.id === item.keyword.id);
-    if (!latest || !keyword || keyword.status === "published" || keyword.status === "processing") continue;
+    if (!latest || !keyword || keyword.status === "published") continue;
     const published = await publishOneKeyword(latest, keyword);
     results.push({
       keyword: published.keyword,

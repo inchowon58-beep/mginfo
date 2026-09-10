@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { isAdminSession } from "@/lib/auth";
 import { bulkStats, planToday, publishDueBulk } from "@/lib/bulk-publish";
 import { readStore, updateStore } from "@/lib/db";
+import { isOpsHub } from "@/lib/ops-hub";
+import { publishDueHubBoard } from "@/lib/hub-board-store";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -23,12 +25,21 @@ export async function GET(request: Request) {
   const before = await updateStore((s) => {
     planned = planToday(s).planned;
   });
+  let hub = null as Awaited<ReturnType<typeof publishDueHubBoard>> | null;
+  if (await isOpsHub()) {
+    try {
+      hub = await publishDueHubBoard();
+    } catch {
+      hub = null;
+    }
+  }
   if (!before.bulkPublish.schedule.enabled) {
     return NextResponse.json({
       ok: true,
       skipped: true,
       reason: "off",
       planned: 0,
+      hub,
       stats: bulkStats(before.bulkPublish, before.categories || []),
     });
   }
@@ -41,6 +52,7 @@ export async function GET(request: Request) {
     skipped: false,
     planned,
     ...published,
+    hub,
     stats: bulkStats(store.bulkPublish, store.categories || []),
   });
 }

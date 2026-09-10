@@ -273,7 +273,8 @@ export function dueHubKeywords(campaigns: HubBoardCampaign[], now = new Date()) 
   const due: { campaign: HubBoardCampaign; keyword: HubBoardKeyword }[] = [];
   for (const campaign of campaigns) {
     for (const keyword of campaign.keywords) {
-      if (keyword.status !== "scheduled") continue;
+      if (keyword.status === "published" || keyword.status === "failed" || keyword.status === "queued") continue;
+      if (keyword.status !== "scheduled" && keyword.status !== "processing") continue;
       if (!keyword.scheduledAt || new Date(keyword.scheduledAt).getTime() > now.getTime()) continue;
       due.push({ campaign, keyword });
     }

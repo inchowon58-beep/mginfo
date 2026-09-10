@@ -179,19 +179,24 @@ export function HubBoardAds() {
   }, []);
 
   useEffect(() => {
-    if (!form.schedule?.enabled) return;
+    let cancelled = false;
     const tick = () => {
       fetch("/api/cron/hub-board", { method: "POST" })
-        .then(() => load())
+        .then(() => (cancelled ? null : load()))
         .then((fresh) => {
+          if (!fresh || cancelled) return;
           const current = fresh.campaigns.find((row) => row.id === form.id) || fresh.campaigns[0];
           if (current) setForm(current);
         })
         .catch(() => undefined);
     };
-    const timer = window.setInterval(tick, 4 * 60 * 1000);
-    return () => window.clearInterval(timer);
-  }, [form.schedule?.enabled, form.id]);
+    tick();
+    const timer = window.setInterval(tick, 3 * 60 * 1000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [form.id]);
 
   const grouped = useMemo(() => {
     const map = new Map<string, BoardSite[]>();
