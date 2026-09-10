@@ -1,4 +1,4 @@
-const HUB_HOST = "magazine.infocs.co.kr";
+const HUB_HOSTS = new Set(["magazine.infocs.co.kr", "mginfo.vercel.app"]);
 
 function normalizeHost(raw: string) {
   return String(raw || "")
@@ -25,14 +25,14 @@ function envHostCandidates() {
 }
 
 export function isHubHost(host?: string | null) {
-  return normalizeHost(String(host || "")) === HUB_HOST;
+  return HUB_HOSTS.has(normalizeHost(String(host || "")));
 }
 
 export async function isOpsHub() {
   const flag = flagValue();
   if (flag === "1" || flag === "true") return true;
   if (flag === "0" || flag === "false") return false;
-  if (envHostCandidates().some((host) => host === HUB_HOST)) return true;
+  if (envHostCandidates().some((host) => HUB_HOSTS.has(host))) return true;
   try {
     const { headers } = await import("next/headers");
     const h = await headers();

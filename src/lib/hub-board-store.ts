@@ -18,7 +18,7 @@ import { getOpsSites, getBannedKeywords } from "./ops-store";
 import { bannedContentError, collectPublishText } from "./banned-keywords";
 
 const LOCAL_PATH = path.join(process.cwd(), "data", "hub-board.json");
-const MAX_PER_TICK = 2;
+const MAX_PER_TICK = 4;
 
 type HubBoardStore = { campaigns: HubBoardCampaign[] };
 

@@ -178,6 +178,21 @@ export function HubBoardAds() {
       .catch((err) => setError(err instanceof Error ? err.message : "불러오기 실패"));
   }, []);
 
+  useEffect(() => {
+    if (!form.schedule?.enabled) return;
+    const tick = () => {
+      fetch("/api/cron/hub-board", { method: "POST" })
+        .then(() => load())
+        .then((fresh) => {
+          const current = fresh.campaigns.find((row) => row.id === form.id) || fresh.campaigns[0];
+          if (current) setForm(current);
+        })
+        .catch(() => undefined);
+    };
+    const timer = window.setInterval(tick, 4 * 60 * 1000);
+    return () => window.clearInterval(timer);
+  }, [form.schedule?.enabled, form.id]);
+
   const grouped = useMemo(() => {
     const map = new Map<string, BoardSite[]>();
     for (const site of sites) {
@@ -681,7 +696,7 @@ export function HubBoardAds() {
 
       <div className="admin-card">
         <h2>예약·대기 현황</h2>
-        <p className="field-hint">아직 안 나간 글만 보입니다. 대량발행처럼 예약발행시간을 함께 표시합니다.</p>
+        <p className="field-hint">아직 안 나간 글만 보입니다. 예약 시각이 지난 글은 서버가 제미나이로 작성해서 올립니다. 한 번에 최대 4편이라, 밀린 글은 몇 번에 나눠 나갑니다. 지금 바로 올리려면 그 줄의 발행 버튼을 누르세요.</p>
         {activeKeywords.length === 0 ? (
           <p className="field-hint">키워드를 넣고 저장하면, 위에서부터 사이트 하나씩 배정·예약됩니다.</p>
         ) : (
