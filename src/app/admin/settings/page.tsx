@@ -326,7 +326,7 @@ export default function SettingsPage() {
             placeholder="https://..."
           />
           <p className="field-hint">
-            글 광고 배너 오른쪽 ‘등록안내’에 연결됩니다. 비워 두면 링크를 숨깁니다.
+            제휴업체모집중을 켠 글에서 배너 오른쪽 ‘등록안내’에 연결됩니다. 비워 두면 링크를 숨깁니다.
           </p>
           <div className="theme-picker">
             {SITE_THEMES.map((theme) => (

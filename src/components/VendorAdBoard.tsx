@@ -188,7 +188,7 @@ export function VendorAdBoard({
       aria-label={`${keyword} 관련 업체`}
     >
       {preview ? <p className="vendor-ad-preview-label">입점시 이렇게 노출됩니다</p> : null}
-      <BoardHead registerUrl={register} />
+      <BoardHead registerUrl={showRecruit ? register : undefined} />
       <div className="vendor-ad-list">
         {vendors.map((vendor) =>
           layout === "grid" ? (
