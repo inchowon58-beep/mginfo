@@ -5,6 +5,7 @@ import { ARTICLE_STYLE_OPTIONS, type ArticleStyleChoice } from "@/lib/article-st
 import { parseKeywordList } from "@/lib/bulk-keywords";
 import { mergeImageUrls } from "@/lib/image-pool";
 import { uid } from "@/lib/slug";
+import { MultiFileButton } from "@/components/admin/MultiFileButton";
 import { VendorPicker } from "@/components/admin/VendorPicker";
 import type { BulkGroup, BulkPublishState, BulkSchedule, Category } from "@/lib/types";
 
@@ -670,35 +671,17 @@ function GroupImagePool({
         </p>
       </div>
       <div className="cover-upload">
-        <label className="btn btn-ghost cover-file-btn">
-          {busy && progress.includes("/") ? `올리는 중 ${progress}` : "사진 올리기"}
-          <input
-            type="file"
-            accept="image/*"
-            multiple
-            disabled={busy}
-            onChange={(e) => {
-              const files = e.target.files;
-              e.target.value = "";
-              if (files?.length) void uploadFiles(files);
-            }}
-          />
-        </label>
-        <label className="btn btn-ghost cover-file-btn">
-          {busy ? "처리 중…" : "폴더 올리기"}
-          <input
-            type="file"
-            accept="image/*"
-            multiple
-            {...{ webkitdirectory: "", directory: "" }}
-            disabled={busy}
-            onChange={(e) => {
-              const files = e.target.files;
-              e.target.value = "";
-              if (files?.length) void uploadFiles(files);
-            }}
-          />
-        </label>
+        <MultiFileButton
+          label={busy && progress.includes("/") ? `올리는 중 ${progress}` : "사진 여러 장 선택"}
+          busy={busy}
+          onFiles={(files) => void uploadFiles(files)}
+        />
+        <MultiFileButton
+          label={busy ? "처리 중…" : "폴더 올리기"}
+          busy={busy}
+          folder
+          onFiles={(files) => void uploadFiles(files)}
+        />
         {urls.length ? (
           <button className="btn btn-ghost" type="button" onClick={() => onChange({ imagePool: [] })}>
             사진 비우기

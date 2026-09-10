@@ -82,7 +82,7 @@ export async function PUT(
             : s.posts[idx].coverCaption,
         extraImages:
           body.extraImages !== undefined
-            ? parsePostImages(body.extraImages, extraImageLimit(s.settings.extraImagesEnabled))
+            ? parsePostImages(body.extraImages, extraImageLimit(true))
             : s.posts[idx].extraImages,
         focusKeyword:
           body.focusKeyword != null

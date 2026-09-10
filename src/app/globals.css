@@ -1128,6 +1128,41 @@ body {
   font-size: 12px;
 }
 
+.admin-side-logo,
+.admin-side a.admin-side-logo {
+  display: block;
+  width: auto;
+  max-width: none;
+  margin: 0 0 20px;
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  color: #f8fafc;
+}
+
+.admin-side a.admin-side-logo:hover,
+.admin-side a.admin-side-logo.active {
+  background: transparent;
+  color: #fff;
+}
+
+.admin-side-logo h1 {
+  margin: 0 0 4px;
+}
+
+.admin-side-logo p,
+.admin-side p.admin-screen-title {
+  margin: 0;
+}
+
+.admin-screen-title {
+  display: none;
+}
+
+.admin-nav-short {
+  display: none;
+}
+
 .admin-side a,
 .admin-side button.linkish {
   display: block;
@@ -2391,6 +2426,14 @@ body {
   cursor: pointer;
 }
 
+.admin-file-input {
+  position: absolute;
+  width: 0;
+  height: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
 .settings-stack {
   display: grid;
   gap: 20px;
@@ -3264,10 +3307,10 @@ body {
     background: #020617;
   }
   .admin-side-brand {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 8px;
+    display: block;
+  }
+  .admin-side a.admin-side-logo {
+    margin: 0;
   }
   .admin-side h1 {
     margin: 0;
@@ -3277,13 +3320,32 @@ body {
     margin: 0;
     font-size: 11px;
   }
+  .admin-screen-title {
+    display: block;
+    margin: 0;
+    padding: 8px 2px 2px;
+    color: #f8fafc;
+    font-size: 18px;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    line-height: 1.25;
+  }
+  .admin-nav-home {
+    display: none !important;
+  }
+  .admin-nav-full {
+    display: none;
+  }
+  .admin-nav-short {
+    display: inline;
+  }
   .admin-side-nav {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 6px;
   }
-  .admin-side a,
-  .admin-side button.linkish {
+  .admin-side-nav a,
+  .admin-side-nav button.linkish {
     width: 100%;
     max-width: none;
     display: inline-flex;
@@ -3331,6 +3393,27 @@ body {
   }
   .admin-dash-grid {
     grid-template-columns: 1fr;
+  }
+  .bulk-group header {
+    display: grid;
+    grid-template-columns: 1fr;
+    align-items: stretch;
+    gap: 10px;
+  }
+  .bulk-group-head {
+    flex: none;
+    width: 100%;
+    padding: 2px 0 0;
+  }
+  .bulk-group-tools {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    width: 100%;
+    gap: 8px;
+  }
+  .bulk-group-tools .btn {
+    width: 100%;
+    min-width: 0;
   }
   .bulk-group-grid,
   .bulk-vendor-grid,
@@ -3589,6 +3672,9 @@ body {
   }
   .admin-side p {
     display: none;
+  }
+  .admin-side p.admin-screen-title {
+    display: block;
   }
   .admin-login .box {
     padding: 22px 18px;

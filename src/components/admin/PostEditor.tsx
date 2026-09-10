@@ -11,6 +11,7 @@ import {
 import { DEFAULT_GEMINI_NOTES, resolveGeminiNotes } from "@/lib/gemini-notes";
 import { extraImageLimit, MAX_POST_IMAGES } from "@/lib/post-images";
 import { extractPlaceName } from "@/lib/region-geo";
+import { MultiFileButton } from "@/components/admin/MultiFileButton";
 import { VendorPicker } from "@/components/admin/VendorPicker";
 import type { Category, CategorySlug, FaqItem, Post, PostImage, PostStatus } from "@/lib/types";
 
@@ -33,7 +34,6 @@ export function PostEditor({ post }: { post?: Post }) {
   const [coverImage, setCoverImage] = useState(post?.coverImage || "");
   const [coverCaption, setCoverCaption] = useState(post?.coverCaption || "");
   const [extraImages, setExtraImages] = useState<PostImage[]>(post?.extraImages || []);
-  const [extraImagesEnabled, setExtraImagesEnabled] = useState(true);
   const [focusKeyword, setFocusKeyword] = useState(post?.focusKeyword || "");
   const [faqItems, setFaqItems] = useState<FaqItem[]>(padFaqs(post?.faqItems));
   const [status, setStatus] = useState<PostStatus>(post?.status || "draft");
@@ -64,10 +64,6 @@ export function PostEditor({ post }: { post?: Post }) {
   const notesForCategory = useRef("");
 
   useEffect(() => {
-    fetch("/api/settings")
-      .then((r) => r.json())
-      .then((data) => setExtraImagesEnabled(Boolean(data.settings?.extraImagesEnabled)))
-      .catch(() => undefined);
     fetch("/api/categories")
       .then((r) => r.json())
       .then((data) => {
@@ -179,7 +175,7 @@ export function PostEditor({ post }: { post?: Post }) {
     try {
       const urls: string[] = [];
       for (const file of images) urls.push(await uploadImage(file));
-      const extraCap = extraImagesEnabled ? extraImageLimit(true) : 0;
+      const extraCap = extraImageLimit(true);
       let nextCover = coverImage;
       let nextExtras = extraImages.filter((row) => row.url.trim());
       let skipped = 0;
@@ -236,7 +232,7 @@ export function PostEditor({ post }: { post?: Post }) {
         tags,
         coverImage,
         coverCaption,
-        extraImages: extraImagesEnabled ? extraImages.filter((item) => item.url.trim()) : [],
+        extraImages: extraImages.filter((item) => item.url.trim()),
         focusKeyword,
         faqItems: faqItems.filter((item) => item.question.trim() && item.answer.trim()),
         status,
@@ -397,21 +393,11 @@ export function PostEditor({ post }: { post?: Post }) {
         <input value={tags} onChange={(e) => setTags(e.target.value)} />
         <label>대표 이미지</label>
         <div className="cover-upload">
-          <label className="btn btn-ghost cover-file-btn">
-            {uploading ? "올리는 중…" : "사진 여러 장 선택"}
-            <input
-              type="file"
-              accept="image/*"
-              multiple
-              disabled={uploading}
-              onChange={(e) => {
-                const files = e.target.files;
-                e.target.value = "";
-                if (!files?.length) return;
-                void uploadMany(files);
-              }}
-            />
-          </label>
+          <MultiFileButton
+            label={uploading ? "올리는 중…" : "사진 여러 장 선택"}
+            busy={uploading}
+            onFiles={(files) => void uploadMany(files)}
+          />
           {coverImage ? (
             <button className="btn btn-ghost" type="button" onClick={() => setCoverImage("")}>
               이미지 빼기
@@ -435,86 +421,71 @@ export function PostEditor({ post }: { post?: Post }) {
         {coverImage ? (
           <img className="cover-preview" src={coverImage} alt="대표 이미지 미리보기" />
         ) : null}
-        {extraImagesEnabled ? (
-          <div className="extra-images">
-            <h3 className="admin-subhead">추가 사진</h3>
-            <p className="field-hint" style={{ marginTop: 0 }}>
-              대표 포함 최대 7장입니다. 위 버튼으로 여러 장을 한 번에 올리거나, 아래에서 장마다 바꿀 수 있습니다. 추가
-              사진은 소제목 앞에 들어가고, 남는 장은 하단 갤러리에 모입니다.
-            </p>
-            <div className="cover-upload">
-              <label className="btn btn-ghost cover-file-btn">
-                {uploading ? "올리는 중…" : "추가 사진 여러 장 선택"}
-                <input
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  disabled={uploading}
-                  onChange={(e) => {
-                    const files = e.target.files;
-                    e.target.value = "";
-                    if (files?.length) void uploadMany(files);
+        <div className="extra-images">
+          <h3 className="admin-subhead">추가 사진</h3>
+          <p className="field-hint" style={{ marginTop: 0 }}>
+            대표 포함 최대 7장입니다. 위 버튼으로 여러 장을 한 번에 올리거나, 아래에서 장마다 바꿀 수 있습니다. 추가
+            사진은 소제목 앞에 들어가고, 남는 장은 하단 갤러리에 모입니다.
+          </p>
+          <div className="cover-upload">
+            <MultiFileButton
+              label={uploading ? "올리는 중…" : "추가 사진 여러 장 선택"}
+              busy={uploading}
+              onFiles={(files) => void uploadMany(files)}
+            />
+          </div>
+          {extraImages.map((image, index) => (
+            <div className="extra-image-row" key={`extra-${index}`}>
+              <label>추가 사진 {index + 2}</label>
+              <div className="cover-upload">
+                <MultiFileButton
+                  label={uploading ? "올리는 중…" : "올리기"}
+                  busy={uploading}
+                  multiple={false}
+                  onFiles={(files) => {
+                    const file = files[0];
+                    if (file) void uploadExtra(index, file);
                   }}
                 />
-              </label>
-            </div>
-            {extraImages.map((image, index) => (
-              <div className="extra-image-row" key={`extra-${index}`}>
-                <label>추가 사진 {index + 2}</label>
-                <div className="cover-upload">
-                  <label className="btn btn-ghost cover-file-btn">
-                    {uploading ? "올리는 중…" : "올리기"}
-                    <input
-                      type="file"
-                      accept="image/*"
-                      disabled={uploading}
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        e.target.value = "";
-                        if (file) void uploadExtra(index, file);
-                      }}
-                    />
-                  </label>
-                  <button
-                    className="btn btn-ghost"
-                    type="button"
-                    onClick={() => setExtraImages((rows) => rows.filter((_, i) => i !== index))}
-                  >
-                    빼기
-                  </button>
-                </div>
-                <input
-                  value={image.url}
-                  onChange={(e) =>
-                    setExtraImages((rows) =>
-                      rows.map((row, i) => (i === index ? { ...row, url: e.target.value } : row))
-                    )
-                  }
-                  placeholder="이미지 주소 https://..."
-                />
-                <input
-                  value={image.caption || ""}
-                  onChange={(e) =>
-                    setExtraImages((rows) =>
-                      rows.map((row, i) => (i === index ? { ...row, caption: e.target.value } : row))
-                    )
-                  }
-                  placeholder="사진 아래 짧은 설명"
-                />
-                {image.url ? <img className="cover-preview" src={image.url} alt={`추가 사진 ${index + 2}`} /> : null}
+                <button
+                  className="btn btn-ghost"
+                  type="button"
+                  onClick={() => setExtraImages((rows) => rows.filter((_, i) => i !== index))}
+                >
+                  빼기
+                </button>
               </div>
-            ))}
-            {extraImages.length < extraImageLimit(true) ? (
-              <button
-                className="btn btn-ghost"
-                type="button"
-                onClick={() => setExtraImages((rows) => [...rows, { url: "", caption: "" }])}
-              >
-                사진 추가 ({extraImages.length + 1}/7)
-              </button>
-            ) : null}
-          </div>
-        ) : null}
+              <input
+                value={image.url}
+                onChange={(e) =>
+                  setExtraImages((rows) =>
+                    rows.map((row, i) => (i === index ? { ...row, url: e.target.value } : row))
+                  )
+                }
+                placeholder="이미지 주소 https://..."
+              />
+              <input
+                value={image.caption || ""}
+                onChange={(e) =>
+                  setExtraImages((rows) =>
+                    rows.map((row, i) => (i === index ? { ...row, caption: e.target.value } : row))
+                  )
+                }
+                placeholder="사진 아래 짧은 설명"
+              />
+              {image.url ? <img className="cover-preview" src={image.url} alt={`추가 사진 ${index + 2}`} /> : null}
+            </div>
+          ))}
+          {extraImages.length < extraImageLimit(true) ? (
+            <button
+              className="btn btn-ghost"
+              type="button"
+              onClick={() => setExtraImages((rows) => [...rows, { url: "", caption: "" }])}
+            >
+              사진 추가 ({extraImages.length + 1}/7)
+            </button>
+          ) : null}
+        </div>
         <label>본문 테마</label>
         <select value={theme} onChange={(e) => setTheme(e.target.value)}>
           <option value="art-blog">블로그형</option>

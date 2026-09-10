@@ -72,7 +72,7 @@ export async function POST(request: Request) {
           .filter(Boolean),
     coverImage: String(body.coverImage || "") || undefined,
     coverCaption: String(body.coverCaption || "").trim() || undefined,
-    extraImages: parsePostImages(body.extraImages, extraImageLimit(store.settings.extraImagesEnabled)),
+    extraImages: parsePostImages(body.extraImages, extraImageLimit(true)),
     focusKeyword: String(body.focusKeyword || "").trim() || undefined,
     faqItems: parseFaqItems(body.faqItems),
     regionInfo: String(body.regionInfo || "").trim() || undefined,
