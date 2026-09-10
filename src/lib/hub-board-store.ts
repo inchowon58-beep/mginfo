@@ -109,7 +109,7 @@ async function publishOneKeyword(campaign: HubBoardCampaign, keyword: HubBoardKe
   try {
     const settings = await getSettings();
     const bannedList = await getBannedKeywords();
-    const keywordBan = bannedContentError(bannedList, current.keyword, next.vendorName);
+    const keywordBan = bannedContentError(bannedList, current.keyword, next.vendorName, next.extraPrompt);
     if (keywordBan) throw new Error(keywordBan);
     const article = await generateHubBoardArticle(next, current, assigned.site, settings);
     const pushed = await pushBoardPost(assigned.site, article);

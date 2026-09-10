@@ -30,11 +30,14 @@ type Campaign = {
   vendorId?: string;
   writingStyle?: string;
   imagePool?: string[];
+  imageFolderUrl?: string;
+  extraPrompt?: string;
   dailyLimit: number;
   siteIds: string[];
   keywords: Keyword[];
   schedule: { enabled: boolean; startHour: number };
   stats?: { total: number; published: number; remaining: number; percent: number; daysLeft: number };
+  vendorRecruitSlot?: boolean;
 };
 
 const HOURS = Array.from({ length: 23 }, (_, i) => i + 1);
@@ -50,10 +53,13 @@ function emptyCampaign(siteIds: string[]): Campaign {
     vendorId: "",
     writingStyle: "random",
     imagePool: [],
+    imageFolderUrl: "",
+    extraPrompt: "",
     dailyLimit: 3,
     siteIds,
     keywords: [],
     schedule: { enabled: true, startHour: 9 },
+    vendorRecruitSlot: false,
   };
 }
 
@@ -76,6 +82,7 @@ export function HubBoardAds() {
   const [message, setMessage] = useState("");
   const [sitesOpen, setSitesOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [folderBusy, setFolderBusy] = useState(false);
 
   async function load() {
     const res = await fetch("/api/ops/board-campaigns");
@@ -108,6 +115,33 @@ export function HubBoardAds() {
     return [...map.entries()];
   }, [sites]);
 
+  async function importFolder() {
+    const folder = (form.imageFolderUrl || "").trim();
+    if (!folder) {
+      setError("웹 폴더 주소를 넣으세요.");
+      return;
+    }
+    setFolderBusy(true);
+    setError("");
+    setMessage("");
+    try {
+      const res = await fetch("/api/admin/bulk/folder-images", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: folder }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "폴더를 읽지 못했습니다.");
+      const added = Array.isArray(data.urls) ? data.urls.map((item: unknown) => String(item || "")).filter(Boolean) : [];
+      setForm((prev) => ({ ...prev, imagePool: mergeImageUrls(prev.imagePool || [], added) }));
+      setMessage(`${added.length}장을 폴더에서 가져왔습니다. 아래 저장을 눌러 캠페인에 남기세요.`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "폴더를 읽지 못했습니다.");
+    } finally {
+      setFolderBusy(false);
+    }
+  }
+
   function toggleSite(id: string) {
     setForm((prev) => ({
       ...prev,
@@ -133,12 +167,15 @@ export function HubBoardAds() {
           vendorKakao: form.vendorKakao,
           vendorId: form.vendorId,
           imagePool: form.imagePool || [],
+          imageFolderUrl: form.imageFolderUrl || "",
+          extraPrompt: form.extraPrompt || "",
           coverImage: (form.imagePool || [])[0] || "",
           writingStyle: form.writingStyle,
           dailyLimit: form.dailyLimit,
           siteIds: form.siteIds,
           keywords: form.keywords,
           schedule: form.schedule,
+          vendorRecruitSlot: Boolean(form.vendorRecruitSlot),
           text,
         }),
       });
@@ -281,11 +318,26 @@ export function HubBoardAds() {
         <label>카카오</label>
         <input value={form.vendorKakao || ""} onChange={(e) => setForm({ ...form, vendorKakao: e.target.value })} />
 
+        <label className="admin-check-all">
+          <input
+            type="checkbox"
+            checked={Boolean(form.vendorRecruitSlot)}
+            onChange={(e) => setForm({ ...form, vendorRecruitSlot: e.target.checked })}
+          />
+          제휴업체모집중
+        </label>
+        <p className="field-hint">
+          켜면 받는 사이트 광고 글에도 제휴업체모집중 칸이 붙습니다. 이미 나간 글은 그대로이고, 새로 발행되는 글부터
+          적용됩니다. 등록안내는 그 사이트 운영자가 사이트설정에 넣은 주소가 있으면 그쪽으로, 없으면 총관리자
+          사이트설정의 등록안내 페이지로 이동합니다. 사이트 운영자가 카테고리에서 제휴업체모집중을 켜 두면 그 설정도
+          그대로 적용됩니다.
+        </p>
+
         <label>광고 이미지</label>
         <div className="cover-upload">
           <MultiFileButton
             label={uploading ? "올리는 중…" : "이미지 올리기"}
-            busy={uploading}
+            busy={uploading || folderBusy}
             onFiles={async (files) => {
               const images = pickImageFiles(files);
               if (!images.length) {
@@ -314,8 +366,35 @@ export function HubBoardAds() {
               }
             }}
           />
+          {(form.imagePool || []).length ? (
+            <button
+              className="btn btn-ghost"
+              type="button"
+              onClick={() => setForm((prev) => ({ ...prev, imagePool: [] }))}
+              disabled={uploading || folderBusy}
+            >
+              사진 비우기
+            </button>
+          ) : null}
         </div>
-        <p className="field-hint">올린 사진이 자유게시판 광고 글의 대표 이미지와 본문 사진으로 쓰입니다.</p>
+        <div className="bulk-folder-row">
+          <label>
+            웹 폴더 주소
+            <input
+              value={form.imageFolderUrl || ""}
+              onChange={(e) => setForm({ ...form, imageFolderUrl: e.target.value })}
+              placeholder="https://image.example.com/pome"
+              disabled={uploading || folderBusy}
+            />
+          </label>
+          <button className="btn" type="button" onClick={() => void importFolder()} disabled={uploading || folderBusy}>
+            {folderBusy ? "가져오는 중…" : "폴더에서 가져오기"}
+          </button>
+        </div>
+        <p className="field-hint">
+          올린 사진이 자유게시판 광고 글의 대표 이미지와 본문 사진으로 쓰입니다. 폴더는 확장자·번호를 적을 필요 없이
+          주소만 넣으면, 목록이 열려 있거나 01.webp처럼 번호 파일이면 알아서 가져옵니다.
+        </p>
         {(form.imagePool || []).length ? (
           <ul className="bulk-thumbs">
             {(form.imagePool || []).map((url) => (
@@ -336,6 +415,18 @@ export function HubBoardAds() {
             ))}
           </ul>
         ) : null}
+
+        <label>추가 프롬프트 (실제 방문 후기)</label>
+        <textarea
+          value={form.extraPrompt || ""}
+          onChange={(e) => setForm({ ...form, extraPrompt: e.target.value })}
+          rows={5}
+          placeholder="이 캠페인 글에 공통으로 넣습니다. 예: 직접 가서 본 메뉴, 대기, 맛, 주차, 다시 갈지 여부. 강조하고 싶은 안내도 여기에 적습니다."
+        />
+        <p className="field-hint">
+          제미나이가 글을 쓸 때 이 내용을 함께 봅니다. 직접 가서 본 것을 적으면 그 메모로 후기글을 완성하고, 비워 두면
+          없는 방문담은 만들지 않습니다.
+        </p>
 
         <div className="bulk-group-grid">
           <label>

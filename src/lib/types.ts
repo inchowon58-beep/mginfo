@@ -66,6 +66,8 @@ export type Post = {
   vendorBizNo?: string;
   vendorAddress?: string;
   hubCampaignId?: string;
+  vendorRecruitSlot?: boolean;
+  hubVendorRegisterUrl?: string;
 };
 
 export type AdminPostRow = {

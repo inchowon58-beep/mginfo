@@ -83,6 +83,17 @@ export function categoryRecruitEnabled(category?: Pick<Category, "vendorRecruitS
   return Boolean(category?.vendorRecruitSlot);
 }
 
+export function articleShowRecruit(
+  category?: Pick<Category, "vendorRecruitSlot"> | null,
+  post?: Pick<Post, "vendorRecruitSlot"> | null
+) {
+  return categoryRecruitEnabled(category) || Boolean(post?.vendorRecruitSlot);
+}
+
+export function resolveVendorRegisterUrl(settingsUrl?: string | null, fallbackUrl?: string | null) {
+  return String(settingsUrl || "").trim() || String(fallbackUrl || "").trim();
+}
+
 function postHaystack(post: Pick<Post, "title" | "focusKeyword" | "region" | "regionInfo" | "nearbyAreas" | "tags" | "excerpt">) {
   return compact(
     [

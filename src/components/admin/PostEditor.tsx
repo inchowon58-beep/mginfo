@@ -382,8 +382,8 @@ export function PostEditor({ post }: { post?: Post }) {
             <h3>소개 업체</h3>
             <p className="field-hint" style={{ marginTop: 0 }}>
               안내 업체는 {MAX_LISTING_VENDORS}곳까지 넣을 수 있습니다. 여기에 넣으면 이 글에는 카테고리 업체가 나가지
-              않고, 넣은 업체만 중간·하단 배너로 보입니다. 제휴업체모집중 칸은 카테고리 설정에서 켠 경우에만 맨 아래에
-              하나 더 붙습니다.
+              않고, 넣은 업체만 중간·하단 배너로 보입니다. 제휴업체모집중 칸은 카테고리 설정이나 자유게시판 광고에서 켠
+              경우에 맨 아래에 하나 더 붙습니다.
             </p>
             {vendorIds.length ? (
               <ul className="vendor-pick-chips">

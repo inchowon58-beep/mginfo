@@ -13,9 +13,10 @@ import { extractPlaceName, parseNameList } from "./region-geo";
 import { cleanHtml } from "./sanitize";
 import { articleSlug, slugify, uid } from "./slug";
 import type { Post, Settings } from "./types";
-import { parseVendorFields } from "./vendor";
+import { normalizeHttpUrl, parseVendorFields } from "./vendor";
 import { ensureVendorSlots } from "./vendor-slots";
 import { pickRandomPostImages, mergeImageUrls } from "./image-pool";
+import { discoverWebFolderImages } from "./web-image-folder";
 
 export type HubBoardResult = {
   siteId: string;
@@ -56,6 +57,8 @@ export type HubBoardCampaign = {
   vendorIds?: string[];
   writingStyle: string;
   imagePool?: string[];
+  imageFolderUrl?: string;
+  extraPrompt?: string;
   dailyLimit: number;
   siteIds: string[];
   nextSiteIndex: number;
@@ -70,6 +73,7 @@ export type HubBoardCampaign = {
   scheduledAt?: string | null;
   publishedAt?: string | null;
   results?: HubBoardResult[];
+  vendorRecruitSlot?: boolean;
 };
 
 function masterSecret() {
@@ -139,6 +143,8 @@ export function parseHubCampaign(raw: unknown, current?: HubBoardCampaign): HubB
         : current?.imagePool || (current?.coverImage ? [current.coverImage] : [])
     ),
     writingStyle: trimText(row.writingStyle ?? current?.writingStyle) || "random",
+    extraPrompt: trimText(row.extraPrompt ?? current?.extraPrompt) || undefined,
+    imageFolderUrl: trimText(row.imageFolderUrl ?? current?.imageFolderUrl) || undefined,
     dailyLimit: Math.max(1, Math.min(40, Math.floor(Number(row.dailyLimit ?? current?.dailyLimit) || 1))),
     siteIds,
     nextSiteIndex: Math.max(0, Math.floor(Number(row.nextSiteIndex ?? current?.nextSiteIndex) || 0)),
@@ -155,6 +161,8 @@ export function parseHubCampaign(raw: unknown, current?: HubBoardCampaign): HubB
     bodyHtml: current?.bodyHtml,
     coverImage: trimText(row.coverImage ?? current?.coverImage) || undefined,
     results: Array.isArray(row.results) ? (row.results as HubBoardResult[]) : current?.results || [],
+    vendorRecruitSlot:
+      typeof row.vendorRecruitSlot === "boolean" ? row.vendorRecruitSlot : Boolean(current?.vendorRecruitSlot),
   };
 }
 
@@ -333,7 +341,13 @@ export async function generateHubBoardArticle(
 ) {
   const apiKey = settings.geminiApiKey || process.env.GEMINI_API_KEY || "";
   if (!apiKey) throw new Error("허브 마스터설정에 제미나이 API 키가 없습니다.");
-  const keywordBan = bannedContentError(settings.publishBannedKeywords, keyword.keyword, campaign.vendorName);
+  const extraPrompt = trimText(campaign.extraPrompt);
+  const keywordBan = bannedContentError(
+    settings.publishBannedKeywords,
+    keyword.keyword,
+    campaign.vendorName,
+    extraPrompt
+  );
   if (keywordBan) throw new Error(keywordBan);
   const voice = await fetchSiteVoice(site);
   const writingStyle = resolveArticleStyle(campaign.writingStyle || "random", keyword.keyword);
@@ -344,7 +358,12 @@ export async function generateHubBoardArticle(
     category: FREE_BOARD_SLUG,
     categoryName: "자유게시판",
     notes: resolveGeminiNotes(
-      `이 글은 ${siteName} (${site.domain}) 자유게시판 광고 글이다. 사이트 컨셉: ${site.concept || "생활 정보 매거진"}${voice.siteTagline ? `. 소개: ${voice.siteTagline}` : ""}. 업체 ${campaign.vendorName || ""}를 자연스럽게 소개하되 과장 광고 문장은 피한다. 말투는 이 사이트 설정(합니다체/했어요체 등)을 그대로 따른다.`,
+      [
+        `이 글은 ${siteName} (${site.domain}) 자유게시판 광고 글이다. 사이트 컨셉: ${site.concept || "생활 정보 매거진"}${voice.siteTagline ? `. 소개: ${voice.siteTagline}` : ""}. 업체 ${campaign.vendorName || ""}를 자연스럽게 소개하되 과장 광고 문장은 피한다. 말투는 이 사이트 설정(합니다체/했어요체 등)을 그대로 따른다.`,
+        extraPrompt ? `추가 프롬프트:\n${extraPrompt}` : "",
+      ]
+        .filter(Boolean)
+        .join("\n\n"),
       ""
     ),
     focusKeyword: keyword.keyword,
@@ -352,6 +371,7 @@ export async function generateHubBoardArticle(
     vendorName: campaign.vendorName,
     writingTone: voice.writingTone || settings.writingTone,
     writingPersona: voice.writingPersona || settings.writingPersona,
+    experienceNotes: extraPrompt,
     apiKey,
     model: settings.geminiModel || DEFAULT_GEMINI_MODEL,
   });
@@ -366,7 +386,16 @@ export async function generateHubBoardArticle(
     })
   );
   if (generatedBan) throw new Error(generatedBan);
-  const photos = pickRandomPostImages(campaign.imagePool || (campaign.coverImage ? [campaign.coverImage] : []), 1, 3);
+  let imagePool = campaign.imagePool || (campaign.coverImage ? [campaign.coverImage] : []);
+  if (!imagePool.length && campaign.imageFolderUrl) {
+    try {
+      const found = await discoverWebFolderImages(campaign.imageFolderUrl);
+      imagePool = found.urls;
+    } catch {
+      imagePool = [];
+    }
+  }
+  const photos = pickRandomPostImages(imagePool, 1, 3);
   return {
     hubCampaignId: `${campaign.id}:${keyword.id}`,
     title: article.title,
@@ -387,6 +416,8 @@ export async function generateHubBoardArticle(
     vendorId: campaign.vendorId || "",
     vendorIds: campaign.vendorIds || (campaign.vendorId ? [campaign.vendorId] : []),
     region: extractPlaceName(article.title, keyword.keyword) || "",
+    vendorRecruitSlot: Boolean(campaign.vendorRecruitSlot),
+    hubVendorRegisterUrl: normalizeHttpUrl(settings.vendorRegisterUrl) || "",
   };
 }
 
@@ -441,6 +472,8 @@ export function makeBoardPost(body: Record<string, unknown>, existing: Post[]): 
     hubCampaignId,
     region: trimText(body.region) || undefined,
     ...vendor,
+    vendorRecruitSlot: Boolean(body.vendorRecruitSlot) || undefined,
+    hubVendorRegisterUrl: normalizeHttpUrl(body.hubVendorRegisterUrl),
   };
 }
 

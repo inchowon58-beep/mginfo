@@ -28,7 +28,7 @@ import { PUBLISH_DISCLAIMER } from "@/lib/publish-disclaimer";
 import { placeInlineImages } from "@/lib/post-images";
 import { hasAnyVendorSticky, liveVendorView } from "@/lib/vendor";
 import { listingVendorsForPost, pickVisibleVendors } from "@/lib/vendor-ads";
-import { categoryRecruitEnabled, slotCountForCategory } from "@/lib/category-vendor-ads";
+import { articleShowRecruit, resolveVendorRegisterUrl, slotCountForCategory } from "@/lib/category-vendor-ads";
 
 export const dynamic = "force-dynamic";
 
@@ -122,7 +122,8 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
     slotCount,
     Math.floor(Math.random() * 0x7fffffff) + 1
   );
-  const showRecruit = categoryRecruitEnabled(cat);
+  const showRecruit = articleShowRecruit(cat, post);
+  const registerUrl = resolveVendorRegisterUrl(settings.vendorRegisterUrl, post.hubVendorRegisterUrl);
   const showVendor = hasAnyVendorSticky(listingVendors, liveVendor);
   const ctaPost = {
     ...post,
@@ -188,7 +189,7 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
           keyword={keyword}
           vendor={liveVendor}
           listingVendors={listingVendors}
-          registerUrl={settings.vendorRegisterUrl}
+          registerUrl={registerUrl}
           showRecruit={showRecruit}
           postId={post.id}
           slug={post.slug}
@@ -197,7 +198,7 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
         <VendorCta
           post={ctaPost}
           vendors={listingVendors}
-          registerUrl={settings.vendorRegisterUrl}
+          registerUrl={registerUrl}
           showRecruit={showRecruit}
         />
         {faqs.length > 0 && (
