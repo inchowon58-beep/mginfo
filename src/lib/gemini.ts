@@ -23,6 +23,8 @@ export type GenerateInput = {
   vendorName?: string;
   writingTone?: string;
   writingPersona?: string;
+  avoidTitles?: string[];
+  avoidKeywords?: string[];
   apiKey: string;
   model: string;
 };
@@ -110,6 +112,23 @@ ${
 }`;
 }
 
+function avoidTitleRules(avoidTitles?: string[], avoidKeywords?: string[]): string {
+  const titles = (avoidTitles || []).map((item) => String(item || "").trim()).filter(Boolean).slice(0, 40);
+  const keywords = (avoidKeywords || []).map((item) => String(item || "").trim()).filter(Boolean).slice(0, 40);
+  if (!titles.length && !keywords.length) return "";
+  const titleBlock = titles.length
+    ? `이미 쓴 제목(그대로 쓰거나 조금만 바꿔 쓰지 말 것):\n${titles.map((title) => `- ${title}`).join("\n")}`
+    : "";
+  const keywordBlock = keywords.length
+    ? `오늘 이미 발행한 키워드(같은 틀·같은 각도의 제목 금지):\n${keywords.map((keyword) => `- ${keyword}`).join("\n")}`
+    : "";
+  return `제목 중복 금지:
+${titleBlock}
+${keywordBlock}
+- 위 제목과 같거나 거의 같은 제목, 같은 키워드를 앞에 두고 뒷말만 살짝 바꾼 제목은 쓰지 마라.
+- 검색 의도는 유지하되 각도·핵심 판단을 바꿔 새 제목을 만든다.`;
+}
+
 function seoRules(focusKeyword: string): string {
   if (!focusKeyword) {
     return `메인 키워드가 없으면 카테고리와 주제에 맞는 자연스러운 정보형 제목을 쓴다.`;
@@ -156,6 +175,8 @@ ${articleStyleRules(writingStyle)}
 ${writingTonePrompt(resolveWritingTone(writingStyle, input.writingTone), input.writingPersona)}
 
 ${uniquenessRules(input)}
+
+${avoidTitleRules(input.avoidTitles, input.avoidKeywords)}
 
 작업: 이 메인 키워드만으로 완결된 새 글을 쓴다. 글방향은 시선만 참고하고, 소제목과 전개는 키워드·지역·대상에 맞게 매번 새로 짠다. 다른 글의 목차를 채우지 마라. 실제 방문 후기 메모가 있으면 그 메모를 중심으로 후기글을 완성한다.
 

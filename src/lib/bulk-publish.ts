@@ -5,11 +5,13 @@ import { generateArticle } from "./gemini";
 import { DEFAULT_GEMINI_MODEL } from "./gemini-models";
 import { resolveGeminiNotes } from "./gemini-notes";
 import { notifyPostIndexed } from "./indexnow";
+import { canClaimDueKeyword, canClaimManualKeyword } from "./publish-claim";
 import { checkCanCreatePost, checkCanPublish, countPostsCreatedToday, seoulDateKey } from "./publish-limits";
 import { bannedContentError, collectPublishText } from "./banned-keywords";
 import { extractPlaceName, parseNameList } from "./region-geo";
 import { cleanHtml } from "./sanitize";
 import { articleSlug, uid } from "./slug";
+import { collectRecentTitles, collectTodayKeywords, withUniqueTitle } from "./title-uniqueness";
 import { mergeImageUrls, pickRandomPostImages } from "./image-pool";
 import { parseVendorFields } from "./vendor";
 import { ensureVendorSlots } from "./vendor-slots";
@@ -66,6 +68,8 @@ function normalizeGroup(raw: Partial<BulkGroup>): BulkGroup | null {
             postId: item.postId,
             scheduledAt: item.scheduledAt,
             publishedAt: item.publishedAt,
+            processingAt: item.processingAt,
+            processingClaim: item.processingClaim,
             error: item.error,
           } as BulkKeyword;
         })
@@ -199,8 +203,10 @@ export function dueKeywords(store: Store, now = new Date()) {
   const due: { group: BulkGroup; keyword: BulkKeyword }[] = [];
   for (const group of store.bulkPublish.groups) {
     for (const keyword of group.keywords) {
-      if (keyword.status !== "scheduled") continue;
-      if (!keyword.scheduledAt || new Date(keyword.scheduledAt).getTime() > now.getTime()) continue;
+      if (!canClaimDueKeyword(keyword.status, keyword.processingAt, now)) continue;
+      if (keyword.status === "scheduled" || keyword.status === "processing") {
+        if (!keyword.scheduledAt || new Date(keyword.scheduledAt).getTime() > now.getTime()) continue;
+      }
       due.push({ group, keyword });
     }
   }
@@ -280,39 +286,23 @@ export async function publishDueBulk(store: Store, opts: { mutator: typeof impor
   const results: { keyword: string; ok: boolean; error?: string }[] = [];
 
   for (const item of due) {
-    const limitBlock = checkCanCreatePost(store.settings, store.posts);
+    const claimed = await claimBulkKeyword(opts.mutator, item.keyword.id, "due");
+    if (!claimed) continue;
+    const limitBlock = checkCanCreatePost(claimed.store.settings, claimed.store.posts);
     if (limitBlock) {
+      await releaseBulkClaim(opts.mutator, item.keyword.id, claimed.claim, "scheduled");
       results.push({ keyword: item.keyword.keyword, ok: false, error: limitBlock });
       break;
     }
-    await opts.mutator((s) => {
-      const found = findKeyword(s, item.keyword.id);
-      if (found) found.keyword.status = "processing";
-    });
     try {
-      const post = await generateAndSave(store, item.group, item.keyword);
-      store.posts.unshift(post);
-      await opts.mutator((s) => {
-        if (!s.posts.some((row) => row.id === post.id)) s.posts.unshift(post);
-        const found = findKeyword(s, item.keyword.id);
-        if (found) {
-          found.keyword.status = "published";
-          found.keyword.postId = post.id;
-          found.keyword.publishedAt = post.publishedAt || new Date().toISOString();
-          found.keyword.error = undefined;
-        }
-      });
+      const post = await generateAndSave(claimed.store, claimed.group, claimed.keyword);
+      const accepted = await finishBulkPublish(opts.mutator, item.keyword.id, claimed.claim, post);
+      if (!accepted) continue;
       await notifyPostIndexed(post.slug);
       results.push({ keyword: item.keyword.keyword, ok: true });
     } catch (err) {
       const message = err instanceof Error ? err.message : "발행 실패";
-      await opts.mutator((s) => {
-        const found = findKeyword(s, item.keyword.id);
-        if (found) {
-          found.keyword.status = "failed";
-          found.keyword.error = message;
-        }
-      });
+      await failBulkClaim(opts.mutator, item.keyword.id, claimed.claim, message);
       results.push({ keyword: item.keyword.keyword, ok: false, error: message });
     }
   }
@@ -327,42 +317,23 @@ export async function publishBulkKeyword(
   const found = findKeyword(store, keywordId);
   if (!found) return { ok: false, error: "키워드를 찾을 수 없습니다." };
   if (found.keyword.status === "published") return { ok: false, error: "이미 발행된 키워드입니다." };
-  if (found.keyword.status === "processing") return { ok: false, error: "이미 작성 중입니다." };
   const createBlock = checkCanCreatePost(store.settings, store.posts);
   if (createBlock) return { ok: false, error: createBlock };
   const publishBlock = checkCanPublish(store.settings);
   if (publishBlock) return { ok: false, error: publishBlock };
 
-  await opts.mutator((s) => {
-    const row = findKeyword(s, keywordId);
-    if (!row) return;
-    row.keyword.status = "processing";
-  });
+  const claimed = await claimBulkKeyword(opts.mutator, keywordId, "manual");
+  if (!claimed) return { ok: false, error: "이미 작성 중이거나 발행된 키워드입니다." };
   try {
-    const post = await generateAndSave(store, found.group, found.keyword);
-    store.posts.unshift(post);
-    await opts.mutator((s) => {
-      if (!s.posts.some((row) => row.id === post.id)) s.posts.unshift(post);
-      const row = findKeyword(s, keywordId);
-      if (row) {
-        row.keyword.status = "published";
-        row.keyword.postId = post.id;
-        row.keyword.publishedAt = post.publishedAt || new Date().toISOString();
-        row.keyword.error = undefined;
-      }
-    });
+    const post = await generateAndSave(claimed.store, claimed.group, claimed.keyword);
+    const accepted = await finishBulkPublish(opts.mutator, keywordId, claimed.claim, post);
+    if (!accepted) return { ok: false, keyword: claimed.keyword.keyword, error: "다른 작업이 먼저 발행했습니다." };
     await notifyPostIndexed(post.slug);
-    return { ok: true, keyword: found.keyword.keyword };
+    return { ok: true, keyword: claimed.keyword.keyword };
   } catch (err) {
     const message = err instanceof Error ? err.message : "발행 실패";
-    await opts.mutator((s) => {
-      const row = findKeyword(s, keywordId);
-      if (row) {
-        row.keyword.status = "failed";
-        row.keyword.error = message;
-      }
-    });
-    return { ok: false, keyword: found.keyword.keyword, error: message };
+    await failBulkClaim(opts.mutator, keywordId, claimed.claim, message);
+    return { ok: false, keyword: claimed.keyword.keyword, error: message };
   }
 }
 
@@ -372,6 +343,94 @@ function findKeyword(store: Store, id: string) {
     if (keyword) return { group, keyword };
   }
   return null;
+}
+
+function stillOwnsClaim(keyword: BulkKeyword | undefined, claim: string) {
+  if (!keyword) return false;
+  if (keyword.status === "published") return false;
+  if (keyword.processingClaim && keyword.processingClaim !== claim) return false;
+  return keyword.status === "processing";
+}
+
+async function claimBulkKeyword(
+  mutator: typeof import("./db").updateStore,
+  keywordId: string,
+  mode: "due" | "manual"
+) {
+  const claim = uid();
+  let owned = false;
+  const store = await mutator((s) => {
+    const found = findKeyword(s, keywordId);
+    if (!found) return;
+    const allowed =
+      mode === "due"
+        ? canClaimDueKeyword(found.keyword.status, found.keyword.processingAt)
+        : canClaimManualKeyword(found.keyword.status, found.keyword.processingAt);
+    if (!allowed) return;
+    found.keyword.status = "processing";
+    found.keyword.processingAt = new Date().toISOString();
+    found.keyword.processingClaim = claim;
+    found.keyword.error = undefined;
+    owned = true;
+  });
+  const found = findKeyword(store, keywordId);
+  if (!owned || !found || found.keyword.processingClaim !== claim) return null;
+  return { claim, store, group: found.group, keyword: found.keyword };
+}
+
+async function finishBulkPublish(
+  mutator: typeof import("./db").updateStore,
+  keywordId: string,
+  claim: string,
+  post: Post
+) {
+  let accepted = false;
+  await mutator((s) => {
+    const found = findKeyword(s, keywordId);
+    if (!stillOwnsClaim(found?.keyword, claim)) return;
+    if (!s.posts.some((row) => row.id === post.id)) s.posts.unshift(post);
+    if (found) {
+      found.keyword.status = "published";
+      found.keyword.postId = post.id;
+      found.keyword.publishedAt = post.publishedAt || new Date().toISOString();
+      found.keyword.error = undefined;
+      found.keyword.processingClaim = undefined;
+      found.keyword.processingAt = undefined;
+    }
+    accepted = true;
+  });
+  return accepted;
+}
+
+async function failBulkClaim(
+  mutator: typeof import("./db").updateStore,
+  keywordId: string,
+  claim: string,
+  message: string
+) {
+  await mutator((s) => {
+    const found = findKeyword(s, keywordId);
+    if (!stillOwnsClaim(found?.keyword, claim)) return;
+    found!.keyword.status = "failed";
+    found!.keyword.error = message;
+    found!.keyword.processingClaim = undefined;
+    found!.keyword.processingAt = undefined;
+  });
+}
+
+async function releaseBulkClaim(
+  mutator: typeof import("./db").updateStore,
+  keywordId: string,
+  claim: string,
+  status: BulkKeyword["status"]
+) {
+  await mutator((s) => {
+    const found = findKeyword(s, keywordId);
+    if (!stillOwnsClaim(found?.keyword, claim)) return;
+    found!.keyword.status = status;
+    found!.keyword.processingClaim = undefined;
+    found!.keyword.processingAt = undefined;
+  });
 }
 
 async function generateAndSave(store: Store, group: BulkGroup, item: BulkKeyword): Promise<Post> {
@@ -388,21 +447,30 @@ async function generateAndSave(store: Store, group: BulkGroup, item: BulkKeyword
   const apiKey = store.settings.geminiApiKey || process.env.GEMINI_API_KEY || "";
   if (!apiKey) throw new Error("제미나이 API 키가 없습니다.");
   const writingStyle = resolveArticleStyle(group.writingStyle || "random", item.keyword);
-  const article = await generateArticle({
-    topic: item.keyword,
-    writingStyle,
-    category,
-    categoryName: cat?.name,
-    notes: resolveGeminiNotes("", cat?.geminiNotes),
-    focusKeyword: item.keyword,
-    region: extractPlaceName(item.keyword) || "",
-    vendorName: group.vendorName,
-    writingTone: store.settings.writingTone,
-    writingPersona: store.settings.writingPersona,
-    experienceNotes: group.extraPrompt || "",
-    apiKey,
-    model: store.settings.geminiModel || DEFAULT_GEMINI_MODEL,
-  });
+  const avoidTitles = collectRecentTitles(store.posts);
+  const avoidKeywords = collectTodayKeywords(store.bulkPublish.groups.flatMap((row) => row.keywords));
+  const article = await withUniqueTitle(
+    (nextAvoid) =>
+      generateArticle({
+        topic: item.keyword,
+        writingStyle,
+        category,
+        categoryName: cat?.name,
+        notes: resolveGeminiNotes("", cat?.geminiNotes),
+        focusKeyword: item.keyword,
+        region: extractPlaceName(item.keyword) || "",
+        vendorName: group.vendorName,
+        writingTone: store.settings.writingTone,
+        writingPersona: store.settings.writingPersona,
+        experienceNotes: group.extraPrompt || "",
+        avoidTitles: nextAvoid,
+        avoidKeywords,
+        apiKey,
+        model: store.settings.geminiModel || DEFAULT_GEMINI_MODEL,
+      }),
+    avoidTitles,
+    item.keyword
+  );
   const generatedBan = bannedContentError(
     store.settings.publishBannedKeywords,
     collectPublishText({

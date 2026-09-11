@@ -8,10 +8,12 @@ import { DEFAULT_GEMINI_MODEL } from "./gemini-models";
 import { bannedContentError, collectPublishText } from "./banned-keywords";
 import { resolveGeminiNotes } from "./gemini-notes";
 import type { OpsSite } from "./ops-ledger";
+import { canClaimDueKeyword } from "./publish-claim";
 import { seoulDateKey } from "./publish-limits";
 import { extractPlaceName, parseNameList } from "./region-geo";
 import { cleanHtml } from "./sanitize";
 import { articleSlug, slugify, uid } from "./slug";
+import { collectTodayKeywords, uniqueTextList, withUniqueTitle } from "./title-uniqueness";
 import type { Post, Settings } from "./types";
 import { normalizeHttpUrl, parseVendorFields } from "./vendor";
 import { ensureVendorSlots } from "./vendor-slots";
@@ -35,6 +37,8 @@ export type HubBoardKeyword = {
   postId?: string;
   scheduledAt?: string;
   publishedAt?: string;
+  processingAt?: string;
+  processingClaim?: string;
   error?: string;
   title?: string;
 };
@@ -108,6 +112,8 @@ function normalizeKeyword(raw: unknown): HubBoardKeyword | null {
     postId: trimText(row.postId) || undefined,
     scheduledAt: trimText(row.scheduledAt) || undefined,
     publishedAt: trimText(row.publishedAt) || undefined,
+    processingAt: trimText(row.processingAt) || undefined,
+    processingClaim: trimText(row.processingClaim) || undefined,
     error: trimText(row.error) || undefined,
     title: trimText(row.title) || undefined,
   };
@@ -273,8 +279,7 @@ export function dueHubKeywords(campaigns: HubBoardCampaign[], now = new Date()) 
   const due: { campaign: HubBoardCampaign; keyword: HubBoardKeyword }[] = [];
   for (const campaign of campaigns) {
     for (const keyword of campaign.keywords) {
-      if (keyword.status === "published" || keyword.status === "failed" || keyword.status === "queued") continue;
-      if (keyword.status !== "scheduled" && keyword.status !== "processing") continue;
+      if (!canClaimDueKeyword(keyword.status, keyword.processingAt, now)) continue;
       if (!keyword.scheduledAt || new Date(keyword.scheduledAt).getTime() > now.getTime()) continue;
       due.push({ campaign, keyword });
     }
@@ -351,11 +356,42 @@ export async function fetchSiteVoice(site: OpsSite) {
   }
 }
 
+export function collectHubAvoidTitles(
+  campaigns: HubBoardCampaign[],
+  extra: Array<string | undefined | null> = []
+) {
+  return uniqueTextList([
+    ...campaigns.flatMap((row) => row.keywords.map((item) => item.title)),
+    ...extra,
+  ]);
+}
+
+export function collectHubTodayKeywords(campaigns: HubBoardCampaign[], now = new Date()) {
+  return collectTodayKeywords(
+    campaigns.flatMap((row) => row.keywords),
+    now
+  );
+}
+
+export async function fetchSiteRecentTitles(site: OpsSite): Promise<string[]> {
+  try {
+    const res = await fetch(`https://${site.domain}/feed/posts.json`, {
+      signal: AbortSignal.timeout(8000),
+    });
+    const data = (await res.json().catch(() => ({}))) as { posts?: Array<{ title?: string }> };
+    if (!res.ok || !Array.isArray(data.posts)) return [];
+    return uniqueTextList(data.posts.map((post) => post.title).slice(0, 40));
+  } catch {
+    return [];
+  }
+}
+
 export async function generateHubBoardArticle(
   campaign: HubBoardCampaign,
   keyword: HubBoardKeyword,
   site: OpsSite,
-  settings: Settings
+  settings: Settings,
+  avoid?: { titles?: string[]; keywords?: string[] }
 ) {
   const apiKey = settings.geminiApiKey || process.env.GEMINI_API_KEY || "";
   if (!apiKey) throw new Error("허브 마스터설정에 제미나이 API 키가 없습니다.");
@@ -370,29 +406,38 @@ export async function generateHubBoardArticle(
   const voice = await fetchSiteVoice(site);
   const writingStyle = resolveArticleStyle(campaign.writingStyle || "random", keyword.keyword);
   const siteName = voice.siteName || site.siteName || site.domain;
-  const article = await generateArticle({
-    topic: keyword.keyword,
-    writingStyle,
-    category: FREE_BOARD_SLUG,
-    categoryName: "자유게시판",
-    notes: resolveGeminiNotes(
-      [
-        `이 글은 ${siteName} (${site.domain}) 자유게시판 광고 글이다. 사이트 컨셉: ${site.concept || "생활 정보 매거진"}${voice.siteTagline ? `. 소개: ${voice.siteTagline}` : ""}. 업체 ${campaign.vendorName || ""}를 자연스럽게 소개하되 과장 광고 문장은 피한다. 말투는 이 사이트 설정(합니다체/했어요체 등)을 그대로 따른다.`,
-        extraPrompt ? `추가 프롬프트:\n${extraPrompt}` : "",
-      ]
-        .filter(Boolean)
-        .join("\n\n"),
-      ""
-    ),
-    focusKeyword: keyword.keyword,
-    region: extractPlaceName(keyword.keyword, site.concept, siteName) || "",
-    vendorName: campaign.vendorName,
-    writingTone: voice.writingTone || settings.writingTone,
-    writingPersona: voice.writingPersona || settings.writingPersona,
-    experienceNotes: extraPrompt,
-    apiKey,
-    model: settings.geminiModel || DEFAULT_GEMINI_MODEL,
-  });
+  const avoidTitles = uniqueTextList(avoid?.titles || []);
+  const avoidKeywords = uniqueTextList(avoid?.keywords || []);
+  const article = await withUniqueTitle(
+    (nextAvoid) =>
+      generateArticle({
+        topic: keyword.keyword,
+        writingStyle,
+        category: FREE_BOARD_SLUG,
+        categoryName: "자유게시판",
+        notes: resolveGeminiNotes(
+          [
+            `이 글은 ${siteName} (${site.domain}) 자유게시판 광고 글이다. 사이트 컨셉: ${site.concept || "생활 정보 매거진"}${voice.siteTagline ? `. 소개: ${voice.siteTagline}` : ""}. 업체 ${campaign.vendorName || ""}를 자연스럽게 소개하되 과장 광고 문장은 피한다. 말투는 이 사이트 설정(합니다체/했어요체 등)을 그대로 따른다.`,
+            extraPrompt ? `추가 프롬프트:\n${extraPrompt}` : "",
+          ]
+            .filter(Boolean)
+            .join("\n\n"),
+          ""
+        ),
+        focusKeyword: keyword.keyword,
+        region: extractPlaceName(keyword.keyword, site.concept, siteName) || "",
+        vendorName: campaign.vendorName,
+        writingTone: voice.writingTone || settings.writingTone,
+        writingPersona: voice.writingPersona || settings.writingPersona,
+        experienceNotes: extraPrompt,
+        avoidTitles: nextAvoid,
+        avoidKeywords,
+        apiKey,
+        model: settings.geminiModel || DEFAULT_GEMINI_MODEL,
+      }),
+    avoidTitles,
+    keyword.keyword
+  );
   const generatedBan = bannedContentError(
     settings.publishBannedKeywords,
     collectPublishText({

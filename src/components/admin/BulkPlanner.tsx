@@ -297,6 +297,7 @@ export function BulkPlanner({
             <h2>스케줄 설정</h2>
             <p className="field-hint" style={{ marginTop: 6 }}>
               켜 두고 저장하면 오늘 분량에 예약시간이 바로 붙습니다. 시작시간 이전이면 시작시간 이후로 잡힙니다.
+              예약 시각이 되면 Production cron이 발행합니다. 이 화면을 열어 둘 필요는 없습니다.
             </p>
           </div>
         </div>
@@ -324,7 +325,10 @@ export function BulkPlanner({
               </select>
             </label>
           </div>
-          <p className="field-hint">종료는 밤 11시입니다. 저장하거나 이 화면을 열면 대기 키워드에 오늘 예약시간이 생깁니다.</p>
+          <p className="field-hint">
+            종료는 밤 11시입니다. 저장하면 대기 키워드에 오늘 예약시간이 붙습니다. 아래 버튼은 밀린 분량을 수동으로 밀어
+            넣는 용도입니다.
+          </p>
         </div>
         <div className="admin-actions">
           <button className="btn btn-primary" type="button" onClick={() => save(groups, schedule, true)} disabled={busy}>

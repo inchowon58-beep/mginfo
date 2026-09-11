@@ -400,6 +400,7 @@ export function HubBoardAds() {
             <p className="field-hint" style={{ marginTop: 0 }}>
               키워드마다 제미나이가 다른 글을 만들고, 동의한 사이트 위부터 한 사이트에 하나씩 넣습니다.
               글방향은 이 화면 설정이 모든 키워드에 공통입니다. 말투·페르소나·사이트 이름·컨셉은 글을 받는 그 사이트 설정을 따릅니다.
+              자동발행을 켜 두면 Production cron이 예약 시각에 올립니다. 이 화면을 열어 둘 필요는 없습니다.
             </p>
           </div>
         </div>
@@ -701,7 +702,11 @@ export function HubBoardAds() {
 
       <div className="admin-card">
         <h2>예약·대기 현황</h2>
-        <p className="field-hint">아직 안 나간 글만 보입니다. 예약 시각이 지난 글은 서버가 제미나이로 작성해서 올립니다. 한 번에 최대 4편이라, 밀린 글은 몇 번에 나눠 나갑니다. 지금 바로 올리려면 그 줄의 발행 버튼을 누르세요.</p>
+        <p className="field-hint">
+          아직 안 나간 글만 보입니다. 예약 시각이 지난 글은 Production cron이 제미나이로 작성해서 올립니다. 이 화면의
+          실행/발행 버튼은 밀린 분량을 수동으로 밀어 넣는 용도입니다. 한 번에 최대 4편이라, 밀린 글은 몇 번에 나눠
+          나갑니다.
+        </p>
         {activeKeywords.length === 0 ? (
           <p className="field-hint">키워드를 넣고 저장하면, 위에서부터 사이트 하나씩 배정·예약됩니다.</p>
         ) : (
