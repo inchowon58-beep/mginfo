@@ -187,6 +187,8 @@ export type BulkKeyword = {
   postId?: string;
   scheduledAt?: string;
   publishedAt?: string;
+  processingAt?: string;
+  processingClaim?: string;
   error?: string;
 };
 
