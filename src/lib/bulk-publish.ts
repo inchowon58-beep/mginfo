@@ -81,7 +81,7 @@ function normalizeGroup(raw: Partial<BulkGroup>): BulkGroup | null {
   return {
     id: String(raw.id || uid()),
     category: String(raw.category || "life"),
-    dailyLimit: Math.max(1, Math.min(40, Math.floor(Number(raw.dailyLimit) || 1))),
+    dailyLimit: Math.max(1, Math.min(80, Math.floor(Number(raw.dailyLimit) || 1))),
     vendorName: vendor.vendorName,
     vendorPhone: vendor.vendorPhone,
     vendorWebsite: vendor.vendorWebsite,
@@ -274,7 +274,9 @@ export function bulkStats(state: BulkPublishState, categories: Category[] = []) 
   };
 }
 
-const MAX_PER_TICK = 4;
+const MAX_PER_TICK = 8;
+/** Stop starting new Gemini jobs before Vercel `maxDuration` (300s) hard-timeout. */
+const TICK_BUDGET_MS = 240_000;
 
 export async function publishDueBulk(store: Store, opts: { mutator: typeof import("./db").updateStore }) {
   const createBlock = checkCanCreatePost(store.settings, store.posts);
@@ -284,8 +286,10 @@ export async function publishDueBulk(store: Store, opts: { mutator: typeof impor
 
   const due = dueKeywords(store).slice(0, MAX_PER_TICK);
   const results: { keyword: string; ok: boolean; error?: string }[] = [];
+  const tickStarted = Date.now();
 
   for (const item of due) {
+    if (Date.now() - tickStarted >= TICK_BUDGET_MS) break;
     const claimed = await claimBulkKeyword(opts.mutator, item.keyword.id, "due");
     if (!claimed) continue;
     const limitBlock = checkCanCreatePost(claimed.store.settings, claimed.store.posts);

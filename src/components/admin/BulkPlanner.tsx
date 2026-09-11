@@ -422,7 +422,7 @@ export function BulkPlanner({
                   <input
                     type="number"
                     min={1}
-                    max={40}
+                    max={80}
                     value={group.dailyLimit}
                     onChange={(e) => updateGroup(group.id, { dailyLimit: Number(e.target.value) || 1 })}
                   />
