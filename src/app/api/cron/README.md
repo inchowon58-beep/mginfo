@@ -53,5 +53,5 @@ Hobby plans only run about one cron per day. This template assumes **Pro, but ch
 
 - One Blob store per site is enough. Watch function GB-hours when many clones share a team.
 - Bake public facts into the repo (`npm run facts:build`). Do not call data.go.kr from a page request.
-- Public pages use ISR (`revalidate` 5–10 minutes) so a visit is not always a heavy function.
+- Public HTML reads settings live so a theme change shows on the next refresh. Feeds stay cached 10 minutes.
 - Gemini runs on cron ticks / explicit generate, not on public page load.
