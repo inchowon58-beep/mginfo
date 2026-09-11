@@ -1,5 +1,5 @@
 import type { AdVendor, Post } from "./types";
-import { parseYoutubeUrlPair, youtubeIdsFromUrls } from "./youtube";
+import { parseYoutubeUrlPair, preferYoutubePair } from "./youtube";
 import { parseVendorIds } from "./vendor-ads";
 
 export type VendorKind = "phone" | "website" | "kakao" | "place";
@@ -140,6 +140,7 @@ export type LiveVendorView = VendorFields & {
 };
 
 export function liveVendorView(post: Post, vendor?: AdVendor | null): LiveVendorView {
+  const youtube = preferYoutubePair(post, vendor);
   if (vendor) {
     return {
       vendorId: vendor.id,
@@ -148,9 +149,9 @@ export function liveVendorView(post: Post, vendor?: AdVendor | null): LiveVendor
       vendorWebsite: vendor.website || post.vendorWebsite,
       vendorKakao: vendor.kakao || post.vendorKakao,
       vendorPlaceUrl: post.vendorPlaceUrl,
-      youtubeUrl1: vendor.youtubeUrl1,
-      youtubeUrl2: vendor.youtubeUrl2,
-      youtubeIds: youtubeIdsFromUrls(vendor.youtubeUrl1, vendor.youtubeUrl2),
+      youtubeUrl1: youtube.youtubeUrl1,
+      youtubeUrl2: youtube.youtubeUrl2,
+      youtubeIds: youtube.youtubeIds,
       vendorBizNo: vendor.bizNo || post.vendorBizNo,
       vendorAddress: vendor.address || post.vendorAddress,
       region: post.region,
@@ -163,9 +164,9 @@ export function liveVendorView(post: Post, vendor?: AdVendor | null): LiveVendor
     vendorWebsite: post.vendorWebsite,
     vendorKakao: post.vendorKakao,
     vendorPlaceUrl: post.vendorPlaceUrl,
-    youtubeUrl1: post.youtubeUrl1,
-    youtubeUrl2: post.youtubeUrl2,
-    youtubeIds: youtubeIdsFromUrls(post.youtubeUrl1, post.youtubeUrl2),
+    youtubeUrl1: youtube.youtubeUrl1,
+    youtubeUrl2: youtube.youtubeUrl2,
+    youtubeIds: youtube.youtubeIds,
     vendorBizNo: post.vendorBizNo,
     vendorAddress: post.vendorAddress,
     region: post.region,

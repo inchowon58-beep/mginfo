@@ -36,19 +36,42 @@ export function normalizeYoutubeUrl(raw: unknown): string | undefined {
   return `https://www.youtube.com/watch?v=${id}`;
 }
 
-export function parseYoutubeUrlPair(
-  body: Record<string, unknown>,
-  current?: { youtubeUrl1?: string; youtubeUrl2?: string }
-): { youtubeUrl1?: string; youtubeUrl2?: string } {
-  const first =
-    body.youtubeUrl1 !== undefined ? normalizeYoutubeUrl(body.youtubeUrl1) : current?.youtubeUrl1;
-  const second =
-    body.youtubeUrl2 !== undefined ? normalizeYoutubeUrl(body.youtubeUrl2) : current?.youtubeUrl2;
-  const ids = [first, second].map((url) => youtubeVideoId(url)).filter(Boolean);
+export type YoutubeUrlPair = {
+  youtubeUrl1?: string;
+  youtubeUrl2?: string;
+};
+
+function urlsFromIds(ids: Array<string | undefined>): YoutubeUrlPair {
   return {
     youtubeUrl1: ids[0] ? `https://www.youtube.com/watch?v=${ids[0]}` : undefined,
     youtubeUrl2: ids[1] ? `https://www.youtube.com/watch?v=${ids[1]}` : undefined,
   };
+}
+
+export function parseYoutubeUrlPair(
+  body: Record<string, unknown>,
+  current?: YoutubeUrlPair
+): YoutubeUrlPair {
+  const first =
+    body.youtubeUrl1 !== undefined ? normalizeYoutubeUrl(body.youtubeUrl1) : current?.youtubeUrl1;
+  const second =
+    body.youtubeUrl2 !== undefined ? normalizeYoutubeUrl(body.youtubeUrl2) : current?.youtubeUrl2;
+  const ids = [first, second].map((url) => youtubeVideoId(url)).filter((id): id is string => Boolean(id));
+  return urlsFromIds(ids);
+}
+
+/** 앞쪽 쌍이 우선. 빈 칸만 뒤쪽(업체·그룹) 영상으로 채우고, 중복 없이 최대 2개. */
+export function preferYoutubePair(
+  primary?: YoutubeUrlPair | null,
+  fallback?: YoutubeUrlPair | null
+): YoutubeUrlPair & { youtubeIds: string[] } {
+  const youtubeIds = youtubeIdsFromUrls(
+    primary?.youtubeUrl1,
+    primary?.youtubeUrl2,
+    fallback?.youtubeUrl1,
+    fallback?.youtubeUrl2
+  );
+  return { ...urlsFromIds(youtubeIds), youtubeIds };
 }
 
 export function youtubeIdsFromUrls(...urls: Array<string | undefined | null>): string[] {

@@ -190,6 +190,8 @@ export type BulkKeyword = {
   processingAt?: string;
   processingClaim?: string;
   error?: string;
+  youtubeUrl1?: string;
+  youtubeUrl2?: string;
 };
 
 export type BulkGroup = {
