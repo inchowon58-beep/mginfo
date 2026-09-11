@@ -13,7 +13,7 @@ import { siteBrand } from "@/lib/categories";
 import { getSettings } from "@/lib/db";
 import { resolveNaverVerification, SITE_ORIGIN } from "@/lib/seo";
 
-export const revalidate = 300;
+export const dynamic = "force-dynamic";
 
 export const viewport: Viewport = {
   width: "device-width",

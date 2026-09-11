@@ -11,7 +11,7 @@ import { paginateList, parseListPage } from "@/lib/list-page";
 import { categoryCanonical } from "@/lib/post-seo";
 import { buildCollectionPageJsonLd } from "@/lib/site-jsonld";
 
-export const revalidate = 300;
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata({
   params,

@@ -31,7 +31,7 @@ import { hasAnyVendorSticky, liveVendorView } from "@/lib/vendor";
 import { listingVendorsForPost, pickVisibleVendors } from "@/lib/vendor-ads";
 import { articleShowRecruit, resolveVendorRegisterUrl, slotCountForCategory } from "@/lib/category-vendor-ads";
 
-export const revalidate = 300;
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata({
   params,

@@ -20,7 +20,7 @@ import { getNearbyStations, getRegionFact } from "@/lib/region-geo";
 import { siteUrl } from "@/lib/seo";
 import { buildBreadcrumbJsonLd, buildCollectionPageJsonLd } from "@/lib/site-jsonld";
 
-export const revalidate = 300;
+export const dynamic = "force-dynamic";
 
 function regionCanonical(place: string) {
   return siteUrl(regionHubPath(place));
