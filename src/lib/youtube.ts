@@ -60,6 +60,15 @@ export function parseYoutubeUrlPair(
   return urlsFromIds(ids);
 }
 
+/** 관리자 일괄 수정용. 빈 칸은 지움. 글자가 있는데 유튜브가 아니면 오류. */
+export function parseSubmittedYoutubePair(body: Record<string, unknown>): YoutubeUrlPair | { error: string } {
+  const text1 = String(body.youtubeUrl1 ?? "").trim();
+  const text2 = String(body.youtubeUrl2 ?? "").trim();
+  if (text1 && !normalizeYoutubeUrl(text1)) return { error: "게시글 유튜브 1 주소를 확인하세요." };
+  if (text2 && !normalizeYoutubeUrl(text2)) return { error: "게시글 유튜브 2 주소를 확인하세요." };
+  return parseYoutubeUrlPair({ youtubeUrl1: text1, youtubeUrl2: text2 });
+}
+
 /** 앞쪽 쌍이 우선. 빈 칸만 뒤쪽(업체·그룹) 영상으로 채우고, 중복 없이 최대 2개. */
 export function preferYoutubePair(
   primary?: YoutubeUrlPair | null,
