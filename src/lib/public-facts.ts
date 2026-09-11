@@ -1,4 +1,6 @@
 import { PUBLIC_FACTS, PUBLIC_FACTS_UPDATED, type PublicFactRow } from "./public-facts-data";
+
+export { PUBLIC_FACTS_UPDATED };
 import { getRegionFact } from "./region-geo";
 import { seedNumber } from "./region-intro";
 
