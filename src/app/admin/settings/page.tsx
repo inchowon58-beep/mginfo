@@ -235,8 +235,22 @@ export default function SettingsPage() {
         <form className="admin-card admin-form" onSubmit={saveBasics}>
           <h2>기본 설정</h2>
           <p style={{ color: "#94a3b8", fontSize: 14 }}>
-            블로그 이름은 로고, 브라우저 제목, 글 상단, 푸터 저작권에 쓰입니다. 푸터 항목은 비워 두면 숨깁니다.
+            블로그 이름은 로고, 브라우저 제목, 글 상단, 푸터 저작권에 쓰입니다. 사이트를 넘길 때는 상호·연락처·주소를
+            실제 값으로 넣으세요. 없는 값은 비워 두면 숨기고, 가짜 주소는 만들지 않습니다.
           </p>
+          {!company.trim() || !phone.trim() || !address.trim() ? (
+            <div className="admin-alert">
+              <b>판매·이관 사이트는 신원(NAP)을 채워 주세요.</b>
+              {[
+                !company.trim() ? "상호" : "",
+                !phone.trim() ? "연락처" : "",
+                !address.trim() ? "주소" : "",
+              ]
+                .filter(Boolean)
+                .join(" · ")}{" "}
+              이 비어 있습니다. 푸터와 Organization JSON-LD에만 쓰이며, 비우면 나가지 않습니다.
+            </div>
+          ) : null}
           <label>블로그 이름</label>
           <input
             value={siteName}

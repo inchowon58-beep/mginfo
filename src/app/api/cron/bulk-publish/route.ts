@@ -1,14 +1,18 @@
 import { NextResponse } from "next/server";
-import { allowCronOrAdmin } from "@/lib/cron-auth";
+import { allowCronOrAdmin, isPreviewCron } from "@/lib/cron-auth";
 import { bulkStats, planToday, publishDueBulk } from "@/lib/bulk-publish";
 import { readStore, updateStore } from "@/lib/db";
 import { isOpsHub } from "@/lib/ops-hub";
 import { publishDueHubBoard } from "@/lib/hub-board-store";
 
 export const dynamic = "force-dynamic";
+/** Fewer Production crons (see vercel.json) so one tick may flush more overdue jobs. */
 export const maxDuration = 300;
 
 export async function GET(request: Request) {
+  if (isPreviewCron(request)) {
+    return NextResponse.json({ ok: true, skipped: true, reason: "preview" });
+  }
   const allowed = await allowCronOrAdmin(request);
   if (!allowed) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });

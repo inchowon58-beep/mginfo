@@ -1,3 +1,4 @@
+import { findSimilarBody } from "./body-uniqueness";
 import { seoulDateKey } from "./publish-limits";
 
 export function normalizeTitle(title: string): string {
@@ -110,4 +111,28 @@ export async function withUniqueTitle<T extends { title: string }>(
   article = await generate(retryAvoid);
   if (!findSimilarTitle(article.title, existing)) return article;
   return { ...article, title: differentiateTitle(article.title, existing, hint) };
+}
+
+export async function withUniqueArticle<T extends { title: string; bodyHtml: string }>(
+  generate: (avoidTitles: string[]) => Promise<T>,
+  avoidTitles: string[],
+  avoidBodies: string[],
+  hint?: string
+): Promise<T> {
+  const existingTitles = uniqueTextList(avoidTitles);
+  const existingBodies = avoidBodies.map((item) => String(item || "").trim()).filter(Boolean);
+  let article = await generate(existingTitles);
+  const titleHit = Boolean(findSimilarTitle(article.title, existingTitles));
+  const bodyHit = Boolean(findSimilarBody(article.bodyHtml, existingBodies));
+  if (!titleHit && !bodyHit) return article;
+
+  const retryAvoid = uniqueTextList([...existingTitles, article.title]);
+  article = await generate(retryAvoid);
+  if (findSimilarTitle(article.title, existingTitles)) {
+    article = { ...article, title: differentiateTitle(article.title, existingTitles, hint) };
+  }
+  if (findSimilarBody(article.bodyHtml, existingBodies)) {
+    throw new Error("본문이 최근 글과 너무 비슷합니다. 키워드나 각도를 바꿔 다시 생성하세요.");
+  }
+  return article;
 }

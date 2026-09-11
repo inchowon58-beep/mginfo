@@ -4,7 +4,7 @@ import { getPublishedPosts, getSettings } from "@/lib/db";
 import { buildPostSeoDescription, buildPostSeoTitle } from "@/lib/post-seo";
 import { postUrl, SITE_ORIGIN } from "@/lib/seo";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 600;
 
 function xmlEscape(value: string): string {
   return value

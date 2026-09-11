@@ -981,6 +981,47 @@ body {
   padding-left: 18px;
 }
 
+.magazine-root .article-facts table,
+.magazine-root .region-hub-facts table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 4px 0 14px;
+}
+
+.magazine-root .article-facts th,
+.magazine-root .article-facts td,
+.magazine-root .region-hub-facts th,
+.magazine-root .region-hub-facts td {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  padding: 8px 10px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.magazine-root .article-facts th,
+.magazine-root .region-hub-facts th {
+  width: 38%;
+  font-weight: 650;
+}
+
+.magazine-root .region-hub-links {
+  margin: 0 0 28px;
+}
+
+.magazine-root .region-hub-links h2 {
+  margin: 0 0 10px;
+  font-size: 20px;
+}
+
+.magazine-root .region-hub-links ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
 .magazine-root .article-facts-note {
   margin: 0;
   font-size: 13px;
@@ -1290,6 +1331,11 @@ body {
 .admin-alert b {
   display: block;
   margin-bottom: 6px;
+}
+
+.admin-alert a {
+  color: #fdba74;
+  font-weight: 650;
 }
 
 .admin-alert code {

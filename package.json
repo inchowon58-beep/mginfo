@@ -6,7 +6,8 @@
     "dev": "next dev --port 3000",
     "build": "next build",
     "start": "next start --port 3000",
-    "facts:build": "node scripts/build-public-facts.mjs"
+    "facts:build": "node scripts/build-public-facts.mjs",
+    "test:guards": "npx --yes tsx scripts/verify-publish-guards.ts && npx --yes tsx scripts/verify-region-uniqueness.ts"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
