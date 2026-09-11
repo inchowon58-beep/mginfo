@@ -1,11 +1,10 @@
 import { NextResponse } from "next/server";
-import { FEED_REVALIDATE_SECONDS } from "@/lib/cache";
 import { displaySiteName, siteBrand } from "@/lib/categories";
 import { getPublishedPosts, getSettings } from "@/lib/db";
 import { buildPostSeoDescription, buildPostSeoTitle } from "@/lib/post-seo";
 import { postUrl, SITE_ORIGIN } from "@/lib/seo";
 
-export const revalidate = FEED_REVALIDATE_SECONDS;
+export const revalidate = 600;
 
 function xmlEscape(value: string): string {
   return value

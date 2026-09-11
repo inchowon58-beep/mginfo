@@ -23,7 +23,6 @@ import {
 import { buildBreadcrumbJsonLd, buildFaqPageJsonLd } from "@/lib/site-jsonld";
 import { ArticlePhoto } from "@/components/ArticlePhoto";
 import { resolveRegionContext } from "@/lib/region-intro";
-import { PUBLIC_REVALIDATE_SECONDS } from "@/lib/cache";
 import { hasPublicFactBlock, buildPublicFactSection } from "@/lib/public-facts";
 import { regionHubPath } from "@/lib/region-hub";
 import { PUBLISH_DISCLAIMER } from "@/lib/publish-disclaimer";
@@ -32,7 +31,7 @@ import { hasAnyVendorSticky, liveVendorView } from "@/lib/vendor";
 import { listingVendorsForPost, pickVisibleVendors } from "@/lib/vendor-ads";
 import { articleShowRecruit, resolveVendorRegisterUrl, slotCountForCategory } from "@/lib/category-vendor-ads";
 
-export const revalidate = PUBLIC_REVALIDATE_SECONDS;
+export const revalidate = 300;
 
 export async function generateMetadata({
   params,

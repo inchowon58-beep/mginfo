@@ -1,10 +1,9 @@
 import type { MetadataRoute } from "next";
-import { FEED_REVALIDATE_SECONDS } from "@/lib/cache";
 import { getCategories, getPublishedPosts } from "@/lib/db";
 import { collectRegionHubs, regionHubPath } from "@/lib/region-hub";
 import { postUrl, SITE_ORIGIN } from "@/lib/seo";
 
-export const revalidate = FEED_REVALIDATE_SECONDS;
+export const revalidate = 600;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const [posts, categories] = await Promise.all([getPublishedPosts(), getCategories()]);

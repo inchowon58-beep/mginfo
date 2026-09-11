@@ -1,11 +1,10 @@
 import { NextResponse } from "next/server";
 import { htmlToCompareText } from "@/lib/body-uniqueness";
-import { FEED_REVALIDATE_SECONDS } from "@/lib/cache";
 import { getPublishedPosts } from "@/lib/db";
 import { buildPostSeoDescription, buildPostSeoTitle, pageKeyword } from "@/lib/post-seo";
 import { postUrl, SITE_ORIGIN } from "@/lib/seo";
 
-export const revalidate = FEED_REVALIDATE_SECONDS;
+export const revalidate = 600;
 
 const MAX_POSTS = 50;
 

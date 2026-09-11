@@ -9,12 +9,11 @@ import "./theme-talk.css";
 import "./theme-portal.css";
 import "./theme-carrot.css";
 import "./theme-studio.css";
-import { PUBLIC_REVALIDATE_SECONDS } from "@/lib/cache";
 import { siteBrand } from "@/lib/categories";
 import { getSettings } from "@/lib/db";
 import { resolveNaverVerification, SITE_ORIGIN } from "@/lib/seo";
 
-export const revalidate = PUBLIC_REVALIDATE_SECONDS;
+export const revalidate = 300;
 
 export const viewport: Viewport = {
   width: "device-width",

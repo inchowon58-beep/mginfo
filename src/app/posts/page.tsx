@@ -11,7 +11,6 @@ import { TalkThread } from "@/components/themes/TalkThread";
 import { PortalRank } from "@/components/themes/PortalRank";
 import { CarrotList } from "@/components/themes/CarrotList";
 import { StudioList } from "@/components/themes/StudioList";
-import { PUBLIC_REVALIDATE_SECONDS } from "@/lib/cache";
 import { getPartners, getPublishedPosts, getSettings } from "@/lib/db";
 import { displaySiteName } from "@/lib/categories";
 import { stripHtml } from "@/lib/format";
@@ -21,7 +20,7 @@ import { getThemeChrome } from "@/lib/theme-chrome";
 import { JsonLd } from "@/components/seo/JsonLd";
 import type { Metadata } from "next";
 
-export const revalidate = PUBLIC_REVALIDATE_SECONDS;
+export const revalidate = 300;
 
 export async function generateMetadata({
   searchParams,

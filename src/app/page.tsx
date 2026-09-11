@@ -13,13 +13,12 @@ import { CarrotHome } from "@/components/themes/CarrotHome";
 import { StudioHome } from "@/components/themes/StudioHome";
 import { displaySiteName, parseCarrotKeywords, siteBrand } from "@/lib/categories";
 import { pickRandomBanner } from "@/lib/banners";
-import { PUBLIC_REVALIDATE_SECONDS } from "@/lib/cache";
 import { getEnabledBanners, getPartners, getPublishedPosts, getSettings } from "@/lib/db";
 import { visitSeed } from "@/lib/shuffle";
 import { siteUrl } from "@/lib/seo";
 import type { Metadata } from "next";
 
-export const revalidate = PUBLIC_REVALIDATE_SECONDS;
+export const revalidate = 300;
 
 export async function generateMetadata(): Promise<Metadata> {
   const settings = await getSettings();

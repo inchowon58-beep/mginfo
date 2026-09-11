@@ -6,7 +6,6 @@ import { JsonLd } from "@/components/seo/JsonLd";
 import { CategoryBar } from "@/components/CategoryBar";
 import { PageMast } from "@/components/PageMast";
 import { PostCard } from "@/components/PostCard";
-import { PUBLIC_REVALIDATE_SECONDS } from "@/lib/cache";
 import { displaySiteName } from "@/lib/categories";
 import { getPublishedPosts, getSettings } from "@/lib/db";
 import { PUBLIC_FACTS_UPDATED, allPublicFactRows, lookupPublicFacts } from "@/lib/public-facts";
@@ -21,7 +20,7 @@ import { getNearbyStations, getRegionFact } from "@/lib/region-geo";
 import { siteUrl } from "@/lib/seo";
 import { buildBreadcrumbJsonLd, buildCollectionPageJsonLd } from "@/lib/site-jsonld";
 
-export const revalidate = PUBLIC_REVALIDATE_SECONDS;
+export const revalidate = 300;
 
 function regionCanonical(place: string) {
   return siteUrl(regionHubPath(place));

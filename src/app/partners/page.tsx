@@ -2,12 +2,11 @@ import type { Metadata } from "next";
 import { SiteFrame, getPublicTheme } from "@/components/SiteFrame";
 import { PageMast } from "@/components/PageMast";
 import { PartnerMedia } from "@/components/PartnerMedia";
-import { PUBLIC_REVALIDATE_SECONDS } from "@/lib/cache";
 import { displaySiteName } from "@/lib/categories";
 import { getPartners, getSettings } from "@/lib/db";
 import { siteUrl } from "@/lib/seo";
 
-export const revalidate = PUBLIC_REVALIDATE_SECONDS;
+export const revalidate = 300;
 
 export async function generateMetadata(): Promise<Metadata> {
   const settings = await getSettings();
