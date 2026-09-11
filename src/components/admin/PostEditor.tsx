@@ -369,8 +369,6 @@ export function PostEditor({ post }: { post?: Post }) {
                 setVendorPhone(fields.vendorPhone);
                 setVendorWebsite(fields.vendorWebsite);
                 setVendorKakao(fields.vendorKakao);
-                setYoutubeUrl1(fields.youtubeUrl1);
-                setYoutubeUrl2(fields.youtubeUrl2);
                 setVendorBizNo(fields.vendorBizNo);
                 setVendorAddress(fields.vendorAddress);
               }
@@ -436,6 +434,21 @@ export function PostEditor({ post }: { post?: Post }) {
             </p>
           </div>
         ) : null}
+        <label>게시글 유튜브 1 (우선)</label>
+        <input
+          value={youtubeUrl1}
+          onChange={(e) => setYoutubeUrl1(e.target.value)}
+          placeholder="https://www.youtube.com/watch?v=..."
+        />
+        <label>게시글 유튜브 2 (우선)</label>
+        <input
+          value={youtubeUrl2}
+          onChange={(e) => setYoutubeUrl2(e.target.value)}
+          placeholder="두 번째 영상이 있으면 넣습니다"
+        />
+        <p className="field-hint">
+          글을 열면 여기 넣은 영상이 업체 영상보다 먼저 나갑니다. 비워 두면 연결된 업체 영상을 씁니다.
+        </p>
         <button className="editor-fold" type="button" onClick={() => setFaqOpen((open) => !open)}>
           <span>자주 묻는 질문</span>
           <small>{faqOpen ? "접기" : "펼침"}</small>

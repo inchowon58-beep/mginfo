@@ -19,6 +19,8 @@ type Keyword = {
   title?: string;
   scheduledAt?: string;
   publishedAt?: string;
+  youtubeUrl1?: string;
+  youtubeUrl2?: string;
 };
 
 type Campaign = {
@@ -39,6 +41,8 @@ type Campaign = {
   schedule: { enabled: boolean; startHour: number };
   stats?: { total: number; published: number; remaining: number; percent: number; daysLeft: number };
   vendorRecruitSlot?: boolean;
+  youtubeUrl1?: string;
+  youtubeUrl2?: string;
 };
 
 const HOURS = Array.from({ length: 23 }, (_, i) => i + 1);
@@ -61,6 +65,8 @@ function emptyCampaign(siteIds: string[]): Campaign {
     keywords: [],
     schedule: { enabled: true, startHour: 9 },
     vendorRecruitSlot: false,
+    youtubeUrl1: "",
+    youtubeUrl2: "",
   };
 }
 
@@ -311,6 +317,8 @@ export function HubBoardAds() {
           vendorWebsite: form.vendorWebsite,
           vendorKakao: form.vendorKakao,
           vendorId: form.vendorId,
+          youtubeUrl1: form.youtubeUrl1,
+          youtubeUrl2: form.youtubeUrl2,
           imagePool: form.imagePool || [],
           imageFolderUrl: form.imageFolderUrl || "",
           extraPrompt: form.extraPrompt || "",
@@ -379,6 +387,34 @@ export function HubBoardAds() {
     setError("");
     setMessage("");
     try {
+      const persist = await fetch("/api/ops/board-campaigns", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: form.id,
+          title: form.title || form.vendorName || "자유게시판 광고",
+          vendorName: form.vendorName,
+          vendorPhone: form.vendorPhone,
+          vendorWebsite: form.vendorWebsite,
+          vendorKakao: form.vendorKakao,
+          vendorId: form.vendorId,
+          youtubeUrl1: form.youtubeUrl1,
+          youtubeUrl2: form.youtubeUrl2,
+          imagePool: form.imagePool || [],
+          imageFolderUrl: form.imageFolderUrl || "",
+          extraPrompt: form.extraPrompt || "",
+          coverImage: (form.imagePool || [])[0] || "",
+          writingStyle: form.writingStyle,
+          dailyLimit: form.dailyLimit,
+          siteIds: form.siteIds,
+          keywords: form.keywords,
+          schedule: form.schedule,
+          vendorRecruitSlot: Boolean(form.vendorRecruitSlot),
+        }),
+      });
+      const persisted = await persist.json();
+      if (!persist.ok) throw new Error(persisted.error || "저장 실패");
+      if (persisted.campaign) setForm(persisted.campaign);
       const res = await fetch("/api/ops/board-campaigns", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -463,6 +499,22 @@ export function HubBoardAds() {
         <input value={form.vendorWebsite || ""} onChange={(e) => setForm({ ...form, vendorWebsite: e.target.value })} />
         <label>카카오</label>
         <input value={form.vendorKakao || ""} onChange={(e) => setForm({ ...form, vendorKakao: e.target.value })} />
+        <label>게시글 유튜브 1 (우선)</label>
+        <input
+          value={form.youtubeUrl1 || ""}
+          onChange={(e) => setForm({ ...form, youtubeUrl1: e.target.value })}
+          placeholder="https://www.youtube.com/watch?v=..."
+        />
+        <label>게시글 유튜브 2 (우선)</label>
+        <input
+          value={form.youtubeUrl2 || ""}
+          onChange={(e) => setForm({ ...form, youtubeUrl2: e.target.value })}
+          placeholder="두 번째 영상이 있으면 넣습니다"
+        />
+        <p className="field-hint">
+          받는 사이트 글에 이 영상이 업체 영상보다 먼저 나갑니다. 키워드마다 따로 넣으면 그 예약만 덮어쓰고, 둘 다 비우면
+          연결된 업체 영상을 씁니다.
+        </p>
 
         <label className="admin-check-all">
           <input
@@ -730,9 +782,28 @@ export function HubBoardAds() {
                     {row.error ? ` · ${row.error}` : ""}
                   </span>
                   {row.status !== "published" && row.status !== "processing" ? (
-                    <button className="btn btn-ghost" type="button" disabled={Boolean(nowId) || busy} onClick={() => publishNow(row.id)}>
-                      {nowId === row.id ? "작성 중…" : "지금 이 사이트에 발행"}
-                    </button>
+                    <>
+                      <label className="hub-board-yt">
+                        게시글 유튜브 (우선)
+                        <input
+                          value={row.youtubeUrl1 || ""}
+                          onChange={(e) =>
+                            setForm((prev) => ({
+                              ...prev,
+                              keywords: prev.keywords.map((item) =>
+                                item.id === row.id ? { ...item, youtubeUrl1: e.target.value } : item
+                              ),
+                            }))
+                          }
+                          placeholder="이 키워드만 덮어쓰기 · 비우면 캠페인 주소"
+                        />
+                      </label>
+                      <button className="btn btn-ghost" type="button" disabled={Boolean(nowId) || busy} onClick={() => publishNow(row.id)}>
+                        {nowId === row.id ? "작성 중…" : "지금 이 사이트에 발행"}
+                      </button>
+                    </>
+                  ) : row.youtubeUrl1 ? (
+                    <em>게시글 유튜브 지정</em>
                   ) : null}
                 </li>
               ))}

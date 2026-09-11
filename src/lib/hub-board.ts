@@ -17,6 +17,7 @@ import { attachLocalFactBlocks } from "./article-blocks";
 import { collectTodayKeywords, uniqueTextList, withUniqueArticle } from "./title-uniqueness";
 import type { Post, Settings } from "./types";
 import { normalizeHttpUrl, parseVendorFields } from "./vendor";
+import { parseYoutubeUrlPair, preferYoutubePair } from "./youtube";
 import { ensureVendorSlots } from "./vendor-slots";
 import { pickRandomPostImages, mergeImageUrls } from "./image-pool";
 import { discoverWebFolderImages } from "./web-image-folder";
@@ -42,6 +43,8 @@ export type HubBoardKeyword = {
   processingClaim?: string;
   error?: string;
   title?: string;
+  youtubeUrl1?: string;
+  youtubeUrl2?: string;
 };
 
 export type HubBoardSchedule = {
@@ -79,6 +82,8 @@ export type HubBoardCampaign = {
   publishedAt?: string | null;
   results?: HubBoardResult[];
   vendorRecruitSlot?: boolean;
+  youtubeUrl1?: string;
+  youtubeUrl2?: string;
 };
 
 function masterSecret() {
@@ -101,6 +106,7 @@ function normalizeKeyword(raw: unknown): HubBoardKeyword | null {
   const keyword = trimText(row.keyword);
   if (!keyword) return null;
   const status = String(row.status || "queued");
+  const youtube = parseYoutubeUrlPair(row);
   return {
     id: trimText(row.id) || uid(),
     keyword,
@@ -117,6 +123,8 @@ function normalizeKeyword(raw: unknown): HubBoardKeyword | null {
     processingClaim: trimText(row.processingClaim) || undefined,
     error: trimText(row.error) || undefined,
     title: trimText(row.title) || undefined,
+    youtubeUrl1: youtube.youtubeUrl1,
+    youtubeUrl2: youtube.youtubeUrl2,
   };
 }
 
@@ -124,6 +132,7 @@ export function parseHubCampaign(raw: unknown, current?: HubBoardCampaign): HubB
   if (!raw || typeof raw !== "object") return current || null;
   const row = raw as Record<string, unknown>;
   const vendor = parseVendorFields(row);
+  const youtube = parseYoutubeUrlPair(row, current);
   const title = trimText(row.title ?? current?.title) || vendor.vendorName || "자유게시판 광고";
   const now = new Date().toISOString();
   const siteIds = Array.isArray(row.siteIds)
@@ -170,6 +179,8 @@ export function parseHubCampaign(raw: unknown, current?: HubBoardCampaign): HubB
     results: Array.isArray(row.results) ? (row.results as HubBoardResult[]) : current?.results || [],
     vendorRecruitSlot:
       typeof row.vendorRecruitSlot === "boolean" ? row.vendorRecruitSlot : Boolean(current?.vendorRecruitSlot),
+    youtubeUrl1: youtube.youtubeUrl1,
+    youtubeUrl2: youtube.youtubeUrl2,
   };
 }
 
@@ -473,6 +484,7 @@ export async function generateHubBoardArticle(
     }
   }
   const photos = pickRandomPostImages(imagePool, 1, 3);
+  const youtube = preferYoutubePair(keyword, campaign);
   return {
     hubCampaignId: `${campaign.id}:${keyword.id}`,
     title: article.title,
@@ -506,6 +518,8 @@ export async function generateHubBoardArticle(
     region: extractPlaceName(article.title, keyword.keyword) || "",
     vendorRecruitSlot: Boolean(campaign.vendorRecruitSlot),
     hubVendorRegisterUrl: normalizeHttpUrl(settings.vendorRegisterUrl) || "",
+    youtubeUrl1: youtube.youtubeUrl1 || "",
+    youtubeUrl2: youtube.youtubeUrl2 || "",
   };
 }
 

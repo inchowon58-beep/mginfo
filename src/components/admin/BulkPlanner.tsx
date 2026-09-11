@@ -9,7 +9,7 @@ import { uid } from "@/lib/slug";
 import { MAX_LISTING_VENDORS } from "@/lib/vendor-ads";
 import { MultiFileButton } from "@/components/admin/MultiFileButton";
 import { VendorPicker } from "@/components/admin/VendorPicker";
-import type { BulkGroup, BulkPublishState, BulkSchedule, Category } from "@/lib/types";
+import type { BulkGroup, BulkKeyword, BulkPublishState, BulkSchedule, Category } from "@/lib/types";
 
 type Stats = {
   total: number;
@@ -234,6 +234,20 @@ export function BulkPlanner({
     setGroups((rows) => rows.map((row) => (row.id === id ? { ...row, ...patch } : row)));
   }
 
+  function updateKeyword(groupId: string, keywordId: string, patch: Partial<BulkKeyword>, persist = false) {
+    const next = groupsRef.current.map((row) =>
+      row.id === groupId
+        ? {
+            ...row,
+            keywords: row.keywords.map((item) => (item.id === keywordId ? { ...item, ...patch } : item)),
+          }
+        : row
+    );
+    groupsRef.current = next;
+    setGroups(next);
+    if (persist) void save(next, schedule);
+  }
+
   async function onFile(id: string, file?: File) {
     if (!file) return;
     const text = await file.text();
@@ -422,7 +436,7 @@ export function BulkPlanner({
                   <input
                     type="number"
                     min={1}
-                    max={40}
+                    max={80}
                     value={group.dailyLimit}
                     onChange={(e) => updateGroup(group.id, { dailyLimit: Number(e.target.value) || 1 })}
                   />
@@ -504,7 +518,7 @@ export function BulkPlanner({
                   />
                 </label>
                 <label>
-                  유튜브 영상 주소 1 (글 중간)
+                  게시글 유튜브 1 (우선)
                   <input
                     value={group.youtubeUrl1 || ""}
                     onChange={(e) => updateGroup(group.id, { youtubeUrl1: e.target.value })}
@@ -512,7 +526,7 @@ export function BulkPlanner({
                   />
                 </label>
                 <label>
-                  유튜브 영상 주소 2 (글 하단)
+                  게시글 유튜브 2 (우선)
                   <input
                     value={group.youtubeUrl2 || ""}
                     onChange={(e) => updateGroup(group.id, { youtubeUrl2: e.target.value })}
@@ -522,7 +536,9 @@ export function BulkPlanner({
               </div>
               <p className="field-hint">
                 플레이스 주소를 넣으면 발행 글 하단에 사용한 사진, 짧은 소개, 네이버 플레이스 바로가기 버튼이 붙습니다.
-                유튜브 주소를 넣으면 글 중간·하단에 영상이 나갑니다. 업체를 고르면 그 업체에 저장된 주소가 채워집니다.
+                게시글 유튜브는 업체 영상보다 먼저 나갑니다. 그룹에 넣으면 이 칸 키워드 전체에 복사되고, 키워드마다 따로
+                넣으면 그 예약만 덮어씁니다. 둘 다 비우면 연결된 업체 영상을 씁니다. 업체를 고르면 그룹 칸에 업체 주소가
+                채워집니다.
               </p>
               <GroupImagePool
                 urls={group.imagePool || []}
@@ -592,6 +608,19 @@ export function BulkPlanner({
                             삭제
                           </button>
                         </span>
+                      ) : null}
+                      {item.status !== "published" && item.status !== "processing" ? (
+                        <label className="bulk-key-yt">
+                          게시글 유튜브 (우선)
+                          <input
+                            value={item.youtubeUrl1 || ""}
+                            onChange={(e) => updateKeyword(group.id, item.id, { youtubeUrl1: e.target.value })}
+                            onBlur={() => updateKeyword(group.id, item.id, {}, true)}
+                            placeholder="이 키워드만 덮어쓰기 · 비우면 그룹 주소"
+                          />
+                        </label>
+                      ) : item.youtubeUrl1 ? (
+                        <small className="bulk-key-yt-set">게시글 유튜브 지정</small>
                       ) : null}
                     </li>
                   ))}
