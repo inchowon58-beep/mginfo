@@ -44,6 +44,8 @@ export function PostTable({
   const [selected, setSelected] = useState<string[]>([]);
   const [matchAll, setMatchAll] = useState(false);
   const [moveTo, setMoveTo] = useState("");
+  const [youtubeUrl1, setYoutubeUrl1] = useState("");
+  const [youtubeUrl2, setYoutubeUrl2] = useState("");
   const [busy, setBusy] = useState(false);
 
   const pageIds = useMemo(() => posts.map((p) => p.id), [posts]);
@@ -80,7 +82,7 @@ export function PostTable({
     });
   }
 
-  async function runBulk(action: "delete" | "category") {
+  async function runBulk(action: "delete" | "category" | "youtube") {
     if (selectedCount === 0) {
       alert("글을 선택하세요.");
       return;
@@ -92,6 +94,12 @@ export function PostTable({
       }
       const label = categories.find((c) => c.slug === moveTo)?.name || moveTo;
       if (!confirm(`선택한 ${selectedCount}편을 ‘${label}’(으)로 바꿀까요?`)) return;
+    } else if (action === "youtube") {
+      const filled = [youtubeUrl1.trim(), youtubeUrl2.trim()].filter(Boolean);
+      const message = filled.length
+        ? `선택한 ${selectedCount}편에 게시글 유튜브를 넣을까요? 비운 칸은 지워져서 업체 영상을 씁니다.`
+        : `선택한 ${selectedCount}편의 게시글 유튜브를 지울까요? 지운 뒤에는 연결된 업체 영상이 나갑니다.`;
+      if (!confirm(message)) return;
     } else if (!confirm(`선택한 ${selectedCount}편을 삭제할까요? 되돌릴 수 없습니다.`)) {
       return;
     }
@@ -106,6 +114,8 @@ export function PostTable({
           allMatching: matchAll,
           matchCategory: matchAll ? category : "",
           category: moveTo,
+          youtubeUrl1,
+          youtubeUrl2,
         }),
       });
       const data = await res.json();
@@ -203,6 +213,39 @@ export function PostTable({
           선택 삭제
         </button>
       </div>
+
+      <div className="admin-bulk admin-bulk-youtube">
+        <label>
+          게시글 유튜브 1 (우선)
+          <input
+            value={youtubeUrl1}
+            onChange={(e) => setYoutubeUrl1(e.target.value)}
+            placeholder="https://www.youtube.com/watch?v=..."
+            disabled={busy || selectedCount === 0}
+          />
+        </label>
+        <label>
+          게시글 유튜브 2 (우선)
+          <input
+            value={youtubeUrl2}
+            onChange={(e) => setYoutubeUrl2(e.target.value)}
+            placeholder="두 번째 영상이 있으면 넣습니다"
+            disabled={busy || selectedCount === 0}
+          />
+        </label>
+        <button
+          className="btn btn-ghost"
+          type="button"
+          disabled={busy || selectedCount === 0}
+          onClick={() => runBulk("youtube")}
+        >
+          유튜브 적용
+        </button>
+      </div>
+      <p className="field-hint admin-bulk-youtube-hint">
+        선택한 글에 같은 게시글 유튜브를 넣습니다. 업체 영상보다 먼저 나갑니다. 칸을 비우고 적용하면 그 칸을 지워 업체
+        영상을 씁니다.
+      </p>
 
       {posts.length === 0 ? (
         <p className="admin-empty">이 목록에 글이 없습니다.</p>

@@ -1,5 +1,5 @@
 import { liveVendorView } from "../src/lib/vendor";
-import { preferYoutubePair, youtubeIdsFromUrls } from "../src/lib/youtube";
+import { parseSubmittedYoutubePair, preferYoutubePair, youtubeIdsFromUrls } from "../src/lib/youtube";
 import type { AdVendor, Post } from "../src/lib/types";
 
 function assert(cond: unknown, message: string) {
@@ -77,5 +77,13 @@ assert(
   youtubeIdsFromUrls(POST_YT, POST_YT, VENDOR_YT).join(",") === "dQw4w9WgXcQ,9bZkp7q19f0",
   "duplicate ids are skipped"
 );
+
+const bulkPair = parseSubmittedYoutubePair({ youtubeUrl1: POST_YT, youtubeUrl2: "" });
+assert(!("error" in bulkPair) && bulkPair.youtubeUrl1?.includes("dQw4w9WgXcQ"), "bulk pair keeps first url");
+assert(!("error" in bulkPair) && !bulkPair.youtubeUrl2, "empty second url clears slot 2");
+const bulkClear = parseSubmittedYoutubePair({ youtubeUrl1: "", youtubeUrl2: "" });
+assert(!("error" in bulkClear) && !bulkClear.youtubeUrl1 && !bulkClear.youtubeUrl2, "both empty clears post youtube");
+const bulkBad = parseSubmittedYoutubePair({ youtubeUrl1: "https://example.com", youtubeUrl2: "" });
+assert("error" in bulkBad, "invalid url is rejected");
 
 console.log("youtube priority ok");
