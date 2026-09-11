@@ -285,7 +285,7 @@ export function BulkPlanner({
     void runTick();
     const timer = window.setInterval(() => {
       fetch("/api/cron/bulk-publish", { method: "POST" }).catch(() => undefined);
-    }, 4 * 60 * 1000);
+    }, 15 * 60 * 1000);
     return () => window.clearInterval(timer);
   }, [schedule.enabled]);
 

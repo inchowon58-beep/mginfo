@@ -23,14 +23,16 @@ import {
 import { buildBreadcrumbJsonLd, buildFaqPageJsonLd } from "@/lib/site-jsonld";
 import { ArticlePhoto } from "@/components/ArticlePhoto";
 import { resolveRegionContext } from "@/lib/region-intro";
-import { buildPublicFactSection } from "@/lib/public-facts";
+import { PUBLIC_REVALIDATE_SECONDS } from "@/lib/cache";
+import { hasPublicFactBlock, buildPublicFactSection } from "@/lib/public-facts";
+import { regionHubPath } from "@/lib/region-hub";
 import { PUBLISH_DISCLAIMER } from "@/lib/publish-disclaimer";
 import { placeInlineImages } from "@/lib/post-images";
 import { hasAnyVendorSticky, liveVendorView } from "@/lib/vendor";
 import { listingVendorsForPost, pickVisibleVendors } from "@/lib/vendor-ads";
 import { articleShowRecruit, resolveVendorRegisterUrl, slotCountForCategory } from "@/lib/category-vendor-ads";
 
-export const dynamic = "force-dynamic";
+export const revalidate = PUBLIC_REVALIDATE_SECONDS;
 
 export async function generateMetadata({
   params,
@@ -133,9 +135,11 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
     vendorKakao: liveVendor.vendorKakao,
     vendorPlaceUrl: liveVendor.vendorPlaceUrl,
   };
+  const showPageFacts = Boolean(publicFacts) && !hasPublicFactBlock(post.bodyHtml);
   const crumbs = [
     { name: "홈", path: "/" },
     { name: cat?.name || "글", path: `/category/${post.category}` },
+    ...(geo?.place ? [{ name: `${geo.place} 지역`, path: regionHubPath(geo.place) }] : []),
     { name: keyword, path: `/posts/${post.slug}` },
   ];
 
@@ -175,7 +179,11 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
         <h1>{post.title}</h1>
         <div className="article-info">
           <span>{formatDate(post.publishedAt)}</span>
-          {post.region ? <span>· {post.region}</span> : null}
+          {post.region ? (
+            <span>
+              · <Link href={regionHubPath(geo?.place || post.region)}>{post.region}</Link>
+            </span>
+          ) : null}
           {post.tags.length > 0 && <span>· {post.tags.join(" · ")}</span>}
         </div>
         {post.coverImage ? (
@@ -221,15 +229,20 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
             ))}
           </div>
         )}
-        {publicFacts ? (
+        {showPageFacts && publicFacts ? (
           <section className="article-facts">
             <h2>{publicFacts.heading}</h2>
             <p>{publicFacts.lead}</p>
-            <ul>
-              {publicFacts.items.map((item) => (
-                <li key={item}>{item}</li>
-              ))}
-            </ul>
+            <table>
+              <tbody>
+                {publicFacts.rows.map((row) => (
+                  <tr key={row.label}>
+                    <th scope="row">{row.label}</th>
+                    <td>{row.value}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
             <p className="article-facts-note">{publicFacts.note}</p>
           </section>
         ) : null}
@@ -253,6 +266,12 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
                 <Link href={`/category/${cat.slug}`}>
                   {post.focusKeyword ? `${post.focusKeyword} · ${cat.name} 더 보기` : `${cat.name} 전체 글`}
                 </Link>
+                {geo?.place ? (
+                  <>
+                    {" · "}
+                    <Link href={regionHubPath(geo.place)}>{geo.place} 지역 글</Link>
+                  </>
+                ) : null}
               </p>
             ) : null}
           </div>
@@ -266,7 +285,9 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
                 <p>{geo.nearbyLead}</p>
                 <ul>
                   {geo.nearbyAreas.map((area, index) => (
-                    <li key={area}>{geo.nearbyLabels[index] || `${area} ${keyword}`}</li>
+                    <li key={area}>
+                      <Link href={regionHubPath(area)}>{geo.nearbyLabels[index] || `${area} ${keyword}`}</Link>
+                    </li>
                   ))}
                 </ul>
               </div>

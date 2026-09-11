@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
+import { htmlToCompareText } from "@/lib/body-uniqueness";
+import { FEED_REVALIDATE_SECONDS } from "@/lib/cache";
 import { getPublishedPosts } from "@/lib/db";
 import { buildPostSeoDescription, buildPostSeoTitle, pageKeyword } from "@/lib/post-seo";
 import { postUrl, SITE_ORIGIN } from "@/lib/seo";
 
-export const dynamic = "force-dynamic";
+export const revalidate = FEED_REVALIDATE_SECONDS;
 
 const MAX_POSTS = 50;
 
@@ -19,6 +21,7 @@ export async function GET() {
     updatedAt: post.updatedAt,
     category: post.category,
     region: post.region || "",
+    bodyPreview: htmlToCompareText(post.bodyHtml).slice(0, 800),
   }));
 
   return NextResponse.json(

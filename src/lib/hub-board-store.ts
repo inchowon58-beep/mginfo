@@ -7,7 +7,7 @@ import {
   collectHubAvoidTitles,
   collectHubTodayKeywords,
   dueHubKeywords,
-  fetchSiteRecentTitles,
+  fetchSiteRecentPosts,
   generateHubBoardArticle,
   parseHubCampaign,
   parseHubCampaigns,
@@ -214,10 +214,11 @@ async function publishOneKeyword(campaignId: string, keywordId: string, mode: "d
       claimed.campaign.extraPrompt
     );
     if (keywordBan) throw new Error(keywordBan);
-    const siteTitles = await fetchSiteRecentTitles(claimed.site);
+    const recent = await fetchSiteRecentPosts(claimed.site);
     const article = await generateHubBoardArticle(claimed.campaign, claimed.keyword, claimed.site, settings, {
-      titles: collectHubAvoidTitles(claimed.campaigns, siteTitles),
+      titles: collectHubAvoidTitles(claimed.campaigns, recent.titles),
       keywords: collectHubTodayKeywords(claimed.campaigns),
+      bodies: recent.bodies,
     });
     const pushed = await pushBoardPost(claimed.site, article);
     const finished = await finishHubKeyword(campaignId, keywordId, claimed.claim, {

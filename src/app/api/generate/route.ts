@@ -1,13 +1,16 @@
 import { NextResponse } from "next/server";
 import { isAdminSession } from "@/lib/auth";
+import { attachLocalFactBlocks } from "@/lib/article-blocks";
 import { articleStyleLabel, resolveArticleStyle } from "@/lib/article-style";
-import { getCategories, getSettings } from "@/lib/db";
-import { DEFAULT_GEMINI_MODEL } from "@/lib/gemini-models";
-import { generateArticle } from "@/lib/gemini";
-import { resolveGeminiNotes } from "@/lib/gemini-notes";
-import { ensureCategorySlug, getCategory } from "@/lib/categories";
-import { extractPlaceName } from "@/lib/region-geo";
 import { bannedContentError, collectPublishText } from "@/lib/banned-keywords";
+import { collectRecentBodies } from "@/lib/body-uniqueness";
+import { ensureCategorySlug, getCategory } from "@/lib/categories";
+import { getCategories, getPublishedPosts, getSettings } from "@/lib/db";
+import { generateArticle } from "@/lib/gemini";
+import { DEFAULT_GEMINI_MODEL } from "@/lib/gemini-models";
+import { resolveGeminiNotes } from "@/lib/gemini-notes";
+import { extractPlaceName } from "@/lib/region-geo";
+import { collectRecentTitles, withUniqueArticle } from "@/lib/title-uniqueness";
 
 export async function POST(request: Request) {
   if (!(await isAdminSession())) {
@@ -28,7 +31,7 @@ export async function POST(request: Request) {
   const cats = await getCategories();
   const category = ensureCategorySlug(body.category, cats);
   const cat = getCategory(category, cats);
-  const settings = await getSettings();
+  const [settings, published] = await Promise.all([getSettings(), getPublishedPosts()]);
   const banned = bannedContentError(
     settings.publishBannedKeywords,
     collectPublishText({
@@ -52,22 +55,37 @@ export async function POST(request: Request) {
   }
 
   try {
-    const article = await generateArticle({
-      topic: topic || focusKeyword,
-      writingStyle,
-      category,
+    const article = await withUniqueArticle(
+      (nextAvoid) =>
+        generateArticle({
+          topic: topic || focusKeyword,
+          writingStyle,
+          category,
+          categoryName: cat?.name,
+          keywords: String(body.keywords || ""),
+          notes: resolveGeminiNotes(String(body.notes || ""), cat?.geminiNotes),
+          focusKeyword: focusKeyword || topic,
+          region,
+          localNotes: String(body.localNotes || ""),
+          experienceNotes: String(body.experienceNotes || ""),
+          vendorName: String(body.vendorName || ""),
+          writingTone: settings.writingTone,
+          writingPersona: settings.writingPersona,
+          avoidTitles: nextAvoid,
+          apiKey,
+          model: settings.geminiModel || DEFAULT_GEMINI_MODEL,
+        }),
+      collectRecentTitles(published),
+      collectRecentBodies(published),
+      focusKeyword || topic
+    );
+    article.bodyHtml = attachLocalFactBlocks({
+      html: article.bodyHtml,
+      place: region,
+      keyword: focusKeyword || topic,
       categoryName: cat?.name,
-      keywords: String(body.keywords || ""),
-      notes: resolveGeminiNotes(String(body.notes || ""), cat?.geminiNotes),
-      focusKeyword: focusKeyword || topic,
-      region,
-      localNotes: String(body.localNotes || ""),
-      experienceNotes: String(body.experienceNotes || ""),
-      vendorName: String(body.vendorName || ""),
-      writingTone: settings.writingTone,
-      writingPersona: settings.writingPersona,
-      apiKey,
-      model: settings.geminiModel || DEFAULT_GEMINI_MODEL,
+      slug: article.slugHint,
+      title: article.title,
     });
     const generatedBan = bannedContentError(
       settings.publishBannedKeywords,
@@ -90,6 +108,7 @@ export async function POST(request: Request) {
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "생성에 실패했습니다.";
-    return NextResponse.json({ error: message }, { status: 500 });
+    const similar = /너무 비슷/.test(message);
+    return NextResponse.json({ error: message }, { status: similar ? 409 : 500 });
   }
 }

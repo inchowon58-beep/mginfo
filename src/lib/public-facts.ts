@@ -4,12 +4,21 @@ import { seedNumber } from "./region-intro";
 
 export type FactDomain = "pets" | "food" | "beauty" | "travel";
 
+export type PublicFactRowItem = {
+  label: string;
+  value: string;
+};
+
 export type PublicFactSection = {
   heading: string;
   lead: string;
   items: string[];
+  rows: PublicFactRowItem[];
+  official: string;
   note: string;
 };
+
+export const PUBLIC_FACTS_BLOCK_CLASS = "public-facts-block";
 
 const FIELDS = ["restaurants", "vets", "groomers", "salons", "stays", "shelters", "rescueDogs90", "tourSpots"] as const;
 
@@ -69,25 +78,30 @@ export function lookupPublicFacts(place: string): PublicFactRow | null {
   return FIELDS.some((key) => Number(merged[key] || 0) > 0) ? merged : null;
 }
 
-function domainItems(row: PublicFactRow, domain: FactDomain): string[] {
-  const items: string[] = [];
+function domainRows(row: PublicFactRow, domain: FactDomain): PublicFactRowItem[] {
+  const items: PublicFactRowItem[] = [];
+  const n = (value?: number) => Number(value || 0).toLocaleString("ko-KR");
   if (domain === "pets") {
-    if (row.rescueDogs90) items.push(`최근 90일 개 구조 공고 ${row.rescueDogs90.toLocaleString("ko-KR")}건`);
-    if (row.shelters) items.push(`등록 동물보호센터 ${row.shelters.toLocaleString("ko-KR")}곳`);
-    if (row.vets) items.push(`영업 중 동물병원 인허가 ${row.vets.toLocaleString("ko-KR")}곳`);
-    if (row.groomers) items.push(`영업 중 동물미용 인허가 ${row.groomers.toLocaleString("ko-KR")}곳`);
+    if (row.rescueDogs90) items.push({ label: "최근 90일 개 구조 공고", value: `${n(row.rescueDogs90)}건` });
+    if (row.shelters) items.push({ label: "등록 동물보호센터", value: `${n(row.shelters)}곳` });
+    if (row.vets) items.push({ label: "영업 중 동물병원 인허가", value: `${n(row.vets)}곳` });
+    if (row.groomers) items.push({ label: "영업 중 동물미용 인허가", value: `${n(row.groomers)}곳` });
   }
   if (domain === "food" && row.restaurants) {
-    items.push(`영업 중 일반음식점 인허가 ${row.restaurants.toLocaleString("ko-KR")}곳`);
+    items.push({ label: "영업 중 일반음식점 인허가", value: `${n(row.restaurants)}곳` });
   }
   if (domain === "beauty" && row.salons) {
-    items.push(`영업 중 미용업 인허가 ${row.salons.toLocaleString("ko-KR")}곳`);
+    items.push({ label: "영업 중 미용업 인허가", value: `${n(row.salons)}곳` });
   }
   if (domain === "travel") {
-    if (row.tourSpots) items.push(`관광지 등록 ${row.tourSpots.toLocaleString("ko-KR")}곳`);
-    if (row.stays) items.push(`관광숙박 인허가 ${row.stays.toLocaleString("ko-KR")}곳`);
+    if (row.tourSpots) items.push({ label: "관광지 등록", value: `${n(row.tourSpots)}곳` });
+    if (row.stays) items.push({ label: "관광숙박 인허가", value: `${n(row.stays)}곳` });
   }
   return items;
+}
+
+function domainItems(row: PublicFactRow, domain: FactDomain): string[] {
+  return domainRows(row, domain).map((item) => `${item.label} ${item.value}`);
 }
 
 export function formatPublicFactMaterials(place: string, keyword: string, categoryName?: string): string {
@@ -101,7 +115,7 @@ export function formatPublicFactMaterials(place: string, keyword: string, catego
 - 지역: ${row.official}
 - ${items.join("\n- ")}
 - 기준일: ${PUBLIC_FACTS_UPDATED || "저장본"}
-본문 하단에 같은 숫자가 따로 붙는다. 본문에서는 숫자를 나열하지 말고, 이 동네에서 고르는 기준으로만 녹여라.`;
+공공 숫자 표와 지역 기록은 서버가 본문 HTML 끝에 붙인다. 같은 표를 본문에 다시 쓰지 말고, 숫자는 이 동네에서 고르는 기준으로만 녹여라.`;
 }
 
 export function buildPublicFactSection(input: {
@@ -144,5 +158,26 @@ export function buildPublicFactSection(input: {
     PUBLIC_FACTS_UPDATED
       ? `저장본 ${PUBLIC_FACTS_UPDATED} · 국가동물보호정보시스템·지방인허가·한국관광공사 TourAPI. 폐업·이전은 반영이 늦을 수 있습니다.`
       : "공공 저장본. 폐업·이전은 반영이 늦을 수 있습니다.";
-  return { heading, lead, items, note };
+  return { heading, lead, items, rows: domainRows(row, domain), official: row.official, note };
+}
+
+export function hasPublicFactBlock(html: string): boolean {
+  return new RegExp(`class="[^"]*${PUBLIC_FACTS_BLOCK_CLASS}`, "i").test(String(html || ""));
+}
+
+/** Region hub: show every stored count for the place, not one keyword domain. */
+export function allPublicFactRows(place: string): PublicFactRowItem[] {
+  const row = lookupPublicFacts(place);
+  if (!row) return [];
+  const domains: FactDomain[] = ["pets", "food", "beauty", "travel"];
+  const seen = new Set<string>();
+  const items: PublicFactRowItem[] = [];
+  for (const domain of domains) {
+    for (const item of domainRows(row, domain)) {
+      if (seen.has(item.label)) continue;
+      seen.add(item.label);
+      items.push(item);
+    }
+  }
+  return items;
 }

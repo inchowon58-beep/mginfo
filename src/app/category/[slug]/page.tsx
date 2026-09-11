@@ -13,12 +13,13 @@ import { TalkThread } from "@/components/themes/TalkThread";
 import { PortalRank } from "@/components/themes/PortalRank";
 import { CarrotList } from "@/components/themes/CarrotList";
 import { StudioList } from "@/components/themes/StudioList";
+import { PUBLIC_REVALIDATE_SECONDS } from "@/lib/cache";
 import { displaySiteName, getCategory } from "@/lib/categories";
 import { getCategories, getPartners, getPublishedPosts, getSettings } from "@/lib/db";
 import { categoryCanonical } from "@/lib/post-seo";
 import { buildCollectionPageJsonLd } from "@/lib/site-jsonld";
 
-export const dynamic = "force-dynamic";
+export const revalidate = PUBLIC_REVALIDATE_SECONDS;
 
 export async function generateMetadata({
   params,
