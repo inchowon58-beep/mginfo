@@ -33,7 +33,7 @@ export async function blobSetJson(value: unknown, pathname = STORE_PATH): Promis
     addRandomSuffix: false,
     allowOverwrite: true,
     contentType: "application/json",
-    cacheControlMaxAge: 60,
+    cacheControlMaxAge: 0,
   } as const;
   try {
     await put(pathname, body, { ...options, access: "private" });

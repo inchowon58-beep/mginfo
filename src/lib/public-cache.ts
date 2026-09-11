@@ -1,6 +1,15 @@
 import { revalidatePath } from "next/cache";
 
-/** Bust public ISR after admin settings/content changes. */
+const PUBLIC_PAGES = ["/", "/posts", "/partners"] as const;
+const PUBLIC_DYNAMIC_PAGES = ["/category/[slug]", "/posts/[slug]", "/region/[slug]"] as const;
+
+/** Drop public ISR after admin settings/category changes so the next visit is fresh. */
 export function revalidatePublicSite() {
   revalidatePath("/", "layout");
+  for (const path of PUBLIC_PAGES) {
+    revalidatePath(path);
+  }
+  for (const path of PUBLIC_DYNAMIC_PAGES) {
+    revalidatePath(path, "page");
+  }
 }
