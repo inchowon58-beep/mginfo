@@ -28,6 +28,15 @@ export function isCronRequest(request: Request): boolean {
   return false;
 }
 
+/** Preview/dev deployments must not spend cron or Gemini budget. Production only. */
+export function isPreviewDeployment(): boolean {
+  return process.env.VERCEL === "1" && process.env.VERCEL_ENV !== "production";
+}
+
+export function isPreviewCron(request: Request): boolean {
+  return isPreviewDeployment() && isCronRequest(request);
+}
+
 export async function allowCronOrAdmin(request: Request): Promise<boolean> {
   if (isCronRequest(request)) return true;
   return isAdminSession();

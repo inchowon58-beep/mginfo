@@ -1,32 +1,44 @@
-# Vercel cron cost vs bulk throughput
+# Vercel 비용 (사이트 많이 만들 때)
 
-Hobby/Pro cron invocations and function duration are the main cost of 대량발행예약. Do **not** restore the old ~27-cron list (hourly bulk + hourly hub-board). Opening admin is not part of the 50편/일 path.
+클론을 많이 올리면 함수 GB-시간·크론 횟수가 곧바로 청구됩니다. 이 템플릿은 **Pro를 쓰되 호출을 줄이는** 쪽입니다. 예전 ~27회/일(시간별 bulk + hub)로 되돌리지 마세요. 관리자 화면을 연다고 제미나이가 돌지 않습니다.
 
-## Current Production schedule
+## 크론
 
-`vercel.json` has **10** cron expressions:
+`vercel.json` 기준 **10회/일**:
 
-| Route | Times/day | Role |
-| ----- | --------- | ---- |
-| `/api/cron/bulk-publish` | **8** (every 3h UTC, `:20`) | Plan today’s slots and publish due keywords. Also flushes overdue hub-board ads on the ops hub. |
-| `/api/cron/hub-board` | **2** (`00:05` / `12:05` UTC) | Modest dedicated hub-board catch-up. |
+| 경로 | 횟수/일 | 역할 |
+| --- | --- | --- |
+| `/api/cron/bulk-publish` | **8** (UTC 3시간마다 `:20`) | 오늘 예약 슬롯 짜고 밀린 키워드 발행. 허브에서는 자유게시판 광고도 같이 밀어 넣음. |
+| `/api/cron/hub-board` | **2** (`00:05` / `12:05` UTC) | 허브 전용 보조. |
 
-Each bulk tick has `maxDuration` 300s and `MAX_PER_TICK=8`. After ~240s elapsed it stops starting new Gemini jobs so a full tick of 8 is less likely to hard-timeout.
+한 틱 `maxDuration` 300초, 대량발행 `MAX_PER_TICK=8`. 약 240초가 지나면 새 제미나이 작업을 더 시작하지 않습니다.
 
-## Capacity
+## 하루 용량
 
 | | |
 | --- | --- |
-| Theoretical | 8 ticks × 8/tick ≈ **64편/일** |
-| Practical target | ~**50편/일** (slow Gemini calls, budget stop, overnight windows with nothing due) |
+| 이론 | 8틱 × 8편 ≈ **64편/일** |
+| 실사용 목표 | 약 **50편/일** (제미나이 지연, 틱 예산, 빈 시간대) |
 
-Cron alone is enough for that target. Do not add more cron expressions to chase 50편.
+50편을 맞추려고 크론 식을 더 늘리지 마세요. 사이트 **하루 작성 한도**와 대량발행 그룹 **하루발행수량**이 50 이상이어야 합니다(그룹 저장 상한 80, 한도 0은 무제한).
 
-## Admin limits that must match
+Preview에서는 크론이 돌지 않습니다. Production만 가정합니다. 자세한 시각은 `src/app/api/cron/README.md`.
 
-Throughput is the **minimum** of cron capacity and the quotas in admin:
+## 페이지 캐시
 
-- Site **하루 작성 한도** (`dailyPostLimit`) ≥ 50 (0 = unlimited).
-- Each 대량발행 그룹 **하루발행수량** ≥ 50 when that group should carry the day’s volume (saved cap is 1–80).
+공개 홈·글·카테고리·지역 허브는 `revalidate` 5분(피드·사이트맵 10분)입니다. 방문마다 Blob을 읽으며 풀 렌더하지 않게 합니다. 관리자(`/admin`)는 항상 최신입니다.
 
-If those limits stay at 16–40, extra cron ticks will idle.
+## Blob / KV
+
+사이트마다 Blob 스토어 하나면 충분합니다. 글·예약 큐를 ram에만 두면 Production 크론이 상태를 잃습니다.
+
+## 공공데이터
+
+`DATA_GO_KR_KEY`는 **로컬/CI 빌드 스크립트**용입니다. 요청 경로에서 쓰지 마세요. 숫자 표는 저장본을 본문에 붙입니다. `docs/public-data.md`.
+
+## 남은 수동 작업 (사이트마다)
+
+1. 네이버 서치어드바이저 소유확인 + 사이트맵 제출
+2. DNS / 커스텀 도메인
+3. 판매·이관 시 실제 상호·전화·주소 (없는 값은 비움. 가짜 NAP 금지)
+4. `CRON_SECRET`, Gemini 키, Blob 연결

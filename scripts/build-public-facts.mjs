@@ -1,6 +1,25 @@
 /**
+ * OFFLINE / CI ONLY.
  * Fetches data.go.kr snapshots and writes src/lib/public-facts-data.ts
+ * Never import this from a Next.js request handler — live portal calls on Vercel
+ * burn quota and function time across every clone.
+ *
  * Usage: node --env-file=.env.local scripts/build-public-facts.mjs
+ * Probe: node --env-file=.env.local scripts/build-public-facts.mjs --probe
+ *
+ * data.go.kr datasets to apply for (업종별):
+ *   - 동물병원 인허가          MOI path: animal_hospitals          (loaded)
+ *   - 동물미용업 인허가        MOI path: pet_grooming             (loaded)
+ *   - 일반음식점 인허가        MOI path: general_restaurants      (loaded)
+ *   - 관광숙박업 인허가        MOI path: tourist_accommodations   (loaded)
+ *   - 미용업 인허가            MOI path: beauty_salons            (probe only; add to main after 승인)
+ *   - 동물판매업 인허가        MOI path: confirm after 활용신청    (do not guess on every request)
+ *   - 동물생산업 인허가        MOI path: confirm after 활용신청
+ *   - 동물위탁관리업 인허가    MOI path: confirm after 활용신청
+ *   - 유기동물/보호센터        abandonmentPublicService_v2 / animalShelterSrvc_v2
+ *   - 관광지                   KorService2 areaBasedList2
+ *
+ * See docs/public-data.md
  */
 import fs from "fs";
 import path from "path";
@@ -409,6 +428,8 @@ async function main() {
   await loadMoi("animal_hospitals", "vets", "vets");
   await loadMoi("pet_grooming", "groomers", "groomers");
   await loadMoi("tourist_accommodations", "stays", "stays");
+  // beauty_salons / animal_sales / animal_production / animal_boarding:
+  // add loadMoi(...) only after the portal path name is approved. Do not call from serverless.
   try {
     await loadTour();
   } catch (err) {

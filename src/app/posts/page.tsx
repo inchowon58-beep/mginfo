@@ -20,7 +20,7 @@ import { getThemeChrome } from "@/lib/theme-chrome";
 import { JsonLd } from "@/components/seo/JsonLd";
 import type { Metadata } from "next";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 300;
 
 export async function generateMetadata({
   searchParams,

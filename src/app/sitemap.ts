@@ -1,8 +1,9 @@
 import type { MetadataRoute } from "next";
 import { getCategories, getPublishedPosts } from "@/lib/db";
+import { collectRegionHubs, regionHubPath } from "@/lib/region-hub";
 import { postUrl, SITE_ORIGIN } from "@/lib/seo";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 600;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const [posts, categories] = await Promise.all([getPublishedPosts(), getCategories()]);
@@ -17,6 +18,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       lastModified: now,
       changeFrequency: "weekly" as const,
       priority: 0.7,
+    })),
+    ...collectRegionHubs(posts).map((hub) => ({
+      url: `${SITE_ORIGIN}${regionHubPath(hub.place)}`,
+      lastModified: now,
+      changeFrequency: "weekly" as const,
+      priority: 0.65,
     })),
   ];
 

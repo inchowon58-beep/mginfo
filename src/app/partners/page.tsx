@@ -6,7 +6,7 @@ import { displaySiteName } from "@/lib/categories";
 import { getPartners, getSettings } from "@/lib/db";
 import { siteUrl } from "@/lib/seo";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 300;
 
 export async function generateMetadata(): Promise<Metadata> {
   const settings = await getSettings();

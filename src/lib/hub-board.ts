@@ -13,7 +13,8 @@ import { seoulDateKey } from "./publish-limits";
 import { extractPlaceName, parseNameList } from "./region-geo";
 import { cleanHtml } from "./sanitize";
 import { articleSlug, slugify, uid } from "./slug";
-import { collectTodayKeywords, uniqueTextList, withUniqueTitle } from "./title-uniqueness";
+import { attachLocalFactBlocks } from "./article-blocks";
+import { collectTodayKeywords, uniqueTextList, withUniqueArticle } from "./title-uniqueness";
 import type { Post, Settings } from "./types";
 import { normalizeHttpUrl, parseVendorFields } from "./vendor";
 import { ensureVendorSlots } from "./vendor-slots";
@@ -373,17 +374,27 @@ export function collectHubTodayKeywords(campaigns: HubBoardCampaign[], now = new
   );
 }
 
-export async function fetchSiteRecentTitles(site: OpsSite): Promise<string[]> {
+export async function fetchSiteRecentPosts(site: OpsSite): Promise<{ titles: string[]; bodies: string[] }> {
   try {
     const res = await fetch(`https://${site.domain}/feed/posts.json`, {
       signal: AbortSignal.timeout(8000),
     });
-    const data = (await res.json().catch(() => ({}))) as { posts?: Array<{ title?: string }> };
-    if (!res.ok || !Array.isArray(data.posts)) return [];
-    return uniqueTextList(data.posts.map((post) => post.title).slice(0, 40));
+    const data = (await res.json().catch(() => ({}))) as {
+      posts?: Array<{ title?: string; bodyPreview?: string; description?: string }>;
+    };
+    if (!res.ok || !Array.isArray(data.posts)) return { titles: [], bodies: [] };
+    const rows = data.posts.slice(0, 40);
+    return {
+      titles: uniqueTextList(rows.map((post) => post.title)),
+      bodies: rows.map((post) => String(post.bodyPreview || post.description || "").trim()).filter(Boolean),
+    };
   } catch {
-    return [];
+    return { titles: [], bodies: [] };
   }
+}
+
+export async function fetchSiteRecentTitles(site: OpsSite): Promise<string[]> {
+  return (await fetchSiteRecentPosts(site)).titles;
 }
 
 export async function generateHubBoardArticle(
@@ -391,7 +402,7 @@ export async function generateHubBoardArticle(
   keyword: HubBoardKeyword,
   site: OpsSite,
   settings: Settings,
-  avoid?: { titles?: string[]; keywords?: string[] }
+  avoid?: { titles?: string[]; keywords?: string[]; bodies?: string[] }
 ) {
   const apiKey = settings.geminiApiKey || process.env.GEMINI_API_KEY || "";
   if (!apiKey) throw new Error("허브 마스터설정에 제미나이 API 키가 없습니다.");
@@ -408,7 +419,9 @@ export async function generateHubBoardArticle(
   const siteName = voice.siteName || site.siteName || site.domain;
   const avoidTitles = uniqueTextList(avoid?.titles || []);
   const avoidKeywords = uniqueTextList(avoid?.keywords || []);
-  const article = await withUniqueTitle(
+  const avoidBodies = (avoid?.bodies || []).map((item) => String(item || "").trim()).filter(Boolean);
+  const place = extractPlaceName(keyword.keyword, site.concept, siteName) || "";
+  const article = await withUniqueArticle(
     (nextAvoid) =>
       generateArticle({
         topic: keyword.keyword,
@@ -425,7 +438,7 @@ export async function generateHubBoardArticle(
           ""
         ),
         focusKeyword: keyword.keyword,
-        region: extractPlaceName(keyword.keyword, site.concept, siteName) || "",
+        region: place,
         vendorName: campaign.vendorName,
         writingTone: voice.writingTone || settings.writingTone,
         writingPersona: voice.writingPersona || settings.writingPersona,
@@ -436,6 +449,7 @@ export async function generateHubBoardArticle(
         model: settings.geminiModel || DEFAULT_GEMINI_MODEL,
       }),
     avoidTitles,
+    avoidBodies,
     keyword.keyword
   );
   const generatedBan = bannedContentError(
@@ -463,7 +477,18 @@ export async function generateHubBoardArticle(
     hubCampaignId: `${campaign.id}:${keyword.id}`,
     title: article.title,
     excerpt: article.excerpt || keyword.keyword,
-    bodyHtml: cleanHtml(ensureVendorSlots(article.bodyHtml || "")),
+    bodyHtml: cleanHtml(
+      ensureVendorSlots(
+        attachLocalFactBlocks({
+          html: article.bodyHtml || "",
+          place: extractPlaceName(article.title, keyword.keyword) || place,
+          keyword: keyword.keyword,
+          categoryName: "자유게시판",
+          slug: article.slugHint,
+          title: article.title,
+        })
+      )
+    ),
     coverImage: photos.cover || "",
     extraImages: photos.extras,
     focusKeyword: keyword.keyword,
@@ -512,7 +537,16 @@ export function makeBoardPost(body: Record<string, unknown>, existing: Post[]): 
     slug,
     title,
     excerpt: trimText(body.excerpt) || title,
-    bodyHtml: cleanHtml(ensureVendorSlots(String(body.bodyHtml || ""))),
+    bodyHtml: cleanHtml(
+      ensureVendorSlots(
+        attachLocalFactBlocks({
+          html: String(body.bodyHtml || ""),
+          place: trimText(body.region),
+          keyword: trimText(body.focusKeyword) || title,
+          title,
+        })
+      )
+    ),
     category: FREE_BOARD_SLUG,
     tags: Array.isArray(body.tags) ? body.tags.map((item) => String(item)).filter(Boolean) : ["자유게시판"],
     coverImage: trimText(body.coverImage) || undefined,
@@ -527,6 +561,9 @@ export function makeBoardPost(body: Record<string, unknown>, existing: Post[]): 
       : undefined,
     focusKeyword: trimText(body.focusKeyword) || undefined,
     faqItems: parseFaqItems(body.faqItems),
+    regionInfo: trimText(body.regionInfo) || undefined,
+    nearbyAreas: parseNameList(body.nearbyAreas),
+    nearbyStations: parseNameList(body.nearbyStations),
     status: "published",
     publishedAt: now,
     createdAt: now,

@@ -178,7 +178,12 @@ export function HubBoardAds() {
       .catch((err) => setError(err instanceof Error ? err.message : "불러오기 실패"));
   }, []);
 
+  const hubCatchupOn =
+    form.schedule.enabled &&
+    form.keywords.some((row) => row.status === "queued" || row.status === "scheduled" || row.status === "processing");
+
   useEffect(() => {
+    if (!hubCatchupOn) return;
     let cancelled = false;
     const tick = () => {
       fetch("/api/cron/hub-board", { method: "POST" })
@@ -191,12 +196,12 @@ export function HubBoardAds() {
         .catch(() => undefined);
     };
     tick();
-    const timer = window.setInterval(tick, 3 * 60 * 1000);
+    const timer = window.setInterval(tick, 15 * 60 * 1000);
     return () => {
       cancelled = true;
       window.clearInterval(timer);
     };
-  }, [form.id]);
+  }, [form.id, hubCatchupOn]);
 
   const grouped = useMemo(() => {
     const map = new Map<string, BoardSite[]>();

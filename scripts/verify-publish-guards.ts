@@ -1,4 +1,5 @@
-import { isCronRequest } from "../src/lib/cron-auth";
+import { bodiesTooSimilar, findSimilarBody, htmlToCompareText } from "../src/lib/body-uniqueness";
+import { isCronRequest, isPreviewCron, isPreviewDeployment } from "../src/lib/cron-auth";
 import { canClaimDueKeyword, canClaimManualKeyword, isStaleProcessing, PROCESSING_STALE_MS } from "../src/lib/publish-claim";
 import {
   collectRecentTitles,
@@ -90,5 +91,52 @@ assert(
 );
 if (prevSecret === undefined) delete process.env.CRON_SECRET;
 else process.env.CRON_SECRET = prevSecret;
+
+assert(
+  bodiesTooSimilar(
+    "<p>부천에서 애견미용을 고를 때는 대기와 컷 동선을 먼저 봅니다. 중동과 상동을 이어서 비교하면 선택이 분명해집니다.</p>",
+    "<p>부천에서 애견미용을 고를 때는 대기와 컷 동선을 먼저 봅니다. 중동과 상동을 이어서 비교하면 선택이 분명해집니다.</p>"
+  ),
+  "identical bodies are similar"
+);
+assert(
+  bodiesTooSimilar(
+    "<p>부천 중동에서 말티즈 미용 대기 줄이는 법을 적습니다. 컷 전 빗질과 귀가 먼저입니다.</p><p>상동까지 이어서 보면 가격대보다 동선이 갈립니다.</p>",
+    "<p>부천 중동에서 말티즈 미용 대기 줄이는 법을 적습니다. 컷 전 빗질과 귀가 먼저입니다.</p><p>상동까지 이어서 보면 가격대보다 동선이 갈립니다. 같은 내용입니다.</p>"
+  ),
+  "near-duplicate bodies are similar"
+);
+assert(
+  !bodiesTooSimilar(
+    "<p>부천 중동 말티즈 미용은 귀가와 발 커트가 먼저입니다.</p>",
+    "<p>인천 송도 펫호텔은 산책 동선과 소음이 갈립니다.</p>"
+  ),
+  "different bodies pass"
+);
+assert(
+  !htmlToCompareText('<section class="public-facts-block article-facts"><p>영업 중 동물병원 100곳</p></section><p>본문만</p>').includes(
+    "동물병원"
+  ),
+  "fact block is stripped before compare"
+);
+assert(findSimilarBody("<p>같은 본문</p>", ["<p>같은 본문</p>"]), "finds similar body");
+
+const prevVercel = process.env.VERCEL;
+const prevEnv = process.env.VERCEL_ENV;
+process.env.VERCEL = "1";
+process.env.VERCEL_ENV = "preview";
+assert(isPreviewDeployment(), "preview env is detected");
+assert(
+  isPreviewCron(
+    new Request("http://local/api/cron/bulk-publish", { headers: { "user-agent": "vercel-cron/1.0" } })
+  ),
+  "preview vercel cron is marked skip"
+);
+process.env.VERCEL_ENV = "production";
+assert(!isPreviewDeployment(), "production is not preview");
+if (prevVercel === undefined) delete process.env.VERCEL;
+else process.env.VERCEL = prevVercel;
+if (prevEnv === undefined) delete process.env.VERCEL_ENV;
+else process.env.VERCEL_ENV = prevEnv;
 
 console.log("publish guards ok");

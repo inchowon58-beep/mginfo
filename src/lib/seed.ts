@@ -33,6 +33,8 @@ export const seedPosts: Post[] = [
 `,
     category: "pets",
     tags: ["입양", "초보보호자", "반려동물"],
+    focusKeyword: "반려동물 입양",
+    region: "부천",
     status: "published",
     publishedAt: "2026-09-05T09:00:00.000Z",
     createdAt: now,

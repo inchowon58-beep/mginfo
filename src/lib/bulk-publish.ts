@@ -11,7 +11,9 @@ import { bannedContentError, collectPublishText } from "./banned-keywords";
 import { extractPlaceName, parseNameList } from "./region-geo";
 import { cleanHtml } from "./sanitize";
 import { articleSlug, uid } from "./slug";
-import { collectRecentTitles, collectTodayKeywords, withUniqueTitle } from "./title-uniqueness";
+import { attachLocalFactBlocks } from "./article-blocks";
+import { collectRecentBodies } from "./body-uniqueness";
+import { collectRecentTitles, collectTodayKeywords, withUniqueArticle } from "./title-uniqueness";
 import { mergeImageUrls, pickRandomPostImages } from "./image-pool";
 import { parseVendorFields } from "./vendor";
 import { ensureVendorSlots } from "./vendor-slots";
@@ -452,8 +454,10 @@ async function generateAndSave(store: Store, group: BulkGroup, item: BulkKeyword
   if (!apiKey) throw new Error("제미나이 API 키가 없습니다.");
   const writingStyle = resolveArticleStyle(group.writingStyle || "random", item.keyword);
   const avoidTitles = collectRecentTitles(store.posts);
+  const avoidBodies = collectRecentBodies(store.posts);
   const avoidKeywords = collectTodayKeywords(store.bulkPublish.groups.flatMap((row) => row.keywords));
-  const article = await withUniqueTitle(
+  const place = extractPlaceName(item.keyword) || "";
+  const article = await withUniqueArticle(
     (nextAvoid) =>
       generateArticle({
         topic: item.keyword,
@@ -462,7 +466,7 @@ async function generateAndSave(store: Store, group: BulkGroup, item: BulkKeyword
         categoryName: cat?.name,
         notes: resolveGeminiNotes("", cat?.geminiNotes),
         focusKeyword: item.keyword,
-        region: extractPlaceName(item.keyword) || "",
+        region: place,
         vendorName: group.vendorName,
         writingTone: store.settings.writingTone,
         writingPersona: store.settings.writingPersona,
@@ -473,6 +477,7 @@ async function generateAndSave(store: Store, group: BulkGroup, item: BulkKeyword
         model: store.settings.geminiModel || DEFAULT_GEMINI_MODEL,
       }),
     avoidTitles,
+    avoidBodies,
     item.keyword
   );
   const generatedBan = bannedContentError(
@@ -495,7 +500,18 @@ async function generateAndSave(store: Store, group: BulkGroup, item: BulkKeyword
     slug,
     title: article.title,
     excerpt: article.excerpt || "",
-    bodyHtml: cleanHtml(ensureVendorSlots(article.bodyHtml || "")),
+    bodyHtml: cleanHtml(
+      ensureVendorSlots(
+        attachLocalFactBlocks({
+          html: article.bodyHtml || "",
+          place: extractPlaceName(article.title, item.keyword) || place,
+          keyword: item.keyword,
+          categoryName: cat?.name,
+          slug: article.slugHint,
+          title: article.title,
+        })
+      )
+    ),
     category,
     tags: article.tags || [],
     coverImage: photos.cover,
