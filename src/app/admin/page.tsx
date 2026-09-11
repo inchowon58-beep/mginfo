@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { AdminIcon } from "@/components/admin/AdminIcons";
 import { PersistNotice } from "@/components/admin/PersistNotice";
-import { SiteIdentityNotice } from "@/components/admin/SiteIdentityNotice";
 import { bulkStats, defaultBulkPublish } from "@/lib/bulk-publish";
 import { getCategory } from "@/lib/categories";
 import { readStore } from "@/lib/db";
@@ -42,7 +41,6 @@ export default async function AdminHome() {
   return (
     <>
       <PersistNotice />
-      <SiteIdentityNotice settings={store.settings} />
       <header className="admin-dash-head">
         <div>
           <p className="admin-dash-kicker">운영 현황</p>

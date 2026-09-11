@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start --port 3000",
     "facts:build": "node scripts/build-public-facts.mjs",
-    "test:guards": "npx --yes tsx scripts/verify-publish-guards.ts && npx --yes tsx scripts/verify-region-uniqueness.ts && npx --yes tsx scripts/verify-youtube-priority.ts"
+    "test:guards": "npx --yes tsx scripts/verify-publish-guards.ts && npx --yes tsx scripts/verify-region-uniqueness.ts && npx --yes tsx scripts/verify-youtube-priority.ts && npx --yes tsx scripts/verify-list-page.ts"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",

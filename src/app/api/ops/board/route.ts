@@ -6,6 +6,7 @@ import { getSettings, updateStore } from "@/lib/db";
 import { alreadyHasCampaign, makeBoardPost } from "@/lib/hub-board";
 import { notifyPostIndexed } from "@/lib/indexnow";
 import { persistFail } from "@/lib/persist-api";
+import { revalidatePublicSite } from "@/lib/public-cache";
 import { applyMasterSettingsPatch, publicMasterSettings } from "@/lib/settings-apply";
 import { isSiteThemeId } from "@/lib/site-theme";
 import { isWritingToneId } from "@/lib/writing-tone";
@@ -42,6 +43,7 @@ export async function PATCH(request: Request) {
       }
       next = publicMasterSettings(store.settings);
     });
+    revalidatePublicSite();
     return NextResponse.json({ ok: true, unpublished, ...next });
   } catch (err) {
     if (err instanceof Error && /아이디|비밀번호/.test(err.message)) {

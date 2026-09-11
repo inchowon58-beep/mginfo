@@ -1,19 +1,12 @@
 import { SiteFrame, getPublicTheme } from "@/components/SiteFrame";
 import { CategoryBar } from "@/components/CategoryBar";
 import { PageMast } from "@/components/PageMast";
-import { PostCard } from "@/components/PostCard";
 import { SearchForm } from "@/components/SearchForm";
-import { BlogEntry } from "@/components/themes/BlogEntry";
-import { BlogSidebar } from "@/components/themes/BlogSidebar";
-import { NightList } from "@/components/themes/NightList";
-import { QnaList } from "@/components/themes/QnaList";
-import { TalkThread } from "@/components/themes/TalkThread";
-import { PortalRank } from "@/components/themes/PortalRank";
-import { CarrotList } from "@/components/themes/CarrotList";
-import { StudioList } from "@/components/themes/StudioList";
+import { ThemePostList } from "@/components/ThemePostList";
 import { getPartners, getPublishedPosts, getSettings } from "@/lib/db";
 import { displaySiteName } from "@/lib/categories";
 import { stripHtml } from "@/lib/format";
+import { paginateList, parseListPage } from "@/lib/list-page";
 import { siteUrl } from "@/lib/seo";
 import { buildCollectionPageJsonLd } from "@/lib/site-jsonld";
 import { getThemeChrome } from "@/lib/theme-chrome";
@@ -64,16 +57,13 @@ export default async function PostsPage({
   const chrome = getThemeChrome(theme.id);
   const sp = await searchParams;
   const q = (sp.q || "").trim();
-  const page = Math.max(1, Number(sp.page || 1));
-  const perPage = 12;
   const published = await getPublishedPosts();
   const all = published.filter((p) => {
     if (!q) return true;
     const hay = `${p.title} ${p.excerpt} ${stripHtml(p.bodyHtml)}`.toLowerCase();
     return hay.includes(q.toLowerCase());
   });
-  const totalPages = Math.max(1, Math.ceil(all.length / perPage));
-  const slice = all.slice((page - 1) * perPage, page * perPage);
+  const { items: slice, page, totalPages, start } = paginateList(all, parseListPage(sp.page));
   const partners = theme.id === "journal" ? await getPartners() : [];
   const settings = await getSettings();
   const siteName = displaySiteName(settings.siteName);
@@ -137,62 +127,20 @@ export default async function PostsPage({
       <main className={theme.id === "journal" ? undefined : "container"}>
         {theme.id === "journal" ? null : <CategoryBar />}
         {slice.length ? (
-          theme.id === "night" ? (
-            <NightList posts={slice} start={(page - 1) * perPage + 1} />
-          ) : theme.id === "qna" ? (
-            <QnaList posts={slice} />
-          ) : theme.id === "talk" ? (
-            <TalkThread posts={slice} />
-          ) : theme.id === "portal" ? (
-            <PortalRank posts={slice} start={(page - 1) * perPage + 1} />
-          ) : theme.id === "carrot" ? (
-            <CarrotList posts={slice} />
-          ) : theme.id === "studio" ? (
-            <StudioList posts={slice} />
-          ) : theme.id === "journal" ? (
-            <div className="blog-shell">
-              <div className="blog-main">
-                {slice.map((post) => (
-                  <BlogEntry key={post.id} post={post} />
-                ))}
-                {totalPages > 1 ? (
-                  <div className="pagination">
-                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((n) => (
-                      <a
-                        key={n}
-                        className={`page-btn ${n === page ? "active" : ""}`}
-                        href={`/posts?${new URLSearchParams({ ...(q ? { q } : {}), page: String(n) }).toString()}`}
-                      >
-                        {n}
-                      </a>
-                    ))}
-                  </div>
-                ) : null}
-              </div>
-              <BlogSidebar posts={published} partners={partners} siteName={siteName} />
-            </div>
-          ) : (
-            <div className="post-grid">
-              {slice.map((post) => (
-                <PostCard key={post.id} post={post} />
-              ))}
-            </div>
-          )
+          <ThemePostList
+            themeId={theme.id}
+            posts={slice}
+            start={start}
+            page={page}
+            totalPages={totalPages}
+            basePath="/posts"
+            extra={q ? { q } : undefined}
+            journalAllPosts={published}
+            partners={partners}
+            siteName={siteName}
+          />
         ) : (
           <p className="empty-note">검색 결과가 없습니다.</p>
-        )}
-        {theme.id !== "journal" && totalPages > 1 && (
-          <div className="pagination">
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map((n) => (
-              <a
-                key={n}
-                className={`page-btn ${n === page ? "active" : ""}`}
-                href={`/posts?${new URLSearchParams({ ...(q ? { q } : {}), page: String(n) }).toString()}`}
-              >
-                {n}
-              </a>
-            ))}
-          </div>
         )}
       </main>
     </SiteFrame>

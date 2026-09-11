@@ -4,17 +4,10 @@ import { SiteFrame, getPublicTheme } from "@/components/SiteFrame";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { CategoryBar } from "@/components/CategoryBar";
 import { PageMast } from "@/components/PageMast";
-import { PostCard } from "@/components/PostCard";
-import { BlogEntry } from "@/components/themes/BlogEntry";
-import { BlogSidebar } from "@/components/themes/BlogSidebar";
-import { NightList } from "@/components/themes/NightList";
-import { QnaList } from "@/components/themes/QnaList";
-import { TalkThread } from "@/components/themes/TalkThread";
-import { PortalRank } from "@/components/themes/PortalRank";
-import { CarrotList } from "@/components/themes/CarrotList";
-import { StudioList } from "@/components/themes/StudioList";
+import { ThemePostList } from "@/components/ThemePostList";
 import { displaySiteName, getCategory } from "@/lib/categories";
 import { getCategories, getPartners, getPublishedPosts, getSettings } from "@/lib/db";
+import { paginateList, parseListPage } from "@/lib/list-page";
 import { categoryCanonical } from "@/lib/post-seo";
 import { buildCollectionPageJsonLd } from "@/lib/site-jsonld";
 
@@ -49,13 +42,20 @@ export async function generateMetadata({
   };
 }
 
-export default async function CategoryPage({ params }: { params: Promise<{ slug: string }> }) {
+export default async function CategoryPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ slug: string }>;
+  searchParams: Promise<{ page?: string }>;
+}) {
   const { slug } = await params;
   const cat = getCategory(slug, await getCategories());
   if (!cat) notFound();
   const theme = await getPublicTheme();
-  const [all, settings] = await Promise.all([getPublishedPosts(), getSettings()]);
-  const posts = all.filter((p) => p.category === cat.slug);
+  const [all, settings, sp] = await Promise.all([getPublishedPosts(), getSettings(), searchParams]);
+  const inCategory = all.filter((p) => p.category === cat.slug);
+  const { items: posts, page, totalPages, total, start } = paginateList(inCategory, parseListPage(sp.page));
   const partners = theme.id === "journal" ? await getPartners() : [];
   const siteName = displaySiteName(settings.siteName);
   const kicker =
@@ -82,10 +82,10 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
       <JsonLd
         data={buildCollectionPageJsonLd({
           name: `${cat.name} 가이드`,
-          description: `${cat.name} 분야의 매거진 글 ${posts.length}편`,
+          description: `${cat.name} 분야의 매거진 글 ${total}편`,
           path: `/category/${cat.slug}`,
           keywords: [cat.name, `${cat.name} 가이드`],
-          count: posts.length,
+          count: total,
           siteName,
         })}
       />
@@ -95,7 +95,7 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
         title={cat.name}
         dek={
           theme.id === "qna"
-            ? `${cat.name} 분야의 지식 ${posts.length}건입니다.`
+            ? `${cat.name} 분야의 지식 ${total}건입니다.`
             : theme.id === "talk"
               ? `${cat.name} 스토리의 글입니다.`
               : theme.id === "portal"
@@ -110,34 +110,17 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
       <main className={theme.id === "journal" ? undefined : "container"}>
         {theme.id === "journal" ? null : <CategoryBar current={cat.slug} />}
         {posts.length ? (
-          theme.id === "night" ? (
-            <NightList posts={posts} />
-          ) : theme.id === "qna" ? (
-            <QnaList posts={posts} />
-          ) : theme.id === "talk" ? (
-            <TalkThread posts={posts} />
-          ) : theme.id === "portal" ? (
-            <PortalRank posts={posts} />
-          ) : theme.id === "carrot" ? (
-            <CarrotList posts={posts} />
-          ) : theme.id === "studio" ? (
-            <StudioList posts={posts} />
-          ) : theme.id === "journal" ? (
-            <div className="blog-shell">
-              <div className="blog-main">
-                {posts.map((post) => (
-                  <BlogEntry key={post.id} post={post} />
-                ))}
-              </div>
-              <BlogSidebar posts={all} partners={partners} siteName={siteName} />
-            </div>
-          ) : (
-            <div className="post-grid">
-              {posts.map((post) => (
-                <PostCard key={post.id} post={post} />
-              ))}
-            </div>
-          )
+          <ThemePostList
+            themeId={theme.id}
+            posts={posts}
+            start={start}
+            page={page}
+            totalPages={totalPages}
+            basePath={`/category/${cat.slug}`}
+            journalAllPosts={all}
+            partners={partners}
+            siteName={siteName}
+          />
         ) : (
           <p className="empty-note">이 카테고리에 발행된 글이 아직 없습니다.</p>
         )}

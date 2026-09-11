@@ -3,6 +3,7 @@ import { isAdminSession } from "@/lib/auth";
 import { makeCategory, isFreeBoardSlug } from "@/lib/categories";
 import { readStore, updateStore } from "@/lib/db";
 import { persistFail } from "@/lib/persist-api";
+import { revalidatePublicSite } from "@/lib/public-cache";
 import { parseCategoryVendorAds, slotCountForCategory } from "@/lib/category-vendor-ads";
 
 export async function GET() {
@@ -32,6 +33,7 @@ export async function POST(request: Request) {
       s.categories ||= [];
       s.categories.push(created);
     });
+    revalidatePublicSite();
     return NextResponse.json({ ok: true, category: created });
   } catch (err) {
     return persistFail(err);
@@ -68,6 +70,7 @@ export async function PATCH(request: Request) {
       }
     });
     if (!found) return NextResponse.json({ error: "카테고리를 찾을 수 없습니다." }, { status: 404 });
+    revalidatePublicSite();
     return NextResponse.json({ ok: true });
   } catch (err) {
     return persistFail(err);
@@ -98,6 +101,7 @@ export async function DELETE(request: Request) {
     await updateStore((s) => {
       s.categories = (s.categories || []).filter((c) => c.slug !== slug);
     });
+    revalidatePublicSite();
     return NextResponse.json({ ok: true });
   } catch (err) {
     return persistFail(err);

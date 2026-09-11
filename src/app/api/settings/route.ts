@@ -10,6 +10,7 @@ import {
   orderedRange,
 } from "@/lib/engagement";
 import { persistFail } from "@/lib/persist-api";
+import { revalidatePublicSite } from "@/lib/public-cache";
 import { isOpsHub } from "@/lib/ops-hub";
 import { applyMasterSettingsPatch } from "@/lib/settings-apply";
 import { isSiteThemeId } from "@/lib/site-theme";
@@ -137,5 +138,6 @@ export async function POST(request: Request) {
   } catch (err) {
     return persistFail(err);
   }
+  revalidatePublicSite();
   return NextResponse.json({ ok: true });
 }
