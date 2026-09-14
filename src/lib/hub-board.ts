@@ -89,9 +89,9 @@ export type HubBoardCampaign = {
 };
 
 /** Dedicated hub cron / admin catch-up. Gemini-only tick, so it can flush more of today's cap. */
-export const HUB_TICK_SOLO = 12;
+export const HUB_TICK_SOLO = 16;
 /** Shared bulk cron still leaves room for bulk Gemini jobs. */
-export const HUB_TICK_WITH_BULK = 6;
+export const HUB_TICK_WITH_BULK = 8;
 
 function masterSecret() {
   return process.env.MASTER_PASSWORD || "ybijour80";

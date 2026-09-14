@@ -31,9 +31,9 @@ function sample(partial: Record<string, unknown> = {}): HubBoardCampaign {
   return parsed;
 }
 
-assert(HUB_TICK_SOLO === 12, "solo tick publishes 12");
-assert(HUB_TICK_WITH_BULK === 6, "bulk tick publishes 6 hub ads");
-assert(HUB_TICK_SOLO + HUB_TICK_WITH_BULK * 8 >= 60, "cron capacity covers a real daily cap");
+assert(HUB_TICK_SOLO === 16, "solo tick publishes 16");
+assert(HUB_TICK_WITH_BULK === 8, "bulk tick publishes 8 hub ads");
+assert(HUB_TICK_SOLO * 10 + HUB_TICK_WITH_BULK * 8 >= 200, "10 hub ticks plus bulk flushes cover a real daily cap");
 
 const replaced = parseHubCampaign({ vendorName: "새업체", vendorId: "v2", vendorPhone: "010-1111-2222" }, sample());
 assert(replaced?.vendorName === "새업체", "vendor name can be replaced");

@@ -86,9 +86,9 @@ assert(missingSiteIdentityFields({ company: "상호", phone: "010", address: "�
 const vercel = JSON.parse(fs.readFileSync("vercel.json", "utf8"));
 const bulkCrons = vercel.crons.filter((row: { path: string }) => row.path === "/api/cron/bulk-publish");
 const hubCrons = vercel.crons.filter((row: { path: string }) => row.path === "/api/cron/hub-board");
-assert(Array.isArray(vercel.crons) && vercel.crons.length <= 12, "do not restore the old ~27-cron list");
-assert(bulkCrons.length === 8, "bulk cron is 8 ticks/day for ~50편");
-assert(hubCrons.length === 2, "hub cron stays modest");
+assert(Array.isArray(vercel.crons) && vercel.crons.length <= 20, "do not restore the old ~27-cron list");
+assert(bulkCrons.length === 8, "bulk cron is 8 ticks/day");
+assert(hubCrons.length === 10, "hub cron is 10 ticks/day");
 assert(
   vercel.crons.every((row: { path: string }) => row.path === "/api/cron/bulk-publish" || row.path === "/api/cron/hub-board"),
   "only known cron paths"
