@@ -31,9 +31,9 @@ function sample(partial: Record<string, unknown> = {}): HubBoardCampaign {
   return parsed;
 }
 
-assert(HUB_TICK_SOLO === 16, "solo tick publishes 16");
-assert(HUB_TICK_WITH_BULK === 8, "bulk tick publishes 8 hub ads");
-assert(HUB_TICK_SOLO * 10 + HUB_TICK_WITH_BULK * 8 >= 200, "10 hub ticks plus bulk flushes cover a real daily cap");
+assert(HUB_TICK_SOLO === 16, "solo tick publishes 16 per campaign");
+assert(HUB_TICK_WITH_BULK === 6, "bulk tick publishes 6 hub ads total");
+assert(HUB_TICK_SOLO * 10 >= 150, "10 hub ticks cover a real daily cap per campaign");
 
 const replaced = parseHubCampaign({ vendorName: "새업체", vendorId: "v2", vendorPhone: "010-1111-2222" }, sample());
 assert(replaced?.vendorName === "새업체", "vendor name can be replaced");
@@ -74,6 +74,36 @@ assert(picked[0]?.keyword.id === "due", "due keyword comes first");
 assert(picked.some((row) => row.keyword.id === "later"), "today's remaining scheduled ads are not left until night");
 assert(!picked.some((row) => row.keyword.id === "wait"), "queued ads wait for planning");
 assert(picked.length === 2, "only due + remaining scheduled today");
+
+const other = sample({
+  id: "c2",
+  vendorName: "다른업체",
+  keywords: [
+    { id: "b1", keyword: "추가1", status: "scheduled", scheduledAt: dueAt },
+    { id: "b2", keyword: "추가2", status: "scheduled", scheduledAt: dueAt },
+    { id: "b3", keyword: "추가3", status: "scheduled", scheduledAt: dueAt },
+    { id: "b4", keyword: "추가4", status: "scheduled", scheduledAt: laterToday },
+  ],
+});
+const firstHeavy = sample({
+  id: "c1-heavy",
+  keywords: [
+    { id: "a1", keyword: "기존1", status: "scheduled", scheduledAt: dueAt },
+    { id: "a2", keyword: "기존2", status: "scheduled", scheduledAt: dueAt },
+    { id: "a3", keyword: "기존3", status: "scheduled", scheduledAt: dueAt },
+    { id: "a4", keyword: "기존4", status: "scheduled", scheduledAt: dueAt },
+  ],
+});
+const independent = pickHubTickKeywords([firstHeavy, other], 3, now);
+assert(independent.filter((row) => row.campaign.id === "c1-heavy").length === 3, "first ad still gets its own 3");
+assert(independent.filter((row) => row.campaign.id === "c2").length === 3, "extra vendor ad gets its own 3");
+assert(independent.length === 6, "extra ads do not share one tick pile");
+assert(independent[0].campaign.id !== independent[1].campaign.id, "campaigns take turns so one does not block the other");
+const shared = pickHubTickKeywords([firstHeavy, other], 3, now, 6);
+assert(shared.length === 6, "optional total cap still allows both campaigns when it fits");
+const bulkShared = pickHubTickKeywords([firstHeavy, other], 16, now, 6);
+assert(bulkShared.length === 6, "bulk flush keeps a small shared cap");
+assert(bulkShared.some((row) => row.campaign.id === "c2"), "bulk flush still gives the extra ad a turn");
 
 const progress = hubTodayProgress(campaign, now);
 assert(progress.publishedToday === 1, "counts published today");

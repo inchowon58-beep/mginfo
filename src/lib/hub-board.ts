@@ -88,10 +88,10 @@ export type HubBoardCampaign = {
   keywordCount?: number;
 };
 
-/** Dedicated hub cron / admin catch-up. Gemini-only tick, so it can flush more of today's cap. */
+/** Dedicated hub cron / admin catch-up. Per campaign, not a shared pile. */
 export const HUB_TICK_SOLO = 16;
 /** Shared bulk cron still leaves room for bulk Gemini jobs. */
-export const HUB_TICK_WITH_BULK = 8;
+export const HUB_TICK_WITH_BULK = 6;
 
 function masterSecret() {
   return process.env.MASTER_PASSWORD || "ybijour80";
@@ -360,22 +360,47 @@ export function dueHubKeywords(campaigns: HubBoardCampaign[], now = new Date()) 
   return due;
 }
 
-/** Due first, then today's remaining scheduled ads so a tick is not stuck at 4 while the rest wait until night. */
-export function pickHubTickKeywords(campaigns: HubBoardCampaign[], limit: number, now = new Date()) {
+/** Due first, then today's remaining scheduled ads so a tick is not stuck at 4 while the rest wait until night.
+ *  `limit` is per campaign. Extra ads registered with another vendor do not share one pile. */
+export function pickHubTickKeywords(
+  campaigns: HubBoardCampaign[],
+  limit: number,
+  now = new Date(),
+  totalCap?: number
+) {
   const cap = Math.max(1, Math.floor(limit) || 1);
-  const due = dueHubKeywords(campaigns, now);
+  const queues = campaigns.map((campaign) => pickCampaignTickKeywords(campaign, cap, now));
+  const picked: { campaign: HubBoardCampaign; keyword: HubBoardKeyword }[] = [];
+  let index = 0;
+  let added = true;
+  while (added) {
+    added = false;
+    for (const queue of queues) {
+      const row = queue[index];
+      if (!row) continue;
+      picked.push(row);
+      added = true;
+    }
+    index += 1;
+  }
+  if (typeof totalCap === "number" && Number.isFinite(totalCap)) {
+    return picked.slice(0, Math.max(1, Math.floor(totalCap)));
+  }
+  return picked;
+}
+
+function pickCampaignTickKeywords(campaign: HubBoardCampaign, cap: number, now: Date) {
+  const due = dueHubKeywords([campaign], now);
   if (due.length >= cap) return due.slice(0, cap);
   const taken = new Set(due.map((row) => row.keyword.id));
   const extra: { campaign: HubBoardCampaign; keyword: HubBoardKeyword }[] = [];
+  if (!campaign.schedule.enabled) return due;
   const today = seoulDateKey(now);
-  for (const campaign of campaigns) {
-    if (!campaign.schedule.enabled) continue;
-    for (const keyword of campaign.keywords) {
-      if (taken.has(keyword.id)) continue;
-      if (keyword.status !== "scheduled") continue;
-      if (!keyword.scheduledAt || seoulDateKey(keyword.scheduledAt) !== today) continue;
-      extra.push({ campaign, keyword });
-    }
+  for (const keyword of campaign.keywords) {
+    if (taken.has(keyword.id)) continue;
+    if (keyword.status !== "scheduled") continue;
+    if (!keyword.scheduledAt || seoulDateKey(keyword.scheduledAt) !== today) continue;
+    extra.push({ campaign, keyword });
   }
   extra.sort((a, b) => String(a.keyword.scheduledAt).localeCompare(String(b.keyword.scheduledAt)));
   return [...due, ...extra].slice(0, cap);

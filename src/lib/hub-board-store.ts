@@ -25,6 +25,8 @@ import { canClaimDueKeyword, canClaimManualKeyword } from "./publish-claim";
 import { uid } from "./slug";
 
 const LOCAL_PATH = path.join(process.cwd(), "data", "hub-board.json");
+/** Stop starting new Gemini jobs before Vercel `maxDuration` (300s) hard-timeout. */
+const TICK_BUDGET_MS = 240_000;
 
 type HubBoardStore = { campaigns: HubBoardCampaign[] };
 
@@ -273,7 +275,7 @@ export async function publishHubKeyword(campaignId: string, keywordId: string) {
   return publishOneKeyword(campaignId, keywordId, "manual");
 }
 
-export async function publishDueHubBoard(limit = HUB_TICK_SOLO) {
+export async function publishDueHubBoard(limit = HUB_TICK_SOLO, totalCap?: number) {
   const sites = await getOpsSites();
   let campaigns = await getHubCampaigns();
   let planned = 0;
@@ -285,9 +287,11 @@ export async function publishDueHubBoard(limit = HUB_TICK_SOLO) {
   }
   if (planned) await setHubCampaigns(plannedCampaigns);
   campaigns = await getHubCampaigns();
-  const due = pickHubTickKeywords(campaigns, limit);
+  const due = pickHubTickKeywords(campaigns, limit, new Date(), totalCap);
   const results: { keyword: string; ok: boolean; domain?: string; error?: string }[] = [];
+  const tickStarted = Date.now();
   for (const item of due) {
+    if (Date.now() - tickStarted >= TICK_BUDGET_MS) break;
     const published = await publishOneKeyword(item.campaign.id, item.keyword.id, "due");
     if (!published.keyword && !published.ok) continue;
     results.push({

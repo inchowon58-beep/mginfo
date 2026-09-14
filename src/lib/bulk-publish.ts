@@ -280,7 +280,7 @@ export function bulkStats(state: BulkPublishState, categories: Category[] = []) 
   };
 }
 
-const MAX_PER_TICK = 8;
+const MAX_PER_TICK = 6;
 /** Stop starting new Gemini jobs before Vercel `maxDuration` (300s) hard-timeout. */
 const TICK_BUDGET_MS = 240_000;
 

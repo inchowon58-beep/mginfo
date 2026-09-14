@@ -26,7 +26,7 @@ export async function GET(request: Request) {
   let hub = null as Awaited<ReturnType<typeof publishDueHubBoard>> | null;
   if (await isOpsHub()) {
     try {
-      hub = await publishDueHubBoard(HUB_TICK_WITH_BULK);
+      hub = await publishDueHubBoard(HUB_TICK_WITH_BULK, HUB_TICK_WITH_BULK);
     } catch {
       hub = null;
     }
