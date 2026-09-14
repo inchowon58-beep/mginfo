@@ -23,6 +23,18 @@ type Keyword = {
   youtubeUrl2?: string;
 };
 
+type CampaignToday = {
+  today: string;
+  publishedToday: number;
+  scheduledToday: number;
+  waiting: number;
+  dailyLimit: number;
+  remainingToday: number;
+  keywordCount: number;
+  topKeyword: string;
+  date: string;
+};
+
 type Campaign = {
   id: string;
   title: string;
@@ -40,6 +52,11 @@ type Campaign = {
   keywords: Keyword[];
   schedule: { enabled: boolean; startHour: number };
   stats?: { total: number; published: number; remaining: number; percent: number; daysLeft: number };
+  today?: CampaignToday;
+  createdAt?: string;
+  updatedAt?: string;
+  topKeyword?: string;
+  keywordCount?: number;
   vendorRecruitSlot?: boolean;
   youtubeUrl1?: string;
   youtubeUrl2?: string;
@@ -68,6 +85,44 @@ function emptyCampaign(siteIds: string[]): Campaign {
     youtubeUrl1: "",
     youtubeUrl2: "",
   };
+}
+
+function campaignSaveBody(campaign: Campaign, extraText = "") {
+  return {
+    id: campaign.id || undefined,
+    title: campaign.title || campaign.vendorName || "자유게시판 광고",
+    vendorName: campaign.vendorName || "",
+    vendorPhone: campaign.vendorPhone || "",
+    vendorWebsite: campaign.vendorWebsite || "",
+    vendorKakao: campaign.vendorKakao || "",
+    vendorId: campaign.vendorId || "",
+    youtubeUrl1: campaign.youtubeUrl1,
+    youtubeUrl2: campaign.youtubeUrl2,
+    imagePool: campaign.imagePool || [],
+    imageFolderUrl: campaign.imageFolderUrl || "",
+    extraPrompt: campaign.extraPrompt || "",
+    coverImage: (campaign.imagePool || [])[0] || "",
+    writingStyle: campaign.writingStyle,
+    dailyLimit: campaign.dailyLimit,
+    siteIds: campaign.siteIds,
+    keywords: campaign.keywords,
+    schedule: campaign.schedule,
+    vendorRecruitSlot: Boolean(campaign.vendorRecruitSlot),
+    text: extraText,
+  };
+}
+
+function listTopKeyword(campaign: Campaign) {
+  return campaign.today?.topKeyword || campaign.topKeyword || campaign.keywords[0]?.keyword?.trim() || "—";
+}
+
+function listKeywordCount(campaign: Campaign) {
+  return campaign.today?.keywordCount || campaign.keywordCount || campaign.keywords.length;
+}
+
+function listDate(campaign: Campaign) {
+  const key = campaign.today?.date || seoulDayKey(campaign.createdAt) || seoulDayKey(campaign.updatedAt);
+  return key || "—";
 }
 
 function statusLabel(status: string) {
@@ -163,6 +218,16 @@ export function HubBoardAds() {
   const [folderBusy, setFolderBusy] = useState(false);
   const [activePage, setActivePage] = useState(1);
   const [donePage, setDonePage] = useState(1);
+  const [extras, setExtras] = useState<Campaign[]>([]);
+  const [extraTexts, setExtraTexts] = useState<string[]>([]);
+  const [today, setToday] = useState<{
+    date: string;
+    publishedToday: number;
+    scheduledToday: number;
+    waiting: number;
+    dailyLimit: number;
+    remainingToday: number;
+  } | null>(null);
 
   async function load() {
     const res = await fetch("/api/ops/board-campaigns");
@@ -172,21 +237,25 @@ export function HubBoardAds() {
     const nextCampaigns: Campaign[] = data.campaigns || [];
     setSites(nextSites);
     setCampaigns(nextCampaigns);
+    setToday(data.today || null);
     return { sites: nextSites, campaigns: nextCampaigns };
   }
 
   useEffect(() => {
     load()
-      .then(({ sites: nextSites, campaigns: nextCampaigns }) => {
-        if (nextCampaigns[0]) setForm(nextCampaigns[0]);
-        else setForm(emptyCampaign(nextSites.map((site) => site.id)));
+      .then(({ sites: nextSites }) => {
+        setForm(emptyCampaign(nextSites.map((site) => site.id)));
       })
       .catch((err) => setError(err instanceof Error ? err.message : "불러오기 실패"));
   }, []);
 
-  const hubCatchupOn =
-    form.schedule.enabled &&
-    form.keywords.some((row) => row.status === "queued" || row.status === "scheduled" || row.status === "processing");
+  const hubCatchupOn = campaigns.some(
+    (campaign) =>
+      campaign.schedule.enabled &&
+      campaign.keywords.some(
+        (row) => row.status === "queued" || row.status === "scheduled" || row.status === "processing"
+      )
+  );
 
   useEffect(() => {
     if (!hubCatchupOn) return;
@@ -196,7 +265,8 @@ export function HubBoardAds() {
         .then(() => (cancelled ? null : load()))
         .then((fresh) => {
           if (!fresh || cancelled) return;
-          const current = fresh.campaigns.find((row) => row.id === form.id) || fresh.campaigns[0];
+          if (!form.id) return;
+          const current = fresh.campaigns.find((row) => row.id === form.id);
           if (current) setForm(current);
         })
         .catch(() => undefined);
@@ -300,49 +370,73 @@ export function HubBoardAds() {
     }));
   }
 
+  function openCampaign(campaign: Campaign) {
+    setForm(campaign);
+    setText("");
+    setExtras([]);
+    setExtraTexts([]);
+    setError("");
+    setMessage("");
+  }
+
+  function startNew() {
+    setForm(emptyCampaign(sites.map((site) => site.id)));
+    setText("");
+    setExtras([]);
+    setExtraTexts([]);
+    setError("");
+    setMessage("");
+  }
+
+  function addExtra() {
+    const siteIds = form.siteIds.length ? form.siteIds : sites.map((site) => site.id);
+    setExtras((prev) => [
+      ...prev,
+      {
+        ...emptyCampaign(siteIds),
+        writingStyle: form.writingStyle,
+        extraPrompt: form.extraPrompt,
+        imagePool: form.imagePool || [],
+        imageFolderUrl: form.imageFolderUrl || "",
+        schedule: { ...form.schedule },
+        vendorRecruitSlot: Boolean(form.vendorRecruitSlot),
+      },
+    ]);
+    setExtraTexts((prev) => [...prev, ""]);
+  }
+
   async function save(e?: FormEvent) {
     e?.preventDefault();
     setBusy(true);
     setError("");
     setMessage("");
     try {
+      const extraItems = extras
+        .map((row, index) => ({ row, extraText: extraTexts[index] || "" }))
+        .filter(({ row, extraText }) => row.vendorName || extraText.trim() || row.keywords.length)
+        .map(({ row, extraText }) => campaignSaveBody(row, extraText));
+      const items = [campaignSaveBody(form, text), ...extraItems];
       const res = await fetch("/api/ops/board-campaigns", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          id: form.id,
-          title: form.title || form.vendorName || "자유게시판 광고",
-          vendorName: form.vendorName,
-          vendorPhone: form.vendorPhone,
-          vendorWebsite: form.vendorWebsite,
-          vendorKakao: form.vendorKakao,
-          vendorId: form.vendorId,
-          youtubeUrl1: form.youtubeUrl1,
-          youtubeUrl2: form.youtubeUrl2,
-          imagePool: form.imagePool || [],
-          imageFolderUrl: form.imageFolderUrl || "",
-          extraPrompt: form.extraPrompt || "",
-          coverImage: (form.imagePool || [])[0] || "",
-          writingStyle: form.writingStyle,
-          dailyLimit: form.dailyLimit,
-          siteIds: form.siteIds,
-          keywords: form.keywords,
-          schedule: form.schedule,
-          vendorRecruitSlot: Boolean(form.vendorRecruitSlot),
-          text,
-        }),
+        body: JSON.stringify({ items }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "저장 실패");
       setText("");
-      setForm(data.campaign);
+      setExtras([]);
+      setExtraTexts([]);
+      const savedId = String(data.campaigns?.[0]?.id || data.campaign?.id || form.id || "");
       const fresh = await load();
-      const saved = fresh.campaigns.find((row) => row.id === data.campaign.id) || data.campaign;
-      setForm(saved);
+      const saved = fresh.campaigns.find((row) => row.id === savedId) || data.campaign;
+      if (saved) setForm(saved);
+      const count = Array.isArray(data.campaigns) ? data.campaigns.length : 1;
       setMessage(
         data.planned
-          ? `저장했습니다. 오늘 분량 ${data.planned}건을 위에서부터 사이트에 순서대로 예약했습니다.`
-          : "키워드와 설정을 저장했습니다. 매일 자동발행을 켜 두면 순차로 나갑니다."
+          ? `광고 ${count}개를 저장했습니다. 오늘 분량 ${data.planned}건을 예약했습니다. 이미 나간 글의 업체는 그대로이고, 앞으로 나가는 글부터 바뀝니다.`
+          : count > 1
+            ? `광고 ${count}개를 저장했습니다. 각각 다른 업체로 등록됩니다.`
+            : "키워드와 설정을 저장했습니다. 이미 나간 글의 업체는 그대로이고, 앞으로 나가는 글부터 바뀝니다."
       );
     } catch (err) {
       setError(err instanceof Error ? err.message : "저장 실패");
@@ -369,7 +463,8 @@ export function HubBoardAds() {
             : "지금은 발행할 예약이 없습니다."
       );
       const fresh = await load();
-      const current = fresh.campaigns.find((row) => row.id === form.id) || fresh.campaigns[0];
+      if (!form.id) return;
+      const current = fresh.campaigns.find((row) => row.id === form.id);
       if (current) setForm(current);
     } catch (err) {
       setError(err instanceof Error ? err.message : "실행 실패");
@@ -432,40 +527,168 @@ export function HubBoardAds() {
     }
   }
 
+  const saveLabel = extras.length ? `모두 저장 (${extras.length + 1}개)` : "저장";
+
   return (
     <div className="hub-board">
+      <div className="admin-card">
+        <div className="admin-card-head">
+          <div>
+            <h2>자유게시판 광고 목록</h2>
+            <p className="field-hint" style={{ marginTop: 0 }}>
+              줄을 누르면 그 광고를 고칩니다. 업체도 바꿀 수 있습니다. 「다른 업체로 하나 더」로 한 번에 여러 광고를 넣고
+              모두 저장하세요.
+            </p>
+          </div>
+        </div>
+        {today ? (
+          <p className="field-hint">
+            오늘({today.date}) 발행 {today.publishedToday} / 한도 합계 {today.dailyLimit} · 오늘 예약 {today.scheduledToday} ·
+            남은 오늘 {today.remainingToday} · 대기 {today.waiting}
+          </p>
+        ) : null}
+        <div className="admin-actions hub-board-toolbar">
+          <button className="btn" type="button" onClick={startNew}>
+            새 광고
+          </button>
+          <button className="btn btn-ghost" type="button" onClick={addExtra}>
+            다른 업체로 하나 더
+          </button>
+        </div>
+        <div className="table-wrap">
+          <table className="admin-table hub-board-table">
+            <thead>
+              <tr>
+                <th>번호</th>
+                <th>날짜</th>
+                <th>최상단키워드</th>
+                <th>개수</th>
+                <th>업체명</th>
+              </tr>
+            </thead>
+            <tbody>
+              {campaigns.length ? (
+                campaigns.map((campaign, index) => (
+                  <tr
+                    key={campaign.id}
+                    className={form.id && form.id === campaign.id ? "is-selected" : undefined}
+                    onClick={() => openCampaign(campaign)}
+                  >
+                    <td>{index + 1}</td>
+                    <td>{listDate(campaign)}</td>
+                    <td>{listTopKeyword(campaign)}</td>
+                    <td>{listKeywordCount(campaign)}</td>
+                    <td>{campaign.vendorName || campaign.title || "—"}</td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={5} className="muted">
+                    아직 등록한 광고가 없습니다.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       <form className="admin-card admin-form" onSubmit={save}>
         <div className="admin-card-head">
           <div>
-            <h2>자유게시판 광고</h2>
+            <h2>{form.id ? "자유게시판 광고 수정" : "자유게시판 광고 등록"}</h2>
             <p className="field-hint" style={{ marginTop: 0 }}>
               키워드마다 제미나이가 다른 글을 만들고, 동의한 사이트 위부터 한 사이트에 하나씩 넣습니다.
               글방향은 이 화면 설정이 모든 키워드에 공통입니다. 말투·페르소나·사이트 이름·컨셉은 글을 받는 그 사이트 설정을 따릅니다.
               자동발행을 켜 두면 Production cron이 예약 시각에 올립니다. 이 화면을 열어 둘 필요는 없습니다.
+              업체를 바꿔 저장하면 이미 나간 글은 그대로이고, 앞으로 나가는 글부터 새 업체가 붙습니다.
             </p>
           </div>
         </div>
 
-        {campaigns.length > 1 ? (
-          <label>
-            캠페인
-            <select
-              value={form.id}
-              onChange={(e) => {
-                const found = campaigns.find((row) => row.id === e.target.value);
-                if (found) setForm(found);
-                else setForm(emptyCampaign(sites.map((site) => site.id)));
-              }}
-            >
-              {campaigns.map((row) => (
-                <option key={row.id} value={row.id}>
-                  {row.title || row.vendorName || row.id}
-                </option>
-              ))}
-              <option value="">새 캠페인</option>
-            </select>
-          </label>
-        ) : null}
+        {extras.map((row, index) => (
+          <section key={`extra-${index}`} className="hub-board-extra">
+            <div className="hub-board-form-head">
+              <h3>추가 광고 {index + 1}</h3>
+              <button
+                className="btn btn-ghost"
+                type="button"
+                onClick={() => {
+                  setExtras((current) => current.filter((_, i) => i !== index));
+                  setExtraTexts((current) => current.filter((_, i) => i !== index));
+                }}
+              >
+                빼기
+              </button>
+            </div>
+            <div className="hub-board-vendor">
+              <div>
+                <label>업체명</label>
+                <input
+                  value={row.vendorName || ""}
+                  onChange={(e) =>
+                    setExtras((current) =>
+                      current.map((item, i) => (i === index ? { ...item, vendorName: e.target.value } : item))
+                    )
+                  }
+                />
+              </div>
+              <VendorPicker
+                onPick={(fields) =>
+                  setExtras((current) =>
+                    current.map((item, i) =>
+                      i === index
+                        ? {
+                            ...item,
+                            vendorId: fields.vendorId,
+                            vendorName: fields.vendorName,
+                            vendorPhone: fields.vendorPhone,
+                            vendorWebsite: fields.vendorWebsite,
+                            vendorKakao: fields.vendorKakao,
+                            title: item.title || fields.vendorName,
+                          }
+                        : item
+                    )
+                  )
+                }
+              />
+            </div>
+            <label>전화</label>
+            <input
+              value={row.vendorPhone || ""}
+              onChange={(e) =>
+                setExtras((current) =>
+                  current.map((item, i) => (i === index ? { ...item, vendorPhone: e.target.value } : item))
+                )
+              }
+            />
+            <label>하루 전체 발행 수량</label>
+            <input
+              type="number"
+              min={1}
+              max={9999}
+              value={row.dailyLimit}
+              onChange={(e) =>
+                setExtras((current) =>
+                  current.map((item, i) => (i === index ? { ...item, dailyLimit: Number(e.target.value) || 1 } : item))
+                )
+              }
+            />
+            <label>키워드 (줄 또는 쉼표)</label>
+            <textarea
+              rows={5}
+              value={extraTexts[index] || ""}
+              onChange={(e) =>
+                setExtraTexts((current) => {
+                  const next = current.slice();
+                  next[index] = e.target.value;
+                  return next;
+                })
+              }
+              placeholder={"부천 애견미용\n인천 펫샵 추천"}
+            />
+          </section>
+        ))}
 
         <label>캠페인 이름</label>
         <input
@@ -735,24 +958,26 @@ export function HubBoardAds() {
             {form.stats.daysLeft ? ` · 약 ${form.stats.daysLeft}일` : ""} · 하루 {form.dailyLimit}편
           </p>
         ) : null}
+        {form.today ? (
+          <p className="field-hint">
+            오늘 발행 {form.today.publishedToday} / 한도 {form.today.dailyLimit} · 오늘 예약 {form.today.scheduledToday} ·
+            남은 오늘 {form.today.remainingToday} · 대기 {form.today.waiting}
+          </p>
+        ) : null}
         {error ? <p className="notice">{error}</p> : null}
         {message ? <p className="field-hint">{message}</p> : null}
         <div className="admin-actions">
           <button className="btn btn-primary" disabled={busy}>
-            {busy ? "저장 중…" : "저장"}
+            {busy ? "저장 중…" : saveLabel}
           </button>
           <button className="btn btn-ghost" type="button" disabled={busy} onClick={runTick}>
             대기 발행 실행
           </button>
-          <button
-            className="btn btn-ghost"
-            type="button"
-            onClick={() => {
-              setForm(emptyCampaign(sites.map((site) => site.id)));
-              setText("");
-            }}
-          >
-            새 캠페인
+          <button className="btn btn-ghost" type="button" onClick={startNew}>
+            새 광고
+          </button>
+          <button className="btn btn-ghost" type="button" onClick={addExtra}>
+            다른 업체로 하나 더
           </button>
         </div>
       </form>
@@ -761,8 +986,8 @@ export function HubBoardAds() {
         <h2>예약·대기 현황</h2>
         <p className="field-hint">
           아직 안 나간 글만 보입니다. 예약 시각이 지난 글은 Production cron이 제미나이로 작성해서 올립니다. 이 화면의
-          실행/발행 버튼은 밀린 분량을 수동으로 밀어 넣는 용도입니다. 한 번에 최대 4편이라, 밀린 글은 몇 번에 나눠
-          나갑니다.
+          실행/발행 버튼은 밀린 분량을 수동으로 밀어 넣는 용도입니다. 전용 발행은 한 번에 최대 12편, 글대량등록과 겹치면
+          6편입니다. 오늘 예약분도 미루지 않고 같은 한도 안에서 이어서 나갑니다.
         </p>
         {activeKeywords.length === 0 ? (
           <p className="field-hint">키워드를 넣고 저장하면, 위에서부터 사이트 하나씩 배정·예약됩니다.</p>

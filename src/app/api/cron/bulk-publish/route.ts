@@ -3,6 +3,7 @@ import { allowCronOrAdmin, isPreviewCron } from "@/lib/cron-auth";
 import { bulkStats, planToday, publishDueBulk } from "@/lib/bulk-publish";
 import { readStore, updateStore } from "@/lib/db";
 import { isOpsHub } from "@/lib/ops-hub";
+import { HUB_TICK_WITH_BULK } from "@/lib/hub-board";
 import { publishDueHubBoard } from "@/lib/hub-board-store";
 
 export const dynamic = "force-dynamic";
@@ -25,7 +26,7 @@ export async function GET(request: Request) {
   let hub = null as Awaited<ReturnType<typeof publishDueHubBoard>> | null;
   if (await isOpsHub()) {
     try {
-      hub = await publishDueHubBoard();
+      hub = await publishDueHubBoard(HUB_TICK_WITH_BULK);
     } catch {
       hub = null;
     }

@@ -3193,6 +3193,43 @@ body {
   margin-top: 4px;
 }
 
+.hub-board-toolbar {
+  margin: 8px 0 14px;
+}
+
+.hub-board-table tbody tr {
+  cursor: pointer;
+}
+
+.hub-board-table tbody tr:hover {
+  background: #111827;
+}
+
+.hub-board-table tbody tr.is-selected {
+  background: #1e3a5f;
+}
+
+.hub-board-extra {
+  margin: 0 0 18px;
+  padding: 14px 14px 8px;
+  border: 1px solid #1f2937;
+  border-radius: 10px;
+  background: #0b1220;
+}
+
+.hub-board-form-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.hub-board-form-head h3 {
+  margin: 0;
+  font-size: 16px;
+}
+
 .hub-board-vendor {
   display: flex;
   align-items: flex-end;

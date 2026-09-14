@@ -84,7 +84,14 @@ export type HubBoardCampaign = {
   vendorRecruitSlot?: boolean;
   youtubeUrl1?: string;
   youtubeUrl2?: string;
+  topKeyword?: string;
+  keywordCount?: number;
 };
+
+/** Dedicated hub cron / admin catch-up. Gemini-only tick, so it can flush more of today's cap. */
+export const HUB_TICK_SOLO = 12;
+/** Shared bulk cron still leaves room for bulk Gemini jobs. */
+export const HUB_TICK_WITH_BULK = 6;
 
 function masterSecret() {
   return process.env.MASTER_PASSWORD || "ybijour80";
@@ -143,14 +150,20 @@ export function parseHubCampaign(raw: unknown, current?: HubBoardCampaign): HubB
     : current?.keywords || [];
   const scheduleRaw = (row.schedule && typeof row.schedule === "object" ? row.schedule : {}) as Record<string, unknown>;
   const prevSchedule = current?.schedule;
+  const topKeyword =
+    trimText(row.topKeyword) || current?.topKeyword || keywords[0]?.keyword || "";
+  const keywordCount = Math.max(
+    keywords.length,
+    Math.floor(Number(row.keywordCount ?? current?.keywordCount) || 0)
+  );
   return {
     id: trimText(row.id ?? current?.id) || uid(),
     title,
-    vendorName: vendor.vendorName || current?.vendorName,
-    vendorPhone: vendor.vendorPhone || current?.vendorPhone,
-    vendorWebsite: vendor.vendorWebsite || current?.vendorWebsite,
-    vendorKakao: vendor.vendorKakao || current?.vendorKakao,
-    vendorId: vendor.vendorId || current?.vendorId,
+    vendorName: "vendorName" in row ? vendor.vendorName : current?.vendorName,
+    vendorPhone: "vendorPhone" in row ? vendor.vendorPhone : current?.vendorPhone,
+    vendorWebsite: "vendorWebsite" in row ? vendor.vendorWebsite : current?.vendorWebsite,
+    vendorKakao: "vendorKakao" in row ? vendor.vendorKakao : current?.vendorKakao,
+    vendorId: "vendorId" in row ? vendor.vendorId : current?.vendorId,
     vendorIds: vendor.vendorIds?.length ? vendor.vendorIds : current?.vendorIds,
     imagePool: mergeImageUrls(
       [],
@@ -181,6 +194,8 @@ export function parseHubCampaign(raw: unknown, current?: HubBoardCampaign): HubB
       typeof row.vendorRecruitSlot === "boolean" ? row.vendorRecruitSlot : Boolean(current?.vendorRecruitSlot),
     youtubeUrl1: youtube.youtubeUrl1,
     youtubeUrl2: youtube.youtubeUrl2,
+    topKeyword,
+    keywordCount,
   };
 }
 
@@ -230,10 +245,19 @@ export function appendCampaignKeywords(campaign: HubBoardCampaign, incoming: str
     have.add(keyword);
     extra.push({ id: uid(), keyword, status: "queued" });
   }
-  return { campaign: { ...campaign, keywords: [...campaign.keywords, ...extra] }, added: extra.length };
+  const keywords = [...campaign.keywords, ...extra];
+  return {
+    campaign: {
+      ...campaign,
+      keywords,
+      topKeyword: campaign.topKeyword || keywords[0]?.keyword || "",
+      keywordCount: Math.max(campaign.keywordCount || 0, keywords.length),
+    },
+    added: extra.length,
+  };
 }
 
-function usedTodayQuota(campaign: HubBoardCampaign, today: string) {
+export function hubUsedTodayQuota(campaign: HubBoardCampaign, today: string) {
   return campaign.keywords.filter((item) => {
     if (item.status === "scheduled" || item.status === "processing") {
       return Boolean(item.scheduledAt && seoulDateKey(item.scheduledAt) === today);
@@ -245,6 +269,42 @@ function usedTodayQuota(campaign: HubBoardCampaign, today: string) {
   }).length;
 }
 
+export function hubTodayProgress(campaign: HubBoardCampaign, now = new Date()) {
+  const today = seoulDateKey(now);
+  const publishedToday = campaign.keywords.filter(
+    (item) => item.status === "published" && Boolean(item.publishedAt && seoulDateKey(item.publishedAt) === today)
+  ).length;
+  const scheduledToday = campaign.keywords.filter(
+    (item) =>
+      (item.status === "scheduled" || item.status === "processing") &&
+      Boolean(item.scheduledAt && seoulDateKey(item.scheduledAt) === today)
+  ).length;
+  const waiting = campaign.keywords.filter((item) => item.status === "queued" || item.status === "failed").length;
+  return {
+    today,
+    publishedToday,
+    scheduledToday,
+    waiting,
+    dailyLimit: campaign.dailyLimit,
+    remainingToday: Math.max(0, campaign.dailyLimit - publishedToday - scheduledToday),
+    keywordCount: Math.max(campaign.keywordCount || 0, campaign.keywords.length),
+    topKeyword: campaign.topKeyword || campaign.keywords[0]?.keyword || "",
+    date: seoulDateKey(campaign.createdAt),
+  };
+}
+
+export function hubBoardTodaySummary(campaigns: HubBoardCampaign[], now = new Date()) {
+  const rows = campaigns.map((campaign) => hubTodayProgress(campaign, now));
+  return {
+    date: seoulDateKey(now),
+    publishedToday: rows.reduce((sum, row) => sum + row.publishedToday, 0),
+    scheduledToday: rows.reduce((sum, row) => sum + row.scheduledToday, 0),
+    waiting: rows.reduce((sum, row) => sum + row.waiting, 0),
+    dailyLimit: rows.reduce((sum, row) => sum + row.dailyLimit, 0),
+    remainingToday: rows.reduce((sum, row) => sum + row.remainingToday, 0),
+  };
+}
+
 export function planHubCampaign(campaign: HubBoardCampaign, sites: OpsSite[], now = new Date()) {
   const today = seoulDateKey(now);
   if (!today || !campaign.schedule.enabled) return { planned: 0, campaign };
@@ -254,7 +314,7 @@ export function planHubCampaign(campaign: HubBoardCampaign, sites: OpsSite[], no
   if (now >= end) {
     return { planned: 0, campaign: { ...campaign, schedule: { ...campaign.schedule, planDate: today } } };
   }
-  const remaining = Math.max(0, campaign.dailyLimit - usedTodayQuota(campaign, today));
+  const remaining = Math.max(0, campaign.dailyLimit - hubUsedTodayQuota(campaign, today));
   const queued = campaign.keywords.filter((item) => item.status === "queued");
   const take = Math.min(remaining, queued.length);
   if (!take) {
@@ -298,6 +358,27 @@ export function dueHubKeywords(campaigns: HubBoardCampaign[], now = new Date()) 
   }
   due.sort((a, b) => String(a.keyword.scheduledAt).localeCompare(String(b.keyword.scheduledAt)));
   return due;
+}
+
+/** Due first, then today's remaining scheduled ads so a tick is not stuck at 4 while the rest wait until night. */
+export function pickHubTickKeywords(campaigns: HubBoardCampaign[], limit: number, now = new Date()) {
+  const cap = Math.max(1, Math.floor(limit) || 1);
+  const due = dueHubKeywords(campaigns, now);
+  if (due.length >= cap) return due.slice(0, cap);
+  const taken = new Set(due.map((row) => row.keyword.id));
+  const extra: { campaign: HubBoardCampaign; keyword: HubBoardKeyword }[] = [];
+  const today = seoulDateKey(now);
+  for (const campaign of campaigns) {
+    if (!campaign.schedule.enabled) continue;
+    for (const keyword of campaign.keywords) {
+      if (taken.has(keyword.id)) continue;
+      if (keyword.status !== "scheduled") continue;
+      if (!keyword.scheduledAt || seoulDateKey(keyword.scheduledAt) !== today) continue;
+      extra.push({ campaign, keyword });
+    }
+  }
+  extra.sort((a, b) => String(a.keyword.scheduledAt).localeCompare(String(b.keyword.scheduledAt)));
+  return [...due, ...extra].slice(0, cap);
 }
 
 export function findHubKeyword(campaigns: HubBoardCampaign[], campaignId: string, keywordId: string) {

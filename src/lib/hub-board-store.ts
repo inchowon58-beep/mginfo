@@ -6,14 +6,15 @@ import {
   assignNextSite,
   collectHubAvoidTitles,
   collectHubTodayKeywords,
-  dueHubKeywords,
   fetchSiteRecentPosts,
   generateHubBoardArticle,
   parseHubCampaign,
   parseHubCampaigns,
+  pickHubTickKeywords,
   planHubCampaign,
   pruneStalePublishedKeywords,
   pushBoardPost,
+  HUB_TICK_SOLO,
   type HubBoardCampaign,
   type HubBoardKeyword,
 } from "./hub-board";
@@ -24,7 +25,6 @@ import { canClaimDueKeyword, canClaimManualKeyword } from "./publish-claim";
 import { uid } from "./slug";
 
 const LOCAL_PATH = path.join(process.cwd(), "data", "hub-board.json");
-const MAX_PER_TICK = 4;
 
 type HubBoardStore = { campaigns: HubBoardCampaign[] };
 
@@ -273,7 +273,7 @@ export async function publishHubKeyword(campaignId: string, keywordId: string) {
   return publishOneKeyword(campaignId, keywordId, "manual");
 }
 
-export async function publishDueHubBoard() {
+export async function publishDueHubBoard(limit = HUB_TICK_SOLO) {
   const sites = await getOpsSites();
   let campaigns = await getHubCampaigns();
   let planned = 0;
@@ -285,7 +285,7 @@ export async function publishDueHubBoard() {
   }
   if (planned) await setHubCampaigns(plannedCampaigns);
   campaigns = await getHubCampaigns();
-  const due = dueHubKeywords(campaigns).slice(0, MAX_PER_TICK);
+  const due = pickHubTickKeywords(campaigns, limit);
   const results: { keyword: string; ok: boolean; domain?: string; error?: string }[] = [];
   for (const item of due) {
     const published = await publishOneKeyword(item.campaign.id, item.keyword.id, "due");
