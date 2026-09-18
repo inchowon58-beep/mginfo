@@ -51,6 +51,10 @@ function h2ListsTooSimilar(a: string[], b: string[]): boolean {
   return same / Math.max(na.length, nb.length) >= 0.75;
 }
 
+/** Vendor/career/price claims when Verified NAP facts are absent.
+ * PHASE 5 candidate: breed numeric/health memory claims (e.g. "주 2~3회", "2~4kg",
+ * "피부병", "관절이 약") — too many false positives for a blunt regex; do not treat
+ * Gemini memory numbers as Verified Facts. */
 const CLAIM_PATTERNS: Array<{ re: RegExp; label: string }> = [
   { re: /(?:경력|운영)\s*\d+\s*년/, label: "경력 연수" },
   { re: /\d{1,3}(?:,\d{3})+\s*원|\d+\s*만원/, label: "가격" },
@@ -171,12 +175,18 @@ export function validateWriterOutput(input: {
     });
   }
 
-  // H1: theme uses title as H1 — treat title as H1 proxy
-  if (fixed.title.trim()) {
+  // H1: public theme uses post title as H1 (no separate <h1> in bodyHtml)
+  if (!fixed.title.trim()) {
     issues.push({
       code: QUALITY_CODES.H1_MISSING,
+      severity: "error",
+      message: "H1(제목) 없음",
+    });
+  } else {
+    issues.push({
+      code: QUALITY_CODES.H1_PRESENT,
       severity: "info",
-      message: "H1=title 사용 (테마)",
+      message: "H1=title (테마)",
     });
   }
 
@@ -212,6 +222,8 @@ export function validateWriterOutput(input: {
       break;
     }
     const secLen = stripTags(actual.html || "").length;
+    // FAQ body is often a short intro; real Q&A lives in faqItems — don't apply AI section min length.
+    if (expected.blockKey === "faq") continue;
     if (secLen > 0 && secLen < 60) {
       issues.push({
         code: QUALITY_CODES.SECTION_TOO_SHORT,

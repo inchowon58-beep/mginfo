@@ -43,6 +43,13 @@ function ContentQaHelpBody() {
           같은 키워드로 Legacy와 Planner를 <em>둘 다</em> 돌린 뒤 나란히 보여 줍니다. Gemini 호출이
           두 배라서 시간이·비용이 더 듭니다. 본격 비교할 때만 쓰세요.
         </li>
+        <li>
+          <strong>Verified 업체</strong>
+          <br />
+          「광고업체정보설정」+「Verified 업체데이터」에 넣은 업체를 고르면 store_information /
+          visit_information / available_animals 등이 실제 랜딩에 붙습니다. 비우면 breed_guide처럼 품종
+          안내만 나올 수 있습니다.
+        </li>
       </ol>
       <p>
         <strong>아래 화면</strong> · <em>Angle 분포</em>는 최근 QA에서 어떤 앵글이 많이 나왔는지
@@ -60,6 +67,8 @@ function ContentQaHelpBody() {
 
 export function ContentQaAdmin() {
   const [keyword, setKeyword] = useState("배곧포메라니안분양");
+  const [vendorId, setVendorId] = useState("");
+  const [vendors, setVendors] = useState<Array<{ id: string; name: string }>>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [results, setResults] = useState<QaResult[]>([]);
@@ -70,14 +79,23 @@ export function ContentQaAdmin() {
   const [view, setView] = useState<"plan" | "final">("final");
 
   const load = useCallback(async () => {
-    const res = await fetch("/api/admin/content-qa");
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) {
+    const [qaRes, vRes] = await Promise.all([fetch("/api/admin/content-qa"), fetch("/api/ad-vendors")]);
+    const data = await qaRes.json().catch(() => ({}));
+    const vData = await vRes.json().catch(() => ({}));
+    if (!qaRes.ok) {
       setError(data.error || "불러오기 실패");
       return;
     }
     setResults(data.store?.results || []);
     setAngleDist(data.angleDist || []);
+    if (vRes.ok) {
+      const list = ((vData.vendors || []) as Array<{ id: string; name: string }>).map((v) => ({
+        id: v.id,
+        name: v.name,
+      }));
+      setVendors(list);
+      setVendorId((prev) => prev || list[0]?.id || "");
+    }
   }, []);
 
   useEffect(() => {
@@ -98,7 +116,12 @@ export function ContentQaAdmin() {
       const res = await fetch("/api/admin/content-qa", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action, keyword }),
+        body: JSON.stringify({
+          action,
+          keyword,
+          vendorId: vendorId || undefined,
+          industryId: "ind-dog-adoption",
+        }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -138,6 +161,21 @@ export function ContentQaAdmin() {
             키워드
             <input value={keyword} onChange={(e) => setKeyword(e.target.value)} />
           </label>
+          <label>
+            Verified 업체 (AdVendor)
+            <select value={vendorId} onChange={(e) => setVendorId(e.target.value)}>
+              <option value="">연결 없음</option>
+              {vendors.map((v) => (
+                <option key={v.id} value={v.id}>
+                  {v.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <p className="admin-muted">
+            업체를 고르면 VendorProfile·available 개체가 Planner의 availableVerifiedBlocks에 반영됩니다. 프로필·개체는
+            「Verified 업체데이터」에서 입력하세요.
+          </p>
           <div className="admin-form-actions">
             <button
               type="button"
