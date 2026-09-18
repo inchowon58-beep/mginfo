@@ -9,9 +9,12 @@ const NAV = [
   { href: "/admin/settings", label: "설정" },
   { href: "/admin/posts/new", label: "새 글 작성" },
   { href: "/admin/bulk", label: "대량발행예약" },
+  { href: "/admin/content-qa", label: "콘텐츠 QA" },
   { href: "/admin/vendors", label: "광고업체정보설정" },
+  { href: "/admin/vendors/verified", label: "Verified 업체데이터" },
   { href: "/admin/ops", label: "사이트 대장" },
   { href: "/admin/ops/board", label: "자유게시판 광고" },
+  { href: "/admin/ops/blueprints", label: "콘텐츠 Blueprint" },
   { href: "/admin/posts", label: "글 목록" },
   { href: "/admin/banners", label: "메인 배너" },
 ];
@@ -24,7 +27,10 @@ function isActive(pathname: string, href: string) {
     return pathname === "/admin/posts" || (pathname.startsWith("/admin/posts/") && pathname !== "/admin/posts/new");
   }
   if (href === "/admin/password") return pathname.startsWith("/admin/password");
-  if (href === "/admin/vendors") return pathname.startsWith("/admin/vendors");
+  if (href === "/admin/content-qa") return pathname.startsWith("/admin/content-qa");
+  if (href === "/admin/vendors/verified") return pathname.startsWith("/admin/vendors/verified");
+  if (href === "/admin/vendors") return pathname.startsWith("/admin/vendors") && !pathname.startsWith("/admin/vendors/verified");
+  if (href === "/admin/ops/blueprints") return pathname.startsWith("/admin/ops/blueprints");
   if (href === "/admin/ops/board") return pathname.startsWith("/admin/ops/board");
   if (href === "/admin/ops") return pathname === "/admin/ops";
   return pathname === href;
@@ -33,7 +39,10 @@ function isActive(pathname: string, href: string) {
 function screenTitle(pathname: string) {
   if (pathname === "/admin") return "대시보드";
   if (pathname.startsWith("/admin/settings")) return "설정";
+  if (pathname.startsWith("/admin/content-qa")) return "콘텐츠 QA";
+  if (pathname.startsWith("/admin/vendors/verified")) return "Verified 업체데이터";
   if (pathname.startsWith("/admin/vendors")) return "광고업체정보설정";
+  if (pathname.startsWith("/admin/ops/blueprints")) return "콘텐츠 Blueprint";
   if (pathname.startsWith("/admin/ops/board")) return "자유게시판 광고";
   if (pathname === "/admin/ops") return "사이트 대장";
   if (pathname === "/admin/posts/new") return "새 글 작성";

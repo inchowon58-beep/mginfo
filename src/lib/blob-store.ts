@@ -3,6 +3,8 @@ import { get, put } from "@vercel/blob";
 const STORE_PATH = "infocs-magazine-store.json";
 const OPS_PATH = "infocs-ops-ledger.json";
 const HUB_BOARD_PATH = "infocs-hub-board.json";
+const CONTENT_BLUEPRINT_PATH = "infocs-content-blueprints.json";
+const VENDOR_PROFILE_PATH = "infocs-vendor-profiles.json";
 
 export function hasBlobStore(): boolean {
   return Boolean(
@@ -56,4 +58,20 @@ export async function blobGetHubBoardJson<T>(): Promise<T | null> {
 
 export async function blobSetHubBoardJson(value: unknown): Promise<void> {
   return blobSetJson(value, HUB_BOARD_PATH);
+}
+
+export async function blobGetContentBlueprintsJson<T>(): Promise<T | null> {
+  return blobGetJson<T>(CONTENT_BLUEPRINT_PATH);
+}
+
+export async function blobSetContentBlueprintsJson(value: unknown): Promise<void> {
+  return blobSetJson(value, CONTENT_BLUEPRINT_PATH);
+}
+
+export async function blobGetVendorProfilesJson<T>(): Promise<T | null> {
+  return blobGetJson<T>(VENDOR_PROFILE_PATH);
+}
+
+export async function blobSetVendorProfilesJson(value: unknown): Promise<void> {
+  return blobSetJson(value, VENDOR_PROFILE_PATH);
 }

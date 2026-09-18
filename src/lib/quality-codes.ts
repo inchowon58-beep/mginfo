@@ -1,0 +1,61 @@
+/** Standardized failure / check codes for generationLog & QA. */
+
+export const QUALITY_CODES = {
+  PLAN_SCHEMA_INVALID: "PLAN_SCHEMA_INVALID",
+  WRITER_SCHEMA_INVALID: "WRITER_SCHEMA_INVALID",
+  TITLE_MISSING: "TITLE_MISSING",
+  TITLE_TOO_LONG: "TITLE_TOO_LONG",
+  TITLE_KEYWORD_WEAK: "TITLE_KEYWORD_WEAK",
+  TITLE_DUPLICATE: "TITLE_DUPLICATE",
+  H1_MISSING: "H1_MISSING",
+  H1_TOPIC_WEAK: "H1_TOPIC_WEAK",
+  H2_MISSING: "H2_MISSING",
+  H2_DUPLICATE: "H2_DUPLICATE",
+  H2_STRUCTURE_SIMILAR: "H2_STRUCTURE_SIMILAR",
+  SECTION_COUNT: "SECTION_COUNT",
+  SECTION_ORDER: "SECTION_ORDER",
+  SECTION_TOO_SHORT: "SECTION_TOO_SHORT",
+  BODY_TOO_SHORT: "BODY_TOO_SHORT",
+  BODY_SIMILAR: "BODY_SIMILAR",
+  REGION_SWAP_SIMILARITY: "REGION_SWAP_SIMILARITY",
+  KEYWORD_OVERUSE: "KEYWORD_OVERUSE",
+  REGION_NAME_OVERUSE: "REGION_NAME_OVERUSE",
+  PARAGRAPH_REPEAT: "PARAGRAPH_REPEAT",
+  SENTENCE_REPEAT: "SENTENCE_REPEAT",
+  UNVERIFIED_CLAIM: "UNVERIFIED_CLAIM",
+  VERIFIED_DATA_MISSING: "VERIFIED_DATA_MISSING",
+  ANIMAL_TOPIC_MISMATCH: "ANIMAL_TOPIC_MISMATCH",
+  ANIMAL_STATUS_LEAK: "ANIMAL_STATUS_LEAK",
+  FAQ_THIN: "FAQ_THIN",
+  FAQ_SCHEMA: "FAQ_SCHEMA",
+  FAQ_DUPLICATE: "FAQ_DUPLICATE",
+  FAQ_MISMATCH: "FAQ_MISMATCH",
+  BANNED_KEYWORD: "BANNED_KEYWORD",
+  HTML_INVALID: "HTML_INVALID",
+  HTML_EMPTY_SECTION: "HTML_EMPTY_SECTION",
+  HEADING_HIERARCHY: "HEADING_HIERARCHY",
+} as const;
+
+export type QualityCode = (typeof QUALITY_CODES)[keyof typeof QUALITY_CODES];
+
+export type CheckSeverity = "PASS" | "WARN" | "FAIL";
+
+export type QualityCheck = {
+  code: string;
+  severity: CheckSeverity;
+  message: string;
+};
+
+export function issueToCheck(
+  code: string,
+  severity: "info" | "warn" | "error",
+  message: string
+): QualityCheck {
+  if (severity === "error") return { code, severity: "FAIL", message };
+  if (severity === "warn") return { code, severity: "WARN", message };
+  return { code, severity: "PASS", message };
+}
+
+export const PLANNER_PROMPT_VERSION = "planner-v1";
+export const WRITER_PROMPT_VERSION = "writer-v1";
+export const PIPELINE_VERSION = "planner_writer_v1";

@@ -68,6 +68,18 @@ export type Post = {
   hubCampaignId?: string;
   vendorRecruitSlot?: boolean;
   hubVendorRegisterUrl?: string;
+  /** PHASE 1+ content architecture (optional — old posts omit these). */
+  industryId?: string;
+  blueprintId?: string;
+  blueprintVersion?: number;
+  pageType?: string;
+  contentAngle?: string;
+  pagePlanId?: string;
+  generationVersion?: string;
+  /** planner_writer_v1 | legacy | legacy_fallback */
+  generationMode?: string;
+  /** Compact generation diagnostics for A/B and cost review. */
+  generationLog?: import("./page-plan-types").GenerationLog;
 };
 
 export type AdminPostRow = {
@@ -215,6 +227,9 @@ export type BulkGroup = {
   imageCountMin?: number;
   imageCountMax?: number;
   imageCount?: number;
+  /** Optional hub Industry / Blueprint pin for Planner path. */
+  industryId?: string;
+  blueprintId?: string;
   keywords: BulkKeyword[];
 };
 

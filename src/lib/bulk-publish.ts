@@ -1,9 +1,6 @@
 import { parseKeywordList } from "./bulk-keywords";
-import { resolveArticleStyle } from "./article-style";
 import { ensureCategorySlug, getCategory } from "./categories";
-import { generateArticle } from "./gemini";
-import { DEFAULT_GEMINI_MODEL } from "./gemini-models";
-import { resolveGeminiNotes } from "./gemini-notes";
+import { applyGenerationMeta, generateBulkArticle } from "./content-pipeline";
 import { notifyPostIndexed } from "./indexnow";
 import { canClaimDueKeyword, canClaimManualKeyword } from "./publish-claim";
 import { checkCanCreatePost, checkCanPublish, countPostsCreatedToday, seoulDateKey } from "./publish-limits";
@@ -12,8 +9,6 @@ import { extractPlaceName, parseNameList } from "./region-geo";
 import { cleanHtml } from "./sanitize";
 import { articleSlug, uid } from "./slug";
 import { attachLocalFactBlocks } from "./article-blocks";
-import { collectRecentBodies } from "./body-uniqueness";
-import { collectRecentTitles, collectTodayKeywords, withUniqueArticle } from "./title-uniqueness";
 import { mergeImageUrls, pickRandomPostImages } from "./image-pool";
 import { parseVendorFields } from "./vendor";
 import { parseYoutubeUrlPair, preferYoutubePair } from "./youtube";
@@ -102,6 +97,8 @@ function normalizeGroup(raw: Partial<BulkGroup>): BulkGroup | null {
     imagePool: mergeImageUrls([], Array.isArray(raw.imagePool) ? raw.imagePool.map((item) => String(item || "")) : []),
     imageCountMin: min,
     imageCountMax: max,
+    industryId: String(raw.industryId || "").trim() || undefined,
+    blueprintId: String(raw.blueprintId || "").trim() || undefined,
     keywords,
   };
 }
@@ -456,34 +453,25 @@ async function generateAndSave(store: Store, group: BulkGroup, item: BulkKeyword
   const cat = getCategory(category, cats);
   const apiKey = store.settings.geminiApiKey || process.env.GEMINI_API_KEY || "";
   if (!apiKey) throw new Error("제미나이 API 키가 없습니다.");
-  const writingStyle = resolveArticleStyle(group.writingStyle || "random", item.keyword);
-  const avoidTitles = collectRecentTitles(store.posts);
-  const avoidBodies = collectRecentBodies(store.posts);
-  const avoidKeywords = collectTodayKeywords(store.bulkPublish.groups.flatMap((row) => row.keywords));
   const place = extractPlaceName(item.keyword) || "";
-  const article = await withUniqueArticle(
-    (nextAvoid) =>
-      generateArticle({
-        topic: item.keyword,
-        writingStyle,
-        category,
-        categoryName: cat?.name,
-        notes: resolveGeminiNotes("", cat?.geminiNotes),
-        focusKeyword: item.keyword,
-        region: place,
-        vendorName: group.vendorName,
-        writingTone: store.settings.writingTone,
-        writingPersona: store.settings.writingPersona,
-        experienceNotes: group.extraPrompt || "",
-        avoidTitles: nextAvoid,
-        avoidKeywords,
-        apiKey,
-        model: store.settings.geminiModel || DEFAULT_GEMINI_MODEL,
-      }),
-    avoidTitles,
-    avoidBodies,
-    item.keyword
-  );
+  const vendor =
+    (group.vendorId && store.adVendors?.find((row) => row.id === group.vendorId)) ||
+    (group.vendorName
+      ? store.adVendors?.find((row) => row.name === group.vendorName)
+      : null) ||
+    null;
+
+  const article = await generateBulkArticle({
+    store,
+    group,
+    item,
+    category,
+    categoryName: cat?.name,
+    categoryNotes: cat?.geminiNotes,
+    vendor,
+    apiKey,
+  });
+
   const generatedBan = bannedContentError(
     store.settings.publishBannedKeywords,
     collectPublishText({
@@ -500,48 +488,52 @@ async function generateAndSave(store: Store, group: BulkGroup, item: BulkKeyword
   if (store.posts.some((p) => p.slug === slug)) slug = `${slug}-${Date.now().toString(36)}`;
   const photos = pickRandomPostImages(group.imagePool || [], group.imageCountMin || 1, group.imageCountMax || 3);
   const youtube = preferYoutubePair(item, group);
-  return {
-    id: uid(),
-    slug,
-    title: article.title,
-    excerpt: article.excerpt || "",
-    bodyHtml: cleanHtml(
-      ensureVendorSlots(
-        attachLocalFactBlocks({
-          html: article.bodyHtml || "",
-          place: extractPlaceName(article.title, item.keyword) || place,
-          keyword: item.keyword,
-          categoryName: cat?.name,
-          slug: article.slugHint,
-          title: article.title,
-        })
-      )
-    ),
-    category,
-    tags: article.tags || [],
-    coverImage: photos.cover,
-    extraImages: photos.extras,
-    focusKeyword: item.keyword,
-    faqItems: article.faqItems,
-    regionInfo: article.regionInfo,
-    nearbyAreas: parseNameList(article.nearbyAreas),
-    nearbyStations: parseNameList(article.nearbyStations),
-    status: "published",
-    publishedAt: now,
-    createdAt: now,
-    updatedAt: now,
-    theme: "art-blog",
-    region: extractPlaceName(article.title, item.keyword) || undefined,
-    vendorName: group.vendorName,
-    vendorPhone: group.vendorPhone,
-    vendorWebsite: group.vendorWebsite,
-    vendorKakao: group.vendorKakao,
-    vendorPlaceUrl: group.vendorPlaceUrl,
-    vendorId: group.vendorId,
-    vendorIds: group.vendorIds || (group.vendorId ? [group.vendorId] : []),
-    youtubeUrl1: youtube.youtubeUrl1,
-    youtubeUrl2: youtube.youtubeUrl2,
-  };
+  const post = applyGenerationMeta(
+    {
+      id: uid(),
+      slug,
+      title: article.title,
+      excerpt: article.excerpt || "",
+      bodyHtml: cleanHtml(
+        ensureVendorSlots(
+          attachLocalFactBlocks({
+            html: article.bodyHtml || "",
+            place: extractPlaceName(article.title, item.keyword) || place,
+            keyword: item.keyword,
+            categoryName: cat?.name,
+            slug: article.slugHint,
+            title: article.title,
+          })
+        )
+      ),
+      category,
+      tags: article.tags || [],
+      coverImage: photos.cover,
+      extraImages: photos.extras,
+      focusKeyword: item.keyword,
+      faqItems: article.faqItems,
+      regionInfo: article.regionInfo,
+      nearbyAreas: parseNameList(article.nearbyAreas),
+      nearbyStations: parseNameList(article.nearbyStations),
+      status: "published",
+      publishedAt: now,
+      createdAt: now,
+      updatedAt: now,
+      theme: "art-blog",
+      region: extractPlaceName(article.title, item.keyword) || undefined,
+      vendorName: group.vendorName,
+      vendorPhone: group.vendorPhone,
+      vendorWebsite: group.vendorWebsite,
+      vendorKakao: group.vendorKakao,
+      vendorPlaceUrl: group.vendorPlaceUrl,
+      vendorId: group.vendorId,
+      vendorIds: group.vendorIds || (group.vendorId ? [group.vendorId] : []),
+      youtubeUrl1: youtube.youtubeUrl1,
+      youtubeUrl2: youtube.youtubeUrl2,
+    },
+    article
+  );
+  return post;
 }
 
 export function sanitizeGroupsInput(raw: unknown, categories: Category[]): BulkGroup[] {
