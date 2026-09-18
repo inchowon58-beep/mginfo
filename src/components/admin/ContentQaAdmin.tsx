@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { AdminTitleWithHelp } from "@/components/admin/AdminHelpTip";
 import type { QaResult } from "@/lib/qa-types";
 
 type AngleDist = { angle: string; count: number };
@@ -9,6 +10,52 @@ function severityClass(severity: string) {
   if (severity === "PASS") return "badge badge-on";
   if (severity === "WARN") return "badge badge-draft";
   return "badge badge-off";
+}
+
+function ContentQaHelpBody() {
+  return (
+    <>
+      <p>
+        <strong>이건 뭔가요?</strong> 대량발행과 <em>같은</em> 생성 파이프라인을 돌리되,{" "}
+        <em>사이트에 글을 발행하지 않는</em> 미리보기·품질 검사 화면입니다. AI 점수(82점 등)는 없고
+        PASS / WARN / FAIL만 봅니다.
+      </p>
+      <p>
+        <strong>쓰는 순서</strong> · 키워드 입력 → 아래 버튼 중 하나 클릭 → 수 분 대기 → 아래 목록에서
+        결과 선택 → PLAN / FINAL 탭으로 확인.
+      </p>
+      <ol>
+        <li>
+          <strong>Planner Preview</strong>
+          <br />
+          지금 대량발행이 쓰는 새 경로입니다. Blueprint + Verified를 보고 Planner→Writer로 글을
+          만듭니다. 「이 키워드면 새 파이프라인이 어떻게 나오는지」 볼 때 씁니다.
+        </li>
+        <li>
+          <strong>Legacy Preview</strong>
+          <br />
+          예전 단일 Gemini 글쓰기 경로입니다. Blueprint/Verified 조합 없이 한 번에 씁니다. 예전
+          품질과 비교하거나, Planner가 실패할 때 폴백되는 쪽을 확인할 때 씁니다.
+        </li>
+        <li>
+          <strong>Legacy vs Planner 비교</strong>
+          <br />
+          같은 키워드로 Legacy와 Planner를 <em>둘 다</em> 돌린 뒤 나란히 보여 줍니다. Gemini 호출이
+          두 배라서 시간이·비용이 더 듭니다. 본격 비교할 때만 쓰세요.
+        </li>
+      </ol>
+      <p>
+        <strong>아래 화면</strong> · <em>Angle 분포</em>는 최근 QA에서 어떤 앵글이 많이 나왔는지
+        관측용 · 목록 행을 클릭하면 상세 · <em>PLAN</em>은 섹션 계획·검사 코드 · <em>FINAL</em>은
+        완성 HTML 미리보기입니다.
+      </p>
+      <p>
+        <strong>주의</strong> · 발행·사이트맵·IndexNow에 영향 없음 · API 키·비용은 대량발행과 동일하게
+        소모 · Verified/Blueprint가 비어 있으면 Planner 결과가 약하거나 Legacy로 보일 수 있음 ·
+        비교 버튼은 호출 2회분입니다.
+      </p>
+    </>
+  );
 }
 
 export function ContentQaAdmin() {
@@ -76,9 +123,12 @@ export function ContentQaAdmin() {
       <div className="admin-card">
         <div className="admin-card-head">
           <div>
-            <h2>콘텐츠 QA / Preview</h2>
+            <AdminTitleWithHelp title="콘텐츠 QA / Preview" helpTitle="콘텐츠 QA / Preview 사용법">
+              <ContentQaHelpBody />
+            </AdminTitleWithHelp>
             <p className="admin-muted">
-              발행하지 않고 Planner→Writer 또는 Legacy 결과를 생성·비교합니다. PASS/WARN/FAIL만 표시합니다.
+              발행하지 않고 Planner→Writer 또는 Legacy 결과를 생성·비교합니다. 노란색 ? 를 누르면 버튼별
+              사용법이 나옵니다.
             </p>
           </div>
         </div>

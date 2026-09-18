@@ -3,6 +3,7 @@ node_modules
 out
 .env
 .env.local
+.env*.local
 data/store.json
 data/hub-board.json
 public/uploads

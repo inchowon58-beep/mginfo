@@ -9,6 +9,7 @@ import {
   filterPlanWithVerifiedPack,
 } from "./verified-availability";
 import { getVendorProfileStore } from "./vendor-profile-store";
+import { isCodeRenderedBlock } from "./vendor-profile-types";
 import { collectRelatedPostSummaries } from "./content-related-context";
 import { validateWriterOutput, extractH2ListFromHtml } from "./content-validation";
 import { generateArticle, type GenerateResult } from "./gemini";
@@ -317,6 +318,10 @@ export async function generateBulkArticle(input: {
     });
   }
 
+  const upcomingVerifiedBlocks = plan.sections
+    .filter((s) => isCodeRenderedBlock(s.blockKey))
+    .map((s) => s.blockKey);
+
   const writerInput = {
     apiKey: input.apiKey,
     model,
@@ -328,6 +333,7 @@ export async function generateBulkArticle(input: {
     experienceNotes: input.group.extraPrompt || "",
     categoryName: input.categoryName,
     avoidTitles,
+    upcomingVerifiedBlocks,
   };
 
   let written = await writeOnce(writerInput);
