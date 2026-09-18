@@ -42,6 +42,18 @@ export function parseNaverVerification(raw?: string): string {
   return "";
 }
 
+function isBrandedCloneSite() {
+  return Boolean(
+    String(process.env.SITE_NAME || "").trim() || String(process.env.SITE_DOMAIN || "").trim()
+  );
+}
+
 export function resolveNaverVerification(stored?: string): string {
-  return parseNaverVerification(stored) || NAVER_VERIFICATION;
+  const fromStored = parseNaverVerification(stored);
+  if (fromStored) return fromStored;
+  const fromEnv = parseNaverVerification(process.env.NAVER_SITE_VERIFICATION);
+  if (fromEnv) return fromEnv;
+  // Clone sites must not inherit the hub Infocs verification token.
+  if (isBrandedCloneSite()) return "";
+  return NAVER_VERIFICATION;
 }

@@ -496,6 +496,7 @@ document.getElementById("create-form").addEventListener("submit", async (event) 
       vmName: document.getElementById("vmName").value,
       naverId: document.getElementById("naverId").value,
       naverPassword: document.getElementById("naverPassword").value,
+      naverSiteVerification: document.getElementById("naverSiteVerification").value,
     });
     progressTitle.textContent = result.blogName;
     progressState.textContent = "완료";

@@ -28,7 +28,7 @@
         </nav>
         <div class="rail-foot">
           <span id="account-label">토큰 미연결</span>
-          <small>실행 파일: Studio 1.0.9 · 기존 프로젝트와 도메인은 덮어쓰지 않습니다.</small>
+          <small>실행 파일: Studio 1.1.0 · 기존 프로젝트와 도메인은 덮어쓰지 않습니다.</small>
         </div>
       </aside>
 
@@ -66,7 +66,16 @@
                 <input id="naverPassword" type="password" maxlength="80" autocomplete="off" placeholder="웹문서 등록요청 비밀번호" />
               </label>
             </div>
-            <p class="hint">제미나이 키와 네이버 메타태그는 사이트 관리자에서 직접 넣으면 됩니다. VM과 네이버 계정은 사이트 대장에 남습니다.</p>
+            <label>
+              네이버 사이트 인증 메타
+              <textarea
+                id="naverSiteVerification"
+                rows="2"
+                maxlength="400"
+                placeholder='&lt;meta name="naver-site-verification" content="여기에_코드" /&gt;'
+              ></textarea>
+            </label>
+            <p class="hint">메타 태그는 생성 시 head에 바로 넣습니다. 코드만 붙여넣어도 됩니다. 제미나이 키는 사이트 관리자에서 넣으면 됩니다. VM·네이버 계정은 대장에 남습니다. 신규 사이트는 기본 샘플 글 없이 빈 상태로 배포됩니다.</p>
             <button class="gold" id="create-btn" type="submit">사이트 생성하고 배포</button>
           </form>
           <div class="panel log-card" id="progress-card" hidden>

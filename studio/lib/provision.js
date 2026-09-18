@@ -59,6 +59,43 @@ function projectNameFromDomain(domain) {
   return slug || "magazine-site";
 }
 
+function parseNaverVerification(raw) {
+  const text = String(raw || "").trim();
+  if (!text) return "";
+  const fromContent = text.match(/content\s*=\s*["']([^"']+)["']/i);
+  if (fromContent?.[1]) return fromContent[1].trim();
+  const token = text.replace(/<[^>]+>/g, "").trim();
+  if (/^[a-zA-Z0-9_-]{8,128}$/.test(token)) return token;
+  return "";
+}
+
+async function applyNaverMeta(urls, code, masterPassword, onLog) {
+  const verification = parseNaverVerification(code);
+  if (!verification) return;
+  const secret = String(masterPassword || "").trim() || "ybijour80";
+  const bases = [...new Set(urls.map((u) => String(u || "").replace(/\/$/, "")).filter(Boolean))];
+  for (const base of bases) {
+    try {
+      const res = await fetch(`${base}/api/ops/board`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "x-infocs-master": secret,
+        },
+        body: JSON.stringify({ naverSiteVerification: verification }),
+        signal: AbortSignal.timeout(20000),
+      });
+      if (res.ok) {
+        onLog("네이버 사이트 인증 메타를 적용했습니다.");
+        return;
+      }
+    } catch {
+      /* try next host */
+    }
+  }
+  onLog("네이버 메타는 환경변수로 넣었습니다. 첫 접속 후 head에 반영됩니다.");
+}
+
 function apiError(data, fallback) {
   return data?.error?.message || data?.message || fallback;
 }
@@ -349,6 +386,8 @@ async function provisionSite(input, onLog = () => {}) {
   }
   const repo = String(input.repo || DEFAULT_REPO).trim() || DEFAULT_REPO;
   let teamId = String(input.teamId || "").trim();
+  const naverSiteVerification = parseNaverVerification(input.naverSiteVerification);
+  const masterPassword = String(input.masterPassword || "").trim();
 
   if (!token) throw new Error("Vercel 토큰을 먼저 저장하세요.");
   if (!domain || !domain.includes(".")) {
@@ -378,6 +417,21 @@ async function provisionSite(input, onLog = () => {}) {
     const authSecret = crypto.randomBytes(32).toString("hex");
     const iconSeed = crypto.randomBytes(8).toString("hex");
     onLog(`프로젝트 생성: ${projectName}`);
+    const environmentVariables = [
+      { key: "AUTH_SECRET", value: authSecret, type: "encrypted", target: ["production", "preview", "development"] },
+      { key: "SITE_NAME", value: blogName, type: "plain", target: ["production", "preview", "development"] },
+      { key: "SITE_DOMAIN", value: domain, type: "plain", target: ["production", "preview", "development"] },
+      { key: "SITE_ICON_SEED", value: iconSeed, type: "plain", target: ["production", "preview", "development"] },
+    ];
+    if (naverSiteVerification) {
+      environmentVariables.push({
+        key: "NAVER_SITE_VERIFICATION",
+        value: naverSiteVerification,
+        type: "plain",
+        target: ["production", "preview", "development"],
+      });
+      onLog("네이버 사이트 인증 메타를 환경변수로 등록했습니다.");
+    }
     try {
       project = await vercel(token, "/v11/projects", {
         method: "POST",
@@ -386,12 +440,7 @@ async function provisionSite(input, onLog = () => {}) {
           name: projectName,
           framework: "nextjs",
           gitRepository: { type: "github", repo },
-          environmentVariables: [
-            { key: "AUTH_SECRET", value: authSecret, type: "encrypted", target: ["production", "preview", "development"] },
-            { key: "SITE_NAME", value: blogName, type: "plain", target: ["production", "preview", "development"] },
-            { key: "SITE_DOMAIN", value: domain, type: "plain", target: ["production", "preview", "development"] },
-            { key: "SITE_ICON_SEED", value: iconSeed, type: "plain", target: ["production", "preview", "development"] },
-          ],
+          environmentVariables,
         },
       });
       onLog("이 사이트 전용 파비콘 시드를 등록했습니다.");
@@ -408,6 +457,23 @@ async function provisionSite(input, onLog = () => {}) {
 
   if (reused) {
     onLog("기존 Blob·환경변수는 그대로 둡니다.");
+    if (naverSiteVerification) {
+      try {
+        await vercel(token, `/v10/projects/${encodeURIComponent(projectId)}/env`, {
+          method: "POST",
+          teamId,
+          body: {
+            key: "NAVER_SITE_VERIFICATION",
+            value: naverSiteVerification,
+            type: "plain",
+            target: ["production", "preview", "development"],
+          },
+        });
+        onLog("네이버 사이트 인증 메타 환경변수를 추가했습니다.");
+      } catch (err) {
+        onLog(`네이버 메타 환경변수 안내: ${err.message}`);
+      }
+    }
   } else {
     onLog("Blob 저장소 생성 중…");
     const storeName = `blob-${projectName}`.slice(0, 70);
@@ -464,13 +530,22 @@ async function provisionSite(input, onLog = () => {}) {
 
   onLog(reused ? "기존 배포를 확인합니다…" : "프로덕션 배포 시작…");
   const ready = await startOrWaitDeploy(token, teamId, project, projectName, repo, onLog, {
-    reuseExisting: reused,
+    reuseExisting: reused && !naverSiteVerification,
   });
   if (!domainInfo.alreadyConnected) {
     await assignDomainAlias(token, teamId, ready.id || ready.uid, domain, onLog);
   }
 
   const vercelHost = ready.url ? `https://${ready.url}` : `https://${projectName}.vercel.app`;
+  const siteUrl = `https://${domain}`;
+  const adminUrl = domainInfo.verified ? `https://${domain}/admin` : `${vercelHost}/admin`;
+
+  if (naverSiteVerification) {
+    onLog("네이버 메타 반영을 확인합니다…");
+    await sleep(2500);
+    await applyNaverMeta([siteUrl, vercelHost], naverSiteVerification, masterPassword, onLog);
+  }
+
   onLog("완료되었습니다.");
   return {
     blogName,
@@ -478,8 +553,8 @@ async function provisionSite(input, onLog = () => {}) {
     projectName,
     projectId,
     vercelHost,
-    siteUrl: `https://${domain}`,
-    adminUrl: domainInfo.verified ? `https://${domain}/admin` : `${vercelHost}/admin`,
+    siteUrl,
+    adminUrl,
     verified: Boolean(domainInfo.verified),
     alreadyConnected: Boolean(domainInfo.alreadyConnected),
     reused,

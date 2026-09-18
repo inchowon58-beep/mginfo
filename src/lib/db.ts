@@ -19,13 +19,20 @@ import {
   DEFAULT_LIKE_MAX,
   DEFAULT_LIKE_MIN,
 } from "./engagement";
+import { parseNaverVerification } from "./seo";
 import { pickFooterDisclaimer } from "./publish-disclaimer";
 
 const LOCAL_PATH = path.join(process.cwd(), "data", "store.json");
 
+function isBrandedCloneSite() {
+  return Boolean(
+    String(process.env.SITE_NAME || "").trim() || String(process.env.SITE_DOMAIN || "").trim()
+  );
+}
+
 function defaultSettings(): Settings {
   const customName = String(process.env.SITE_NAME || "").trim();
-  const branded = Boolean(customName);
+  const branded = isBrandedCloneSite();
   return {
     geminiApiKey: process.env.GEMINI_API_KEY || "",
     geminiModel: process.env.GEMINI_MODEL || DEFAULT_GEMINI_MODEL,
@@ -47,7 +54,7 @@ function defaultSettings(): Settings {
     usableUntil: "",
     dailyPostLimit: 0,
     naverRankWork: false,
-    naverSiteVerification: "",
+    naverSiteVerification: parseNaverVerification(process.env.NAVER_SITE_VERIFICATION) || "",
     extraImagesEnabled: true,
     vendorRegisterUrl: "",
     staffNoticeEnabled: false,
@@ -68,9 +75,11 @@ function defaultSettings(): Settings {
 }
 
 function defaultStore(): Store {
+  const branded = isBrandedCloneSite();
   return JSON.parse(
     JSON.stringify({
-      posts: seedPosts,
+      // Studio/clone sites start empty; hub/local demos keep sample posts.
+      posts: branded ? [] : seedPosts,
       partners: seedPartners,
       adVendors: seedAdVendors,
       banners: seedBanners,
@@ -124,6 +133,12 @@ function normalize(parsed: Store): Store {
     parsed.settings.footerDisclaimer = pickFooterDisclaimer(seed || parsed.settings.siteName || "magazine");
   } else {
     parsed.settings.footerDisclaimer = footer;
+  }
+  if (!String(parsed.settings.naverSiteVerification || "").trim()) {
+    const fromEnv = parseNaverVerification(process.env.NAVER_SITE_VERIFICATION);
+    if (fromEnv) parsed.settings.naverSiteVerification = fromEnv;
+  } else {
+    parsed.settings.naverSiteVerification = parseNaverVerification(parsed.settings.naverSiteVerification);
   }
   if (!(Number(parsed.settings.likeCountMax) > 0)) {
     parsed.settings.likeCountMin = DEFAULT_LIKE_MIN;

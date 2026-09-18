@@ -151,6 +151,8 @@ ipcMain.handle("studio:create", async (event, payload) => {
         repo: cfg.repo || DEFAULT_REPO,
         blogName: payload.blogName,
         domain: payload.domain,
+        naverSiteVerification: payload.naverSiteVerification,
+        masterPassword: cfg.opsMasterPassword,
         confirmExistingProject: async (projectName) => {
           const { response } = await dialog.showMessageBox(win, {
             type: "warning",

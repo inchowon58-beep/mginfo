@@ -424,7 +424,23 @@ input {
   outline: none;
 }
 
-input:focus {
+textarea {
+  width: 100%;
+  min-height: 72px;
+  border: 1px solid #2c2823;
+  border-radius: 10px;
+  background: #0f0e0c;
+  color: var(--ink);
+  padding: 12px 14px;
+  font-size: 14px;
+  line-height: 1.45;
+  outline: none;
+  resize: vertical;
+  font-family: inherit;
+}
+
+input:focus,
+textarea:focus {
   border-color: var(--gold);
   box-shadow: 0 0 0 3px rgba(212, 175, 106, 0.12);
 }
