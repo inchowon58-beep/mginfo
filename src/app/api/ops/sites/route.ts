@@ -1,7 +1,6 @@
 import { isOpsHub } from "@/lib/ops-hub";
 import { NextResponse } from "next/server";
 import { checkMasterPassword, isMasterSession } from "@/lib/auth";
-import { parseOpsSites } from "@/lib/ops-ledger";
 import { getOpsSites, setOpsSites } from "@/lib/ops-store";
 import { persistFail } from "@/lib/persist-api";
 
@@ -30,7 +29,7 @@ export async function PUT(request: Request) {
   }
   const body = (await request.json().catch(() => ({}))) as { sites?: unknown };
   try {
-    const sites = await setOpsSites(parseOpsSites(body.sites));
+    const sites = await setOpsSites(Array.isArray(body.sites) ? body.sites : []);
     return NextResponse.json({ ok: true, sites });
   } catch (err) {
     return persistFail(err);

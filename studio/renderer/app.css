@@ -544,3 +544,36 @@ textarea:focus {
 .error {
   color: var(--danger);
 }
+
+label.check-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 18px;
+  color: #d9d0c3;
+  font-size: 13px;
+}
+
+label.check-row input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+}
+
+.site-row .ads-consent {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.site-row .ads-consent input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+}
+
+.site-row .ads-on {
+  color: var(--gold-2);
+}

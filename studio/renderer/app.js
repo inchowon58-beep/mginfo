@@ -178,6 +178,11 @@ function renderLedgerStats() {
         <small>대장에 있는 사이트</small>
       </div>
       <div class="stat-card">
+        <p>광고 동의</p>
+        <strong>${sites.filter((row) => row.boardAdsConsent).length}</strong>
+        <small>자유게시판 광고 허용</small>
+      </div>
+      <div class="stat-card">
         <p>오늘 등록</p>
         <strong>${stats.today}</strong>
         <small>${escapeHtml(stats.todayLabel)}</small>
@@ -285,6 +290,10 @@ function renderLedger() {
             <div class="meta">
               <span>네이버 ${escapeHtml(site.naverId || "-")}</span>
               <span class="${openPw ? "" : "pw-hidden"}">${pw}</span>
+              <label class="ads-consent ${site.boardAdsConsent ? "ads-on" : ""}">
+                <input type="checkbox" data-ads-consent="${escapeHtml(site.id)}" ${site.boardAdsConsent ? "checked" : ""} />
+                광고동의
+              </label>
             </div>
             <div class="ops">
               ${site.siteUrl ? `<button class="ghost" data-open-site="${escapeHtml(site.siteUrl)}" type="button">열기</button>` : ""}
@@ -325,6 +334,22 @@ function renderLedger() {
       renderLedger();
     });
   });
+  ledgerList.querySelectorAll("[data-ads-consent]").forEach((input) => {
+    input.addEventListener("change", async () => {
+      const id = input.getAttribute("data-ads-consent");
+      ledgerSyncStatus.textContent = "광고 동의 저장 중…";
+      try {
+        const data = await window.studio.setAdsConsent({ ids: [id], value: input.checked });
+        sites = data.sites || [];
+        if (data.ops?.error) ledgerSyncStatus.textContent = data.ops.error;
+        else ledgerSyncStatus.textContent = input.checked ? "광고 동의를 켰습니다." : "광고 동의를 껐습니다.";
+        renderLedger();
+      } catch (err) {
+        ledgerSyncStatus.textContent = err.message || "저장 실패";
+        renderLedger();
+      }
+    });
+  });
 }
 
 function startEdit(id) {
@@ -338,6 +363,7 @@ function startEdit(id) {
   document.getElementById("edit-vm").value = site?.vmName || "";
   document.getElementById("edit-naver-id").value = site?.naverId || "";
   document.getElementById("edit-naver-pw").value = site?.naverPassword || "";
+  document.getElementById("edit-ads-consent").checked = site ? Boolean(site.boardAdsConsent) : true;
   ledgerFormStatus.textContent = "";
   updateApexHint("edit-domain", editApexHint, "");
   ledgerForm.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -350,6 +376,30 @@ function hideLedgerForm() {
 }
 
 document.getElementById("ledger-add-btn").addEventListener("click", () => startEdit(""));
+document.getElementById("ads-consent-on-btn").addEventListener("click", async () => {
+  if (!confirm("대장에 있는 모든 사이트의 자유게시판 광고 동의를 켤까요?")) return;
+  ledgerSyncStatus.textContent = "전체 광고 동의 켜는 중…";
+  try {
+    const data = await window.studio.setAdsConsent({ all: true, value: true });
+    sites = data.sites || [];
+    ledgerSyncStatus.textContent = data.ops?.error || `전체 ${sites.length}곳 광고 동의를 켰습니다.`;
+    renderLedger();
+  } catch (err) {
+    ledgerSyncStatus.textContent = err.message || "저장 실패";
+  }
+});
+document.getElementById("ads-consent-off-btn").addEventListener("click", async () => {
+  if (!confirm("대장에 있는 모든 사이트의 자유게시판 광고 동의를 끌까요?")) return;
+  ledgerSyncStatus.textContent = "전체 광고 동의 끄는 중…";
+  try {
+    const data = await window.studio.setAdsConsent({ all: true, value: false });
+    sites = data.sites || [];
+    ledgerSyncStatus.textContent = data.ops?.error || `전체 ${sites.length}곳 광고 동의를 껐습니다.`;
+    renderLedger();
+  } catch (err) {
+    ledgerSyncStatus.textContent = err.message || "저장 실패";
+  }
+});
 document.getElementById("ledger-cancel-btn").addEventListener("click", hideLedgerForm);
 document.getElementById("ledger-search").addEventListener("input", renderLedger);
 
@@ -365,6 +415,7 @@ ledgerForm.addEventListener("submit", async (event) => {
       vmName: document.getElementById("edit-vm").value,
       naverId: document.getElementById("edit-naver-id").value,
       naverPassword: document.getElementById("edit-naver-pw").value,
+      boardAdsConsent: document.getElementById("edit-ads-consent").checked,
     });
     sites = data.sites || [];
     renderLedger();

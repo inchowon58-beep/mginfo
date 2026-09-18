@@ -41,13 +41,45 @@ async function pushOpsLedger(cfg) {
   const url = String(cfg.opsHubUrl || "").replace(/\/$/, "");
   const password = String(cfg.opsMasterPassword || "").trim();
   if (!url || !password) return { skipped: true };
+
+  // Preserve remote boardAdsConsent when local rows omit it, without resurrecting deleted sites.
+  let remote = [];
+  try {
+    remote = await pullOpsLedger(cfg);
+  } catch {
+    remote = [];
+  }
+  const byId = new Map(remote.map((row) => [row.id, row]));
+  const byDomain = new Map(remote.map((row) => [row.domain, row]));
+  const merged = (Array.isArray(cfg.sites) ? cfg.sites : []).map((local) => {
+    const prev = (local.id && byId.get(local.id)) || (local.domain && byDomain.get(local.domain)) || null;
+    if (!prev) {
+      return {
+        ...local,
+        boardAdsConsent: local.boardAdsConsent === undefined ? true : Boolean(local.boardAdsConsent),
+      };
+    }
+    return {
+      ...prev,
+      ...local,
+      id: prev.id || local.id,
+      createdAt: prev.createdAt || local.createdAt,
+      boardAdsConsent:
+        local.boardAdsConsent === undefined || local.boardAdsConsent === null
+          ? Boolean(prev.boardAdsConsent)
+          : Boolean(local.boardAdsConsent),
+    };
+  });
+  cfg.sites = merged;
+  writeConfig(cfg);
+
   const res = await fetch(`${url}/api/ops/sites`, {
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
       "x-infocs-master": password,
     },
-    body: JSON.stringify({ sites: cfg.sites || [] }),
+    body: JSON.stringify({ sites: merged }),
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
@@ -56,7 +88,7 @@ async function pushOpsLedger(cfg) {
     }
     throw new Error(data.error || `웹 대장 동기화 실패 (${res.status})`);
   }
-  return { ok: true, count: (cfg.sites || []).length };
+  return { ok: true, count: merged.length };
 }
 
 async function pullOpsLedger(cfg) {
@@ -177,6 +209,7 @@ ipcMain.handle("studio:create", async (event, payload) => {
       vmName: payload.vmName,
       naverId: payload.naverId,
       naverPassword: payload.naverPassword,
+      boardAdsConsent: true,
       createdAt: result.createdAt,
     });
     writeConfig(cfg);
@@ -225,6 +258,28 @@ ipcMain.handle("studio:delete-site", async (_event, id) => {
     /* local delete still stands */
   }
   return { ok: true, sites: cfg.sites };
+});
+
+ipcMain.handle("studio:set-ads-consent", async (_event, payload) => {
+  const cfg = readConfig();
+  const value = Boolean(payload?.value);
+  const all = Boolean(payload?.all);
+  const ids = new Set(Array.isArray(payload?.ids) ? payload.ids.map(String) : []);
+  const now = new Date().toISOString();
+  cfg.sites = (cfg.sites || []).map((row) => {
+    if (all || ids.has(row.id)) {
+      return { ...row, boardAdsConsent: value, updatedAt: now };
+    }
+    return row;
+  });
+  writeConfig(cfg);
+  let ops = { skipped: true };
+  try {
+    ops = await pushOpsLedger(cfg);
+  } catch (err) {
+    ops = { error: err instanceof Error ? err.message : "웹 대장 동기화 실패" };
+  }
+  return { ok: true, sites: cfg.sites, ops, value, all };
 });
 
 ipcMain.handle("studio:sync-push", async () => {

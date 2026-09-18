@@ -194,6 +194,7 @@ async function claimHubKeyword(campaignId: string, keywordId: string, mode: "due
   const sites = await getOpsSites();
   const claim = uid();
   let owned = false;
+  let assignError = "";
   const store = await updateHubBoard((s) => {
     const found = findHubRow(s, campaignId, keywordId);
     if (!found) return;
@@ -202,7 +203,18 @@ async function claimHubKeyword(campaignId: string, keywordId: string, mode: "due
         ? canClaimDueKeyword(found.keyword.status, found.keyword.processingAt)
         : canClaimManualKeyword(found.keyword.status, found.keyword.processingAt);
     if (!allowed) return;
-    const assigned = assignNextSite(found.campaign, found.keyword, sites);
+    let assigned: ReturnType<typeof assignNextSite>;
+    try {
+      assigned = assignNextSite(found.campaign, found.keyword, sites);
+    } catch (err) {
+      assignError = err instanceof Error ? err.message : "발행 사이트를 정하지 못했습니다.";
+      found.keyword.status = "failed";
+      found.keyword.error = assignError;
+      found.keyword.processingAt = undefined;
+      found.keyword.processingClaim = undefined;
+      found.campaign.updatedAt = new Date().toISOString();
+      return;
+    }
     const idx = s.campaigns.findIndex((row) => row.id === campaignId);
     if (idx < 0) return;
     s.campaigns[idx] = assigned.campaign;
@@ -217,13 +229,16 @@ async function claimHubKeyword(campaignId: string, keywordId: string, mode: "due
     s.campaigns[idx].updatedAt = new Date().toISOString();
     owned = true;
   });
+  if (assignError) {
+    return null;
+  }
   const found = findHubRow(store, campaignId, keywordId);
   if (!owned || !found || found.keyword.processingClaim !== claim) return null;
   const site = sites.find((row) => row.id === found.keyword.siteId);
   if (!site) {
     await finishHubKeyword(campaignId, keywordId, claim, {
       status: "failed",
-      error: "동의한 발행 사이트가 없습니다.",
+      error: "발행 사이트를 찾을 수 없습니다.",
     });
     return null;
   }

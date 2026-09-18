@@ -543,18 +543,22 @@ export function findHubKeyword(campaigns: HubBoardCampaign[], campaignId: string
 }
 
 export function assignNextSite(campaign: HubBoardCampaign, keyword: HubBoardKeyword, sites: OpsSite[]) {
-  const targets = orderedCampaignSites(campaign, sites);
+  // Same target resolution as planning — consent-preferred, then selected siteIds, then any domain.
+  const { targets, campaign: nextCampaign } = resolveCampaignTargets(campaign, sites);
   if (!targets.length) throw new Error("동의한 발행 사이트가 없습니다.");
   const existing = keyword.siteId ? targets.find((site) => site.id === keyword.siteId) : undefined;
-  if (existing) return { campaign, keyword, site: existing };
+  if (existing) return { campaign: nextCampaign, keyword, site: existing };
   const site = pickRandomSite(targets);
   const nextKeyword = { ...keyword, siteId: site.id, domain: site.domain };
-  const nextCampaign: HubBoardCampaign = {
-    ...campaign,
-    keywords: campaign.keywords.map((row) => (row.id === keyword.id ? nextKeyword : row)),
-    updatedAt: new Date().toISOString(),
+  return {
+    campaign: {
+      ...nextCampaign,
+      keywords: nextCampaign.keywords.map((row) => (row.id === keyword.id ? nextKeyword : row)),
+      updatedAt: new Date().toISOString(),
+    },
+    keyword: nextKeyword,
+    site,
   };
-  return { campaign: nextCampaign, keyword: nextKeyword, site };
 }
 
 export function hubCampaignStats(campaign: HubBoardCampaign) {

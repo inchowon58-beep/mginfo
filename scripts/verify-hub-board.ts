@@ -200,6 +200,14 @@ const assigned = assignNextSite(
 assert(assigned.site.id === "s1" || assigned.site.id === "s2", "unplanned keyword gets a consented site");
 assert(Boolean(assigned.keyword.siteId), "site id is stored on the keyword");
 
+const noConsentSites: OpsSite[] = sites.map((site) => ({ ...site, boardAdsConsent: false }));
+const assignedWithoutConsent = assignNextSite(
+  sample({ siteIds: ["s1"], keywords: [{ id: "k-nc", keyword: "동의없음", status: "scheduled", siteId: "s1", domain: "a.test" }] }),
+  { id: "k-nc", keyword: "동의없음", status: "scheduled", siteId: "s1", domain: "a.test" },
+  noConsentSites
+);
+assert(assignedWithoutConsent.site.id === "s1", "already-assigned keyword still publishes when consent is off");
+
 const staleSites = sample({
   siteIds: ["gone-id"],
   dailyLimit: 2,

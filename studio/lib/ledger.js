@@ -47,6 +47,7 @@ function siteRecord(partial = {}) {
   const domain = cleanHost(partial.domain);
   const apex = cleanHost(partial.apexDomain) || (domain ? apexDomain(domain) : "");
   const now = new Date().toISOString();
+  const hasConsent = partial.boardAdsConsent !== undefined && partial.boardAdsConsent !== null;
   return {
     id: String(partial.id || "").trim() || uid(),
     siteName: String(partial.siteName || partial.blogName || "").trim(),
@@ -63,6 +64,7 @@ function siteRecord(partial = {}) {
     vercelHost: String(partial.vercelHost || "").trim(),
     siteUrl: String(partial.siteUrl || "").trim() || (domain ? `https://${domain}` : ""),
     adminUrl: String(partial.adminUrl || "").trim(),
+    boardAdsConsent: hasConsent ? Boolean(partial.boardAdsConsent) : undefined,
   };
 }
 
@@ -78,9 +80,15 @@ function upsertSite(list, row) {
       id: prev.id,
       createdAt: prev.createdAt || next.createdAt,
       updatedAt: next.updatedAt,
+      // Never wipe hub/web consent when Studio payload omits the field.
+      boardAdsConsent:
+        next.boardAdsConsent === undefined ? Boolean(prev.boardAdsConsent) : Boolean(next.boardAdsConsent),
     };
   } else {
-    sites.unshift(next);
+    sites.unshift({
+      ...next,
+      boardAdsConsent: next.boardAdsConsent === undefined ? true : Boolean(next.boardAdsConsent),
+    });
   }
   return sites;
 }

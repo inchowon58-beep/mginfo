@@ -6,6 +6,7 @@ contextBridge.exposeInMainWorld("studio", {
   createSite: (payload) => ipcRenderer.invoke("studio:create", payload),
   saveSite: (payload) => ipcRenderer.invoke("studio:save-site", payload),
   deleteSite: (id) => ipcRenderer.invoke("studio:delete-site", id),
+  setAdsConsent: (payload) => ipcRenderer.invoke("studio:set-ads-consent", payload),
   syncPush: () => ipcRenderer.invoke("studio:sync-push"),
   syncPull: () => ipcRenderer.invoke("studio:sync-pull"),
   open: (url) => ipcRenderer.invoke("studio:open", url),

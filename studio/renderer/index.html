@@ -28,7 +28,7 @@
         </nav>
         <div class="rail-foot">
           <span id="account-label">토큰 미연결</span>
-          <small>실행 파일: Studio 1.1.0 · 기존 프로젝트와 도메인은 덮어쓰지 않습니다.</small>
+          <small>실행 파일: Studio 1.1.1 · 기존 프로젝트와 도메인은 덮어쓰지 않습니다.</small>
         </div>
       </aside>
 
@@ -98,9 +98,12 @@
             <input id="ledger-search" placeholder="도메인, VM, 네이버 아이디, 컨셉으로 찾기" />
             <div class="ledger-actions">
               <button class="ghost" id="ledger-add-btn" type="button">대장에만 추가</button>
+              <button class="ghost" id="ads-consent-on-btn" type="button">광고 동의 전체 켜기</button>
+              <button class="ghost" id="ads-consent-off-btn" type="button">광고 동의 전체 끄기</button>
               <button class="ghost" id="ops-pull-btn" type="button">웹에서 가져오기</button>
               <button class="ghost" id="ops-push-btn" type="button">웹에 올리기</button>
             </div>
+            <p class="hint">자유게시판 광고 동의는 사이트마다 켜고 끌 수 있습니다. 스튜디오에서 웹에 올릴 때 기존 동의 값은 유지됩니다.</p>
             <p class="hint" id="ledger-sync-status"></p>
           </div>
           <form class="panel" id="ledger-form" hidden>
@@ -137,6 +140,10 @@
                 <input id="edit-naver-pw" type="password" maxlength="80" autocomplete="off" />
               </label>
             </div>
+            <label class="check-row">
+              <input id="edit-ads-consent" type="checkbox" />
+              자유게시판 광고 동의 (이 사이트에 광고글 발행 허용)
+            </label>
             <div class="ledger-actions">
               <button class="gold" type="submit">저장</button>
               <button class="ghost" id="ledger-cancel-btn" type="button">취소</button>
