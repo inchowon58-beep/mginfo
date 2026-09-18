@@ -172,7 +172,7 @@ function seoulDayKey(iso?: string) {
   return year && month && day ? `${year}-${month}-${day}` : "";
 }
 
-const PAGE_SIZE = 30;
+const PAGE_SIZE = 10;
 
 function PageNav({
   page,
@@ -218,6 +218,7 @@ export function HubBoardAds() {
   const [folderBusy, setFolderBusy] = useState(false);
   const [activePage, setActivePage] = useState(1);
   const [donePage, setDonePage] = useState(1);
+  const [listPage, setListPage] = useState(1);
   const [extras, setExtras] = useState<Campaign[]>([]);
   const [extraTexts, setExtraTexts] = useState<string[]>([]);
   const [today, setToday] = useState<{
@@ -229,8 +230,8 @@ export function HubBoardAds() {
     remainingToday: number;
   } | null>(null);
 
-  async function load() {
-    const res = await fetch("/api/ops/board-campaigns");
+  async function load(preferredId?: string, opts?: { force?: boolean }) {
+    const res = await fetch(`/api/ops/board-campaigns${opts?.force === false ? "" : "?force=1"}`);
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "불러오기 실패");
     const nextSites: BoardSite[] = data.sites || [];
@@ -238,15 +239,37 @@ export function HubBoardAds() {
     setSites(nextSites);
     setCampaigns(nextCampaigns);
     setToday(data.today || null);
+    if (Number(data.planned) > 0) {
+      setMessage(
+        `오늘 예약 ${data.planned}건을 광고별로 다시 잡았습니다. 「대기 발행 실행」으로 바로 쓸 수 있습니다.`
+      );
+    } else if (Array.isArray(data.planReasons) && data.planReasons.length) {
+      const tip = String(data.planReasons[0] || "");
+      if (tip.includes("no-sites")) {
+        setMessage("발행할 사이트가 없습니다. 사이트 대장에서 광고글 동의를 켜 주세요.");
+      } else if (tip.includes("limit")) {
+        setMessage("오늘 하루 한도를 이미 다 써서 추가 배정이 없습니다.");
+      } else if (Number(data.consentedCount) === 0 && Number(data.siteCount) > 0) {
+        setMessage("사이트는 있지만 광고글 동의가 없습니다. 대장에서 동의를 켜 주세요.");
+      } else {
+        setMessage("오늘 새로 배정할 대기 키워드가 없거나, 이미 예약된 상태입니다.");
+      }
+    }
+    const keepId = preferredId;
+    const selected =
+      (keepId && nextCampaigns.find((row) => row.id === keepId)) ||
+      nextCampaigns.find((row) =>
+        row.keywords.some((k) => k.status === "queued" || k.status === "scheduled" || k.status === "processing")
+      ) ||
+      nextCampaigns[0];
+    if (selected) setForm(selected);
+    else setForm(emptyCampaign(nextSites.map((site) => site.id)));
     return { sites: nextSites, campaigns: nextCampaigns };
   }
 
   useEffect(() => {
-    load()
-      .then(({ sites: nextSites }) => {
-        setForm(emptyCampaign(nextSites.map((site) => site.id)));
-      })
-      .catch((err) => setError(err instanceof Error ? err.message : "불러오기 실패"));
+    load().catch((err) => setError(err instanceof Error ? err.message : "불러오기 실패"));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const hubCatchupOn = campaigns.some(
@@ -262,13 +285,7 @@ export function HubBoardAds() {
     let cancelled = false;
     const tick = () => {
       fetch("/api/cron/hub-board", { method: "POST" })
-        .then(() => (cancelled ? null : load()))
-        .then((fresh) => {
-          if (!fresh || cancelled) return;
-          if (!form.id) return;
-          const current = fresh.campaigns.find((row) => row.id === form.id);
-          if (current) setForm(current);
-        })
+        .then(() => (cancelled ? null : load(form.id)))
         .catch(() => undefined);
     };
     tick();
@@ -309,11 +326,17 @@ export function HubBoardAds() {
   );
   const activeSlice = activeKeywords.slice((activePage - 1) * PAGE_SIZE, activePage * PAGE_SIZE);
   const doneSlice = doneToday.slice((donePage - 1) * PAGE_SIZE, donePage * PAGE_SIZE);
+  const listSlice = campaigns.slice((listPage - 1) * PAGE_SIZE, listPage * PAGE_SIZE);
 
   useEffect(() => {
     setActivePage(1);
     setDonePage(1);
   }, [form.id]);
+
+  useEffect(() => {
+    const max = Math.max(1, Math.ceil(campaigns.length / PAGE_SIZE) || 1);
+    if (listPage > max) setListPage(max);
+  }, [campaigns.length, listPage]);
 
   useEffect(() => {
     const max = Math.max(1, Math.ceil(activeKeywords.length / PAGE_SIZE) || 1);
@@ -370,13 +393,92 @@ export function HubBoardAds() {
     }));
   }
 
-  function openCampaign(campaign: Campaign) {
-    setForm(campaign);
+  async function openCampaign(campaign: Campaign) {
+    setBusy(true);
     setText("");
     setExtras([]);
     setExtraTexts([]);
     setError("");
     setMessage("");
+    setForm(campaign);
+    try {
+      const res = await fetch("/api/ops/board-campaigns", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "plan", campaignId: campaign.id, force: true }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "배정 실패");
+      if (Array.isArray(data.campaigns)) setCampaigns(data.campaigns);
+      if (data.campaign) setForm(data.campaign);
+      if (Number(data.planned) > 0) {
+        setMessage(`이 광고 오늘 예약 ${data.planned}건 배정 · 사이트/시간이 붙었습니다.`);
+      } else if (data.reason === "no-sites") {
+        setMessage("이 광고에 쓸 사이트가 없습니다. 아래에서 사이트를 고르거나 대장 동의를 켜 주세요.");
+      } else if (data.reason === "limit") {
+        setMessage("이 광고는 오늘 한도를 이미 채웠습니다.");
+      } else if (data.reason === "empty") {
+        setMessage("이 광고에 배정 대기 키워드가 없습니다. 이미 예약됐거나 모두 발행됐을 수 있습니다.");
+      } else {
+        setMessage("이 광고 배정을 확인했습니다.");
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "배정 실패");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function deleteCampaign(campaignId: string) {
+    if (!campaignId) return;
+    if (!confirm("이 자유게시판 광고를 삭제할까요? 대기·예약 키워드도 함께 사라집니다.")) return;
+    setBusy(true);
+    setError("");
+    setMessage("");
+    try {
+      const res = await fetch("/api/ops/board-campaigns", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ campaignId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "삭제 실패");
+      const next = (data.campaigns || []) as Campaign[];
+      setCampaigns(next);
+      setMessage("광고를 삭제했습니다.");
+      if (form.id === campaignId) {
+        if (next[0]) setForm(next[0]);
+        else setForm(emptyCampaign(sites.map((site) => site.id)));
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "삭제 실패");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function deleteKeyword(keywordId: string) {
+    if (!form.id || !keywordId) return;
+    if (!confirm("이 키워드 예약을 삭제할까요?")) return;
+    setBusy(true);
+    setError("");
+    setMessage("");
+    try {
+      const res = await fetch("/api/ops/board-campaigns", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ campaignId: form.id, keywordId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "삭제 실패");
+      if (Array.isArray(data.campaigns)) setCampaigns(data.campaigns);
+      if (data.campaign) setForm(data.campaign);
+      setMessage("키워드를 삭제했습니다.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "삭제 실패");
+    } finally {
+      setBusy(false);
+    }
   }
 
   function startNew() {
@@ -462,10 +564,7 @@ export function HubBoardAds() {
             ? `오늘 분량 ${data.planned}건을 예약했습니다.`
             : "지금은 발행할 예약이 없습니다."
       );
-      const fresh = await load();
-      if (!form.id) return;
-      const current = fresh.campaigns.find((row) => row.id === form.id);
-      if (current) setForm(current);
+      await load(form.id);
     } catch (err) {
       setError(err instanceof Error ? err.message : "실행 실패");
     } finally {
@@ -564,26 +663,37 @@ export function HubBoardAds() {
                 <th>최상단키워드</th>
                 <th>개수</th>
                 <th>업체명</th>
+                <th>삭제</th>
               </tr>
             </thead>
             <tbody>
-              {campaigns.length ? (
-                campaigns.map((campaign, index) => (
+              {listSlice.length ? (
+                listSlice.map((campaign, index) => (
                   <tr
                     key={campaign.id}
                     className={form.id && form.id === campaign.id ? "is-selected" : undefined}
                     onClick={() => openCampaign(campaign)}
                   >
-                    <td>{index + 1}</td>
+                    <td>{(listPage - 1) * PAGE_SIZE + index + 1}</td>
                     <td>{listDate(campaign)}</td>
                     <td>{listTopKeyword(campaign)}</td>
                     <td>{listKeywordCount(campaign)}</td>
                     <td>{campaign.vendorName || campaign.title || "—"}</td>
+                    <td onClick={(e) => e.stopPropagation()}>
+                      <button
+                        className="btn btn-ghost"
+                        type="button"
+                        disabled={busy}
+                        onClick={() => deleteCampaign(campaign.id)}
+                      >
+                        삭제
+                      </button>
+                    </td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan={5} className="muted">
+                  <td colSpan={6} className="muted">
                     아직 등록한 광고가 없습니다.
                   </td>
                 </tr>
@@ -591,6 +701,7 @@ export function HubBoardAds() {
             </tbody>
           </table>
         </div>
+        <PageNav page={listPage} total={campaigns.length} onChange={setListPage} />
       </div>
 
       <form className="admin-card admin-form" onSubmit={save}>
@@ -598,9 +709,9 @@ export function HubBoardAds() {
           <div>
             <h2>{form.id ? "자유게시판 광고 수정" : "자유게시판 광고 등록"}</h2>
             <p className="field-hint" style={{ marginTop: 0 }}>
-              키워드마다 제미나이가 다른 글을 만들고, 동의한 사이트 위부터 한 사이트에 하나씩 넣습니다.
+              키워드마다 제미나이가 다른 글을 만들고, 동의한 사이트 중 랜덤으로 넣습니다(지역이 한 사이트에 몰리지 않게).
               글방향은 이 화면 설정이 모든 키워드에 공통입니다. 말투·페르소나·사이트 이름·컨셉은 글을 받는 그 사이트 설정을 따릅니다.
-              자동발행을 켜 두면 Production cron이 예약 시각에 올립니다. 이 화면을 열어 둘 필요는 없습니다.
+              자동발행을 켜 두면 이 화면을 열거나 새로고침할 때 어제 미발행을 오늘로 다시 잡고, Production cron이 발행합니다.
               업체를 바꿔 저장하면 이미 나간 글은 그대로이고, 앞으로 나가는 글부터 새 업체가 붙습니다.
             </p>
           </div>
@@ -973,6 +1084,11 @@ export function HubBoardAds() {
           <button className="btn btn-ghost" type="button" disabled={busy} onClick={runTick}>
             대기 발행 실행
           </button>
+          {form.id ? (
+            <button className="btn btn-ghost" type="button" disabled={busy} onClick={() => deleteCampaign(form.id)}>
+              이 광고 삭제
+            </button>
+          ) : null}
           <button className="btn btn-ghost" type="button" onClick={startNew}>
             새 광고
           </button>
@@ -1026,10 +1142,17 @@ export function HubBoardAds() {
                       <button className="btn btn-ghost" type="button" disabled={Boolean(nowId) || busy} onClick={() => publishNow(row.id)}>
                         {nowId === row.id ? "작성 중…" : "지금 이 사이트에 발행"}
                       </button>
+                      <button className="btn btn-ghost" type="button" disabled={busy} onClick={() => deleteKeyword(row.id)}>
+                        삭제
+                      </button>
                     </>
                   ) : row.youtubeUrl1 ? (
                     <em>게시글 유튜브 지정</em>
-                  ) : null}
+                  ) : (
+                    <button className="btn btn-ghost" type="button" disabled={busy} onClick={() => deleteKeyword(row.id)}>
+                      삭제
+                    </button>
+                  )}
                 </li>
               ))}
             </ul>

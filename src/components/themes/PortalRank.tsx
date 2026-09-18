@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { EngagementBar } from "@/components/EngagementBar";
 import { useCategories } from "@/components/CategoriesContext";
 import { getCategory } from "@/lib/categories";
 import { formatDate } from "@/lib/format";
@@ -33,6 +34,7 @@ export function PortalRank({
                     {post.publishedAt ? ` · ${formatDate(post.publishedAt)}` : ""}
                   </em>
                 )}
+                <EngagementBar postId={post.id} className="portal-engage engage-bar" />
               </span>
             </Link>
           </li>

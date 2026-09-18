@@ -2,13 +2,17 @@ import {
   HUB_TICK_SOLO,
   HUB_TICK_WITH_BULK,
   appendCampaignKeywords,
+  assignNextSite,
   hubBoardTodaySummary,
   hubTodayProgress,
   parseHubCampaign,
   parseHubCampaigns,
   pickHubTickKeywords,
+  planHubCampaign,
+  reclaimStaleHubKeywords,
   type HubBoardCampaign,
 } from "../src/lib/hub-board";
+import type { OpsSite } from "../src/lib/ops-ledger";
 
 function assert(cond: unknown, message: string) {
   if (!cond) throw new Error(message);
@@ -131,5 +135,81 @@ assert(summary.waiting === 2, "sums waiting");
 const listed = parseHubCampaigns([campaign, { vendorName: "" }]);
 assert(listed.length >= 1, "parseHubCampaigns keeps campaigns");
 assert(listed[0].keywordCount >= listed[0].keywords.length, "listed count does not shrink below remaining keywords");
+
+const stale = sample({
+  siteIds: ["s1", "s2"],
+  dailyLimit: 2,
+  keywords: [
+    {
+      id: "old1",
+      keyword: "어제1",
+      status: "scheduled",
+      siteId: "s1",
+      domain: "a.example",
+      scheduledAt: "2026-09-13T10:00:00.000Z",
+    },
+    {
+      id: "old2",
+      keyword: "어제2",
+      status: "scheduled",
+      siteId: "s2",
+      domain: "b.example",
+      scheduledAt: "2026-09-13T12:00:00.000Z",
+    },
+    { id: "fresh", keyword: "오늘대기", status: "queued" },
+  ],
+});
+const sites: OpsSite[] = [
+  {
+    id: "s1",
+    domain: "a.example",
+    apexDomain: "example",
+    boardAdsConsent: true,
+  } as OpsSite,
+  {
+    id: "s2",
+    domain: "b.example",
+    apexDomain: "example",
+    boardAdsConsent: true,
+  } as OpsSite,
+];
+const reclaimed = reclaimStaleHubKeywords(stale, "2026-09-14", now);
+assert(reclaimed.reclaimed === 2, "yesterday leftovers return to queue");
+assert(
+  reclaimed.campaign.keywords.filter((row) => row.status === "queued").length === 3,
+  "stale + fresh are all queued after reclaim"
+);
+const plannedDay = planHubCampaign(reclaimed.campaign, sites, now);
+assert(plannedDay.planned === 2, "new Seoul day plans only up to dailyLimit, not stacked leftovers");
+assert(
+  plannedDay.campaign.keywords.filter((row) => row.status === "scheduled").length === 2,
+  "planned keywords become scheduled"
+);
+assert(
+  plannedDay.campaign.keywords.every(
+    (row) => row.status !== "scheduled" || (row.scheduledAt && row.scheduledAt.startsWith("2026-09-14"))
+  ),
+  "new slots land on today's Seoul calendar day"
+);
+
+const assigned = assignNextSite(
+  sample({ siteIds: ["s1", "s2"], nextSiteIndex: 0 }),
+  { id: "k", keyword: "랜덤", status: "queued" },
+  sites
+);
+assert(assigned.site.id === "s1" || assigned.site.id === "s2", "unplanned keyword gets a consented site");
+assert(Boolean(assigned.keyword.siteId), "site id is stored on the keyword");
+
+const staleSites = sample({
+  siteIds: ["gone-id"],
+  dailyLimit: 2,
+  keywords: [
+    { id: "q1", keyword: "부천", status: "queued" },
+    { id: "q2", keyword: "인천", status: "queued" },
+  ],
+});
+const recovered = planHubCampaign(staleSites, sites, now);
+assert(recovered.planned === 2, "stale site ids fall back to consented sites");
+assert(recovered.campaign.keywords.every((row) => row.domain), "fallback assigns domains");
 
 console.log("verify-hub-board ok");

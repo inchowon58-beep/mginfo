@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { EngagementBar } from "@/components/EngagementBar";
 import { useCategories } from "@/components/CategoriesContext";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { getCategory } from "@/lib/categories";
@@ -27,6 +28,7 @@ export function CarrotList({ posts }: { posts: Post[] }) {
             )}
             <b>{post.title}</b>
             <small>{meta}</small>
+            <EngagementBar postId={post.id} className="carrot-engage engage-bar" />
           </Link>
         );
       })}

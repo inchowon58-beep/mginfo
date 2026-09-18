@@ -2,7 +2,7 @@ import Link from "next/link";
 import { BrandMark, BrandText } from "@/components/Brand";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { displaySiteName, footerBizLines } from "@/lib/categories";
-import { FOOTER_DISCLAIMER } from "@/lib/publish-disclaimer";
+import { resolveFooterDisclaimer } from "@/lib/publish-disclaimer";
 import { getThemeChrome } from "@/lib/theme-chrome";
 import type { Category, Settings, SiteThemeId } from "@/lib/types";
 
@@ -47,6 +47,7 @@ export function Footer({
   const siteName = displaySiteName(settings?.siteName);
   const tagline = (settings?.siteTagline || "").trim() || chrome.tagline;
   const bizLines = settings ? footerBizLines(settings) : [];
+  const disclaimer = resolveFooterDisclaimer(settings);
   return (
     <footer className="site-footer">
       <div className="footer-inner">
@@ -70,13 +71,7 @@ export function Footer({
         <p className="footer-copy">
           © {new Date().getFullYear()} {siteName}
         </p>
-        <p className="footer-disclaimer">{FOOTER_DISCLAIMER}</p>
-        <p className="footer-maker">
-          블로그 사이트 제작 배포{" "}
-          <a href="https://www.infocs.co.kr" target="_blank" rel="noopener noreferrer">
-            인포씨에스
-          </a>
-        </p>
+        <p className="footer-disclaimer">{disclaimer}</p>
       </div>
     </footer>
   );

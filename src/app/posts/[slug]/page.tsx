@@ -22,6 +22,7 @@ import {
 } from "@/lib/post-seo";
 import { buildBreadcrumbJsonLd, buildFaqPageJsonLd } from "@/lib/site-jsonld";
 import { ArticlePhoto } from "@/components/ArticlePhoto";
+import { EngagementBar } from "@/components/EngagementBar";
 import { resolveRegionContext } from "@/lib/region-intro";
 import { hasPublicFactBlock, buildPublicFactSection } from "@/lib/public-facts";
 import { regionHubPath } from "@/lib/region-hub";
@@ -185,6 +186,7 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
           ) : null}
           {post.tags.length > 0 && <span>· {post.tags.join(" · ")}</span>}
         </div>
+        <EngagementBar postId={post.id} className="article-engage engage-bar" />
         {post.coverImage ? (
           <ArticlePhoto
             image={{ url: post.coverImage, caption: post.coverCaption }}

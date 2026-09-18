@@ -4792,6 +4792,32 @@ body {
   color: var(--text-sub, #9ca3af);
 }
 
+.magazine-root .engage-bar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 10px;
+  color: var(--text);
+}
+
+.magazine-root .engage-bar .engage-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text-sub, #64748b);
+}
+
+.magazine-root .engage-bar svg {
+  display: block;
+}
+
+.magazine-root .article-engage {
+  margin: 4px 0 14px;
+}
+
 .vendor-logo-preview {
   max-width: 240px;
   max-height: 120px;

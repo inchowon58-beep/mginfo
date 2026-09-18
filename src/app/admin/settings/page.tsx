@@ -6,6 +6,7 @@ import { HubMasterSettings } from "@/components/admin/HubMasterSettings";
 import { DEFAULT_GEMINI_MODEL, GEMINI_MODELS } from "@/lib/gemini-models";
 import { SITE_THEMES } from "@/lib/site-theme";
 import { DEFAULT_WRITING_TONE, WRITING_TONES, isWritingToneId, type WritingToneId } from "@/lib/writing-tone";
+import { FOOTER_DISCLAIMER_VARIANTS, randomFooterDisclaimer } from "@/lib/publish-disclaimer";
 import type { SiteThemeId } from "@/lib/types";
 
 type SettingsTab = "basic" | "category" | "site" | "master";
@@ -35,6 +36,7 @@ export default function SettingsPage() {
   const [commentCountMax, setCommentCountMax] = useState("48");
   const [siteName, setSiteName] = useState("");
   const [siteTagline, setSiteTagline] = useState("");
+  const [footerDisclaimer, setFooterDisclaimer] = useState("");
   const [company, setCompany] = useState("");
   const [ceo, setCeo] = useState("");
   const [bizNo, setBizNo] = useState("");
@@ -82,6 +84,7 @@ export default function SettingsPage() {
         if (s.commentCountMax != null) setCommentCountMax(String(s.commentCountMax));
         setSiteName(s.siteName || "");
         setSiteTagline(s.siteTagline || "");
+        setFooterDisclaimer(typeof s.footerDisclaimer === "string" ? s.footerDisclaimer : "");
         setCompany(s.company || "");
         setCeo(s.ceo || "");
         setBizNo(s.bizNo || "");
@@ -139,7 +142,19 @@ export default function SettingsPage() {
 
   async function saveBasics(e: FormEvent) {
     e.preventDefault();
-    await save({ siteName, siteTagline, company, ceo, bizNo, address, phone, email, writingTone, writingPersona });
+    await save({
+      siteName,
+      siteTagline,
+      footerDisclaimer,
+      company,
+      ceo,
+      bizNo,
+      address,
+      phone,
+      email,
+      writingTone,
+      writingPersona,
+    });
   }
 
   async function saveSite(e: FormEvent) {
@@ -250,6 +265,27 @@ export default function SettingsPage() {
             onChange={(e) => setSiteTagline(e.target.value)}
             placeholder="예: 모든 생활 정보를 한눈에"
           />
+          <h3 className="admin-subhead">하단 면책 문구</h3>
+          <p className="field-hint" style={{ marginTop: 0 }}>
+            사이트 맨 아래 짧은 안내 문구입니다. 사이트마다 다른 표현이 기본으로 잡히며, 직접 고치거나 「다른 문구」로
+            바꿀 수 있습니다. ({FOOTER_DISCLAIMER_VARIANTS.length}종)
+          </p>
+          <label>푸터 면책 문구</label>
+          <textarea
+            value={footerDisclaimer}
+            onChange={(e) => setFooterDisclaimer(e.target.value)}
+            rows={3}
+            placeholder="예: 게시 내용은 정보 제공 목적이며…"
+          />
+          <div className="admin-actions" style={{ marginTop: 8 }}>
+            <button
+              className="btn btn-ghost"
+              type="button"
+              onClick={() => setFooterDisclaimer(randomFooterDisclaimer(footerDisclaimer))}
+            >
+              다른 문구로 바꾸기
+            </button>
+          </div>
           <h3 className="admin-subhead">하단 푸터</h3>
           <div className="admin-form-grid">
             <div>
@@ -400,12 +436,10 @@ export default function SettingsPage() {
               </p>
             </>
           ) : null}
-          {siteTheme === "journal" || siteTheme === "talk" || siteTheme === "studio" ? (
-            <div className="admin-engage-fields">
+          <div className="admin-engage-fields">
               <h3 className="admin-subhead">좋아요 · 댓글 표시</h3>
               <p className="field-hint" style={{ marginTop: 0 }}>
-                글마다 이 구간 안에서 다른 숫자가 나갑니다. 같은 글은 항상 같은 숫자입니다. 최댓값까지 0이면 해당
-                아이콘(하트·말풍선)은 사이트에 나오지 않습니다.
+                모든 테마·글에서 이 구간 숫자가 나갑니다. 같은 글은 항상 같은 숫자입니다.
               </p>
               <label>좋아요 개수</label>
               <div className="admin-range">
@@ -446,7 +480,6 @@ export default function SettingsPage() {
                 <span>개</span>
               </div>
             </div>
-          ) : null}
           {error ? <p className="notice">{error}</p> : null}
           {message ? <p className="notice ok">{message}</p> : null}
           <div className="admin-actions">

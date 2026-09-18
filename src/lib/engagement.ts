@@ -26,14 +26,21 @@ export function engagementFromSettings(settings?: {
   commentCountMin?: number;
   commentCountMax?: number;
 }): EngagementRange {
-  const likes = orderedRange(
+  let likes = orderedRange(
     clampCount(settings?.likeCountMin, DEFAULT_LIKE_MIN),
     clampCount(settings?.likeCountMax, DEFAULT_LIKE_MAX)
   );
-  const comments = orderedRange(
+  let comments = orderedRange(
     clampCount(settings?.commentCountMin, DEFAULT_COMMENT_MIN),
     clampCount(settings?.commentCountMax, DEFAULT_COMMENT_MAX)
   );
+  // All themes show likes/comments — never hide by leaving max at 0.
+  if (!isEngageVisible(likes.min, likes.max)) {
+    likes = { min: DEFAULT_LIKE_MIN, max: DEFAULT_LIKE_MAX };
+  }
+  if (!isEngageVisible(comments.min, comments.max)) {
+    comments = { min: DEFAULT_COMMENT_MIN, max: DEFAULT_COMMENT_MAX };
+  }
   return {
     likeMin: likes.min,
     likeMax: likes.max,

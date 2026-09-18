@@ -19,6 +19,7 @@ import {
   DEFAULT_LIKE_MAX,
   DEFAULT_LIKE_MIN,
 } from "./engagement";
+import { pickFooterDisclaimer } from "./publish-disclaimer";
 
 const LOCAL_PATH = path.join(process.cwd(), "data", "store.json");
 
@@ -42,6 +43,7 @@ function defaultSettings(): Settings {
     likeCountMax: DEFAULT_LIKE_MAX,
     commentCountMin: DEFAULT_COMMENT_MIN,
     commentCountMax: DEFAULT_COMMENT_MAX,
+    footerDisclaimer: "",
     usableUntil: "",
     dailyPostLimit: 0,
     naverRankWork: false,
@@ -109,6 +111,28 @@ function normalize(parsed: Store): Store {
     ? parsed.settings.writingTone
     : DEFAULT_WRITING_TONE;
   parsed.settings.writingPersona = String(parsed.settings.writingPersona || "");
+  const footer = String(parsed.settings.footerDisclaimer || "").trim();
+  if (!footer) {
+    const seed = [
+      parsed.settings.siteName,
+      parsed.settings.siteTagline,
+      process.env.SITE_DOMAIN || process.env.NEXT_PUBLIC_SITE_DOMAIN || process.env.VERCEL_PROJECT_PRODUCTION_URL || "",
+    ]
+      .map((v) => String(v || "").trim())
+      .filter(Boolean)
+      .join("|");
+    parsed.settings.footerDisclaimer = pickFooterDisclaimer(seed || parsed.settings.siteName || "magazine");
+  } else {
+    parsed.settings.footerDisclaimer = footer;
+  }
+  if (!(Number(parsed.settings.likeCountMax) > 0)) {
+    parsed.settings.likeCountMin = DEFAULT_LIKE_MIN;
+    parsed.settings.likeCountMax = DEFAULT_LIKE_MAX;
+  }
+  if (!(Number(parsed.settings.commentCountMax) > 0)) {
+    parsed.settings.commentCountMin = DEFAULT_COMMENT_MIN;
+    parsed.settings.commentCountMax = DEFAULT_COMMENT_MAX;
+  }
   parsed.bulkPublish = normalizeBulkPublish(parsed.bulkPublish);
   return parsed;
 }

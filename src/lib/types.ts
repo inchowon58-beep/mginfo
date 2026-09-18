@@ -155,6 +155,8 @@ export type Settings = {
   likeCountMax: number;
   commentCountMin: number;
   commentCountMax: number;
+  /** Site footer short disclaimer — unique per clone when empty (picked from variants). */
+  footerDisclaimer: string;
   usableUntil: string;
   dailyPostLimit: number;
   naverRankWork: boolean;

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { EngagementBar } from "@/components/EngagementBar";
 import { useCategories } from "@/components/CategoriesContext";
 import { getCategory } from "@/lib/categories";
 import { formatDate } from "@/lib/format";
@@ -21,6 +22,7 @@ export function QnaList({ posts }: { posts: Post[] }) {
               <span className="qna-item-body">
                 <strong>{post.title}</strong>
                 {post.excerpt ? <em>{post.excerpt}</em> : null}
+                <EngagementBar postId={post.id} className="qna-engage engage-bar" />
                 <span className="qna-item-meta">
                   {cat?.name}
                   {post.publishedAt ? ` · ${formatDate(post.publishedAt)}` : ""}

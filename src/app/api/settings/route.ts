@@ -96,6 +96,7 @@ export async function POST(request: Request) {
         "popupHref",
         "popupImage",
         "writingPersona",
+        "footerDisclaimer",
       ] as const;
       for (const key of textKeys) {
         if (typeof body[key] === "string") {

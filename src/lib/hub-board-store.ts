@@ -14,6 +14,7 @@ import {
   planHubCampaign,
   pruneStalePublishedKeywords,
   pushBoardPost,
+  removeCampaignKeyword,
   HUB_TICK_SOLO,
   type HubBoardCampaign,
   type HubBoardKeyword,
@@ -141,6 +142,52 @@ export async function upsertHubCampaign(campaign: HubBoardCampaign): Promise<Hub
     else s.campaigns.unshift(parsed);
   });
   return store.campaigns;
+}
+
+export async function deleteHubCampaign(campaignId: string) {
+  let removed = false;
+  const store = await updateHubBoard((s) => {
+    const next = s.campaigns.filter((row) => row.id !== campaignId);
+    removed = next.length !== s.campaigns.length;
+    s.campaigns = next;
+  });
+  return { ok: removed, campaigns: store.campaigns };
+}
+
+export async function deleteHubKeyword(campaignId: string, keywordId: string) {
+  let campaign: HubBoardCampaign | null = null;
+  const store = await updateHubBoard((s) => {
+    const idx = s.campaigns.findIndex((row) => row.id === campaignId);
+    if (idx < 0) return;
+    const next = removeCampaignKeyword(s.campaigns[idx], keywordId);
+    if (!next) return;
+    s.campaigns[idx] = next;
+    campaign = next;
+  });
+  return { ok: Boolean(campaign), campaign, campaigns: store.campaigns };
+}
+
+export async function planOneHubCampaign(campaignId: string, opts?: { force?: boolean }) {
+  const sites = await getOpsSites();
+  const campaigns = await getHubCampaigns();
+  const current = campaigns.find((row) => row.id === campaignId);
+  if (!current) return { ok: false as const, error: "광고를 찾을 수 없습니다." };
+  const forced = opts?.force
+    ? {
+        ...current,
+        schedule: { ...current.schedule, enabled: true },
+      }
+    : current;
+  const result = planHubCampaign(forced, sites, new Date(), { force: Boolean(opts?.force) });
+  const list = await upsertHubCampaign(result.campaign);
+  const saved = list.find((row) => row.id === campaignId) || result.campaign;
+  return {
+    ok: true as const,
+    planned: result.planned,
+    reason: result.reason,
+    campaign: saved,
+    campaigns: list,
+  };
 }
 
 async function claimHubKeyword(campaignId: string, keywordId: string, mode: "due" | "manual") {
@@ -279,13 +326,16 @@ export async function publishDueHubBoard(limit = HUB_TICK_SOLO, totalCap?: numbe
   const sites = await getOpsSites();
   let campaigns = await getHubCampaigns();
   let planned = 0;
+  let dirty = false;
   const plannedCampaigns: HubBoardCampaign[] = [];
   for (const campaign of campaigns) {
     const result = planHubCampaign(campaign, sites);
     planned += result.planned;
     plannedCampaigns.push(result.campaign);
+    if (result.planned > 0 || result.campaign.updatedAt !== campaign.updatedAt) dirty = true;
   }
-  if (planned) await setHubCampaigns(plannedCampaigns);
+  // Persist reclaim even when today's quota was already full (planned=0).
+  if (dirty) await setHubCampaigns(plannedCampaigns);
   campaigns = await getHubCampaigns();
   const due = pickHubTickKeywords(campaigns, limit, new Date(), totalCap);
   const results: { keyword: string; ok: boolean; domain?: string; error?: string }[] = [];
@@ -302,4 +352,29 @@ export async function publishDueHubBoard(limit = HUB_TICK_SOLO, totalCap?: numbe
     });
   }
   return { planned, processed: results.length, results };
+}
+
+/** Reclaim yesterday leftovers and assign today's slots without publishing. Used when the admin page loads. */
+export async function planHubBoardToday(opts?: { force?: boolean }) {
+  const sites = await getOpsSites();
+  const campaigns = await getHubCampaigns();
+  let planned = 0;
+  let dirty = false;
+  const reasons: string[] = [];
+  const next: HubBoardCampaign[] = [];
+  for (const campaign of campaigns) {
+    const source = opts?.force
+      ? { ...campaign, schedule: { ...campaign.schedule, enabled: true } }
+      : campaign;
+    const result = planHubCampaign(source, sites, new Date(), { force: Boolean(opts?.force) });
+    planned += result.planned;
+    next.push(result.campaign);
+    if (result.reason && result.reason !== "ok" && result.reason !== "empty") {
+      reasons.push(`${campaign.title || campaign.id}:${result.reason}`);
+    }
+    if (result.planned > 0 || result.campaign.updatedAt !== campaign.updatedAt) dirty = true;
+  }
+  // Return the planned list directly — re-reading Blob right away can still show old queued rows.
+  const saved = dirty ? await setHubCampaigns(next) : campaigns;
+  return { planned, reasons, campaigns: saved };
 }

@@ -1,6 +1,6 @@
 import { resolveArticleStyle } from "./article-style";
 import { parseKeywordList } from "./bulk-keywords";
-import { randomPublishSlots, seoulWindow } from "./bulk-publish";
+import { randomPublishSlots } from "./bulk-publish";
 import { parseFaqItems } from "./faq";
 import { FREE_BOARD_SLUG } from "./categories";
 import { generateArticle } from "./gemini";
@@ -179,7 +179,12 @@ export function parseHubCampaign(raw: unknown, current?: HubBoardCampaign): HubB
     nextSiteIndex: Math.max(0, Math.floor(Number(row.nextSiteIndex ?? current?.nextSiteIndex) || 0)),
     keywords,
     schedule: {
-      enabled: typeof scheduleRaw.enabled === "boolean" ? scheduleRaw.enabled : Boolean(prevSchedule?.enabled),
+      enabled:
+        typeof scheduleRaw.enabled === "boolean"
+          ? scheduleRaw.enabled
+          : prevSchedule
+            ? Boolean(prevSchedule.enabled)
+            : true,
       startHour: clampHour(scheduleRaw.startHour ?? prevSchedule?.startHour, 1),
       endHour: 23,
       planDate: trimText(scheduleRaw.planDate ?? prevSchedule?.planDate),
@@ -237,6 +242,29 @@ export function orderedCampaignSites(campaign: HubBoardCampaign, sites: OpsSite[
   return consentedSites(sites).filter((site) => selected.has(site.id));
 }
 
+/** Prefer consented ∩ selected, then selected by id, then all consented, then any domain. */
+export function resolveCampaignTargets(campaign: HubBoardCampaign, sites: OpsSite[]) {
+  const selected = orderedCampaignSites(campaign, sites);
+  if (selected.length) return { targets: selected, campaign };
+  const byId = sites.filter((site) => campaign.siteIds.includes(site.id) && site.domain);
+  if (byId.length) return { targets: byId, campaign };
+  const consented = consentedSites(sites);
+  if (consented.length) {
+    return {
+      targets: consented,
+      campaign: { ...campaign, siteIds: consented.map((site) => site.id) },
+    };
+  }
+  const any = sites.filter((site) => Boolean(site.domain));
+  if (any.length) {
+    return {
+      targets: any,
+      campaign: { ...campaign, siteIds: any.map((site) => site.id) },
+    };
+  }
+  return { targets: [] as OpsSite[], campaign };
+}
+
 export function appendCampaignKeywords(campaign: HubBoardCampaign, incoming: string[]) {
   const have = new Set(campaign.keywords.map((item) => item.keyword));
   const extra: HubBoardKeyword[] = [];
@@ -267,6 +295,59 @@ export function hubUsedTodayQuota(campaign: HubBoardCampaign, today: string) {
     }
     return false;
   }).length;
+}
+
+function shuffleCopy<T>(items: T[]) {
+  const out = items.slice();
+  for (let i = out.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [out[i], out[j]] = [out[j], out[i]];
+  }
+  return out;
+}
+
+function pickRandomSite<T>(targets: T[]) {
+  return targets[Math.floor(Math.random() * targets.length)];
+}
+
+/** Seoul day rolled over: unfinished yesterday slots no longer count toward today's quota,
+ *  so planning would stack a full new day on top of the backlog. Put them back in queue. */
+export function reclaimStaleHubKeywords(campaign: HubBoardCampaign, today: string, now = new Date()) {
+  let changed = 0;
+  const keywords = campaign.keywords.map((item) => {
+    if (item.status !== "scheduled" && item.status !== "processing") return item;
+    const day = item.scheduledAt ? seoulDateKey(item.scheduledAt) : "";
+    if (day && day >= today) return item;
+    // Stuck "processing" from a prior day (or missing scheduledAt) returns to the queue.
+    if (item.status === "processing" && !day && item.processingAt) {
+      const ageMs = now.getTime() - new Date(item.processingAt).getTime();
+      if (Number.isFinite(ageMs) && ageMs < 30 * 60_000) return item;
+    }
+    changed += 1;
+    return {
+      ...item,
+      status: "queued" as const,
+      siteId: undefined,
+      domain: undefined,
+      scheduledAt: undefined,
+      processingAt: undefined,
+      processingClaim: undefined,
+      error: undefined,
+    };
+  });
+  if (!changed) return { campaign, reclaimed: 0 };
+  return {
+    reclaimed: changed,
+    campaign: { ...campaign, keywords, updatedAt: now.toISOString() },
+  };
+}
+
+/** Publish window through end of Seoul day (not 23:00 sharp), so midnight rollover still plans. */
+function hubSeoulWindow(dateKey: string, startHour: number) {
+  const start = new Date(`${dateKey}T${String(startHour).padStart(2, "0")}:00:00+09:00`);
+  const dayStart = new Date(`${dateKey}T00:00:00+09:00`);
+  const end = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
+  return { start, end };
 }
 
 export function hubTodayProgress(campaign: HubBoardCampaign, now = new Date()) {
@@ -305,45 +386,93 @@ export function hubBoardTodaySummary(campaigns: HubBoardCampaign[], now = new Da
   };
 }
 
-export function planHubCampaign(campaign: HubBoardCampaign, sites: OpsSite[], now = new Date()) {
+export function planHubCampaign(
+  campaign: HubBoardCampaign,
+  sites: OpsSite[],
+  now = new Date(),
+  opts?: { force?: boolean }
+) {
   const today = seoulDateKey(now);
-  if (!today || !campaign.schedule.enabled) return { planned: 0, campaign };
-  const targets = orderedCampaignSites(campaign, sites);
-  if (!targets.length) return { planned: 0, campaign };
-  const { start, end } = seoulWindow(today, campaign.schedule.startHour, campaign.schedule.endHour);
+  if (!today) return { planned: 0, campaign, reason: "no-date" as const };
+  if (!campaign.schedule.enabled && !opts?.force) {
+    return { planned: 0, campaign, reason: "schedule-off" as const };
+  }
+  const reclaimed = reclaimStaleHubKeywords(campaign, today, now);
+  campaign = reclaimed.campaign;
+  const resolved = resolveCampaignTargets(campaign, sites);
+  const targets = resolved.targets;
+  if (resolved.campaign.siteIds.join("\0") !== campaign.siteIds.join("\0")) {
+    campaign = { ...resolved.campaign, updatedAt: now.toISOString() };
+  } else {
+    campaign = resolved.campaign;
+  }
+  if (!targets.length) return { planned: 0, campaign, reason: "no-sites" as const };
+  const { start, end } = hubSeoulWindow(today, campaign.schedule.startHour);
   if (now >= end) {
-    return { planned: 0, campaign: { ...campaign, schedule: { ...campaign.schedule, planDate: today } } };
+    return {
+      planned: 0,
+      reason: "window-closed" as const,
+      campaign: {
+        ...campaign,
+        schedule: { ...campaign.schedule, planDate: today },
+        updatedAt: reclaimed.reclaimed ? now.toISOString() : campaign.updatedAt,
+      },
+    };
   }
   const remaining = Math.max(0, campaign.dailyLimit - hubUsedTodayQuota(campaign, today));
-  const queued = campaign.keywords.filter((item) => item.status === "queued");
+  const queued = shuffleCopy(campaign.keywords.filter((item) => item.status === "queued"));
   const take = Math.min(remaining, queued.length);
   if (!take) {
-    return { planned: 0, campaign: { ...campaign, schedule: { ...campaign.schedule, planDate: today } } };
+    return {
+      planned: 0,
+      reason: remaining <= 0 ? ("limit" as const) : ("empty" as const),
+      campaign: {
+        ...campaign,
+        schedule: { ...campaign.schedule, planDate: today },
+        updatedAt: reclaimed.reclaimed ? now.toISOString() : campaign.updatedAt,
+      },
+    };
   }
   const windowStart = now > start ? now : start;
   const slots = randomPublishSlots(take, windowStart, end);
-  let index = campaign.nextSiteIndex || 0;
   const keywords = campaign.keywords.map((item) => ({ ...item }));
   queued.slice(0, take).forEach((item, i) => {
     const found = keywords.find((row) => row.id === item.id);
     if (!found) return;
-    const site = targets[index % targets.length];
+    const site = pickRandomSite(targets);
     found.status = "scheduled";
     found.siteId = site.id;
     found.domain = site.domain;
     found.scheduledAt = slots[i].toISOString();
     found.error = undefined;
-    index += 1;
   });
   return {
     planned: take,
+    reason: "ok" as const,
     campaign: {
       ...campaign,
       keywords,
-      nextSiteIndex: index,
-      schedule: { ...campaign.schedule, planDate: today },
+      schedule: {
+        ...campaign.schedule,
+        enabled: true,
+        planDate: today,
+      },
       updatedAt: now.toISOString(),
     },
+  };
+}
+
+export function removeCampaignKeyword(campaign: HubBoardCampaign, keywordId: string) {
+  const keywords = campaign.keywords.filter((row) => row.id !== keywordId);
+  if (keywords.length === campaign.keywords.length) return null;
+  return {
+    ...campaign,
+    keywords,
+    topKeyword: campaign.topKeyword && keywords.some((row) => row.keyword === campaign.topKeyword)
+      ? campaign.topKeyword
+      : keywords[0]?.keyword || "",
+    keywordCount: Math.max(keywords.length, Math.max(0, (campaign.keywordCount || 0) - 1)),
+    updatedAt: new Date().toISOString(),
   };
 }
 
@@ -418,11 +547,10 @@ export function assignNextSite(campaign: HubBoardCampaign, keyword: HubBoardKeyw
   if (!targets.length) throw new Error("동의한 발행 사이트가 없습니다.");
   const existing = keyword.siteId ? targets.find((site) => site.id === keyword.siteId) : undefined;
   if (existing) return { campaign, keyword, site: existing };
-  const site = targets[(campaign.nextSiteIndex || 0) % targets.length];
+  const site = pickRandomSite(targets);
   const nextKeyword = { ...keyword, siteId: site.id, domain: site.domain };
   const nextCampaign: HubBoardCampaign = {
     ...campaign,
-    nextSiteIndex: (campaign.nextSiteIndex || 0) + 1,
     keywords: campaign.keywords.map((row) => (row.id === keyword.id ? nextKeyword : row)),
     updatedAt: new Date().toISOString(),
   };
