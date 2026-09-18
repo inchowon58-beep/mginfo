@@ -5,6 +5,12 @@ import type { QaResult } from "@/lib/qa-types";
 
 type AngleDist = { angle: string; count: number };
 
+function severityClass(severity: string) {
+  if (severity === "PASS") return "badge badge-on";
+  if (severity === "WARN") return "badge badge-draft";
+  return "badge badge-off";
+}
+
 export function ContentQaAdmin() {
   const [keyword, setKeyword] = useState("배곧포메라니안분양");
   const [busy, setBusy] = useState(false);
@@ -68,93 +74,165 @@ export function ContentQaAdmin() {
   return (
     <div className="admin-stack">
       <div className="admin-card">
-        <h2>콘텐츠 QA / Preview</h2>
-        <p className="hint">
-          발행하지 않고 Planner→Writer 또는 Legacy 결과를 생성·비교합니다. PASS/WARN/FAIL만 표시하며 AI 점수(82점 등)는
-          없습니다.
-        </p>
-        {error ? <p className="error">{error}</p> : null}
-        <label>
-          키워드
-          <input value={keyword} onChange={(e) => setKeyword(e.target.value)} />
-        </label>
-        <div className="admin-inline-actions">
-          <button type="button" className="gold" disabled={busy || !keyword.trim()} onClick={() => void run("planner")}>
-            Planner Preview
-          </button>
-          <button type="button" className="ghost" disabled={busy || !keyword.trim()} onClick={() => void run("legacy")}>
-            Legacy Preview
-          </button>
-          <button type="button" className="ghost" disabled={busy || !keyword.trim()} onClick={() => void run("compare")}>
-            Legacy vs Planner 비교
-          </button>
-          <button type="button" className="ghost" disabled={busy} onClick={() => void load()}>
-            새로고침
-          </button>
+        <div className="admin-card-head">
+          <div>
+            <h2>콘텐츠 QA / Preview</h2>
+            <p className="admin-muted">
+              발행하지 않고 Planner→Writer 또는 Legacy 결과를 생성·비교합니다. PASS/WARN/FAIL만 표시합니다.
+            </p>
+          </div>
         </div>
-        {busy ? <p className="hint">생성 중… (최대 수 분)</p> : null}
+        {error ? <p className="admin-error">{error}</p> : null}
+        <div className="admin-form">
+          <label>
+            키워드
+            <input value={keyword} onChange={(e) => setKeyword(e.target.value)} />
+          </label>
+          <div className="admin-form-actions">
+            <button
+              type="button"
+              className="btn btn-primary"
+              disabled={busy || !keyword.trim()}
+              onClick={() => void run("planner")}
+            >
+              Planner Preview
+            </button>
+            <button
+              type="button"
+              className="btn btn-ghost"
+              disabled={busy || !keyword.trim()}
+              onClick={() => void run("legacy")}
+            >
+              Legacy Preview
+            </button>
+            <button
+              type="button"
+              className="btn btn-ghost"
+              disabled={busy || !keyword.trim()}
+              onClick={() => void run("compare")}
+            >
+              Legacy vs Planner 비교
+            </button>
+            <button type="button" className="btn btn-ghost" disabled={busy} onClick={() => void load()}>
+              새로고침
+            </button>
+          </div>
+          {busy ? <p className="admin-muted">생성 중… (최대 수 분)</p> : null}
+        </div>
       </div>
 
       <div className="admin-card">
-        <h3>최근 Angle 분포 (관측용)</h3>
-        <ul className="hint">
-          {angleDist.map((row) => (
-            <li key={row.angle}>
-              {row.angle}: {row.count}
-            </li>
-          ))}
-          {!angleDist.length ? <li>아직 QA 결과 없음</li> : null}
-        </ul>
+        <div className="admin-card-head">
+          <h2>최근 Angle 분포</h2>
+        </div>
+        {angleDist.length ? (
+          <div className="admin-chip-row">
+            {angleDist.map((row) => (
+              <span key={row.angle} className="admin-chip">
+                {row.angle} <b>{row.count}</b>
+              </span>
+            ))}
+          </div>
+        ) : (
+          <p className="admin-muted">아직 QA 결과 없음</p>
+        )}
       </div>
 
       {compareLegacy && comparePlanner ? (
         <div className="admin-card">
-          <h3>비교 · {keyword}</h3>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
-            <div>
-              <h4>Legacy ({compareLegacy.plannerCalls || 0}+{compareLegacy.writerCalls || 1} calls)</h4>
-              <p>
-                <strong>{compareLegacy.title}</strong>
-              </p>
-              <div dangerouslySetInnerHTML={{ __html: compareLegacy.bodyHtml.slice(0, 4000) }} />
+          <div className="admin-card-head">
+            <h2>비교 · {keyword}</h2>
+          </div>
+          <div className="qa-compare-grid">
+            <div className="qa-compare-pane">
+              <h3>
+                Legacy ({compareLegacy.plannerCalls || 0}+{compareLegacy.writerCalls || 1} calls)
+              </h3>
+              <p className="catalog-name">{compareLegacy.title}</p>
+              <div
+                className="qa-preview-html"
+                dangerouslySetInnerHTML={{ __html: compareLegacy.bodyHtml.slice(0, 4000) }}
+              />
             </div>
-            <div>
-              <h4>
+            <div className="qa-compare-pane">
+              <h3>
                 Planner ({comparePlanner.plannerCalls}/{comparePlanner.writerCalls}) ·{" "}
                 {comparePlanner.generationMode}
-              </h4>
-              <p>
-                <strong>{comparePlanner.title}</strong>
-              </p>
+              </h3>
+              <p className="catalog-name">{comparePlanner.title}</p>
               <Checks checks={comparePlanner.qualityChecks} />
-              <div dangerouslySetInnerHTML={{ __html: comparePlanner.bodyHtml.slice(0, 4000) }} />
+              <div
+                className="qa-preview-html"
+                dangerouslySetInnerHTML={{ __html: comparePlanner.bodyHtml.slice(0, 4000) }}
+              />
             </div>
           </div>
         </div>
       ) : null}
 
       <div className="admin-card">
-        <h3>QA 결과 목록</h3>
-        <ul className="hint">
-          {results.slice(0, 30).map((row) => (
-            <li key={row.id}>
-              <button type="button" className="linkish" onClick={() => setSelectedId(row.id)}>
-                [{row.mode}] {row.keyword} — {row.title.slice(0, 40)}
-              </button>
-            </li>
-          ))}
-        </ul>
+        <div className="admin-card-head">
+          <h2>QA 결과 목록</h2>
+        </div>
+        <div className="admin-table-scroll">
+          <table className="admin-table catalog-table">
+            <thead>
+              <tr>
+                <th className="col-flag">mode</th>
+                <th>키워드</th>
+                <th>제목</th>
+              </tr>
+            </thead>
+            <tbody>
+              {results.slice(0, 30).map((row) => (
+                <tr
+                  key={row.id}
+                  className={`is-clickable${selected?.id === row.id ? " is-selected" : ""}`}
+                  onClick={() => setSelectedId(row.id)}
+                >
+                  <td data-label="mode">
+                    <code>{row.mode}</code>
+                  </td>
+                  <td data-label="키워드">{row.keyword}</td>
+                  <td data-label="제목">{row.title.slice(0, 60)}</td>
+                </tr>
+              ))}
+              {!results.length ? (
+                <tr>
+                  <td colSpan={3} className="admin-muted">
+                    결과 없음
+                  </td>
+                </tr>
+              ) : null}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {selected ? (
         <div className="admin-card">
-          <div className="admin-inline-actions">
-            <button type="button" className={view === "plan" ? "gold" : "ghost"} onClick={() => setView("plan")}>
-              PLAN VIEW
-            </button>
-            <button type="button" className={view === "final" ? "gold" : "ghost"} onClick={() => setView("final")}>
-              FINAL PAGE VIEW
-            </button>
+          <div className="admin-card-head">
+            <h2>미리보기</h2>
+            <div className="admin-segment" role="tablist" aria-label="뷰 전환">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={view === "plan"}
+                className={view === "plan" ? "is-active" : ""}
+                onClick={() => setView("plan")}
+              >
+                PLAN
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={view === "final"}
+                className={view === "final" ? "is-active" : ""}
+                onClick={() => setView("final")}
+              >
+                FINAL
+              </button>
+            </div>
           </div>
           {view === "plan" ? <PlanView row={selected} /> : <FinalView row={selected} />}
         </div>
@@ -164,12 +242,14 @@ export function ContentQaAdmin() {
 }
 
 function Checks({ checks }: { checks?: QaResult["qualityChecks"] }) {
-  if (!checks?.length) return <p className="hint">검사 결과 없음</p>;
+  if (!checks?.length) return <p className="admin-muted">검사 결과 없음</p>;
   return (
-    <ul className="hint">
+    <ul className="qa-check-list">
       {checks.map((c, i) => (
         <li key={`${c.code}-${i}`}>
-          <code>{c.code}</code> <strong>{c.severity}</strong> — {c.message}
+          <span className={severityClass(c.severity)}>{c.severity}</span>
+          <code>{c.code}</code>
+          <span>{c.message}</span>
         </li>
       ))}
     </ul>
@@ -178,39 +258,35 @@ function Checks({ checks }: { checks?: QaResult["qualityChecks"] }) {
 
 function PlanView({ row }: { row: QaResult }) {
   return (
-    <div>
-      <h3>Plan View</h3>
-      <p className="hint">
+    <div className="qa-detail">
+      <p className="admin-muted">
         keyword: {row.keyword} · pageType: {row.pageType || "-"} · angle: {row.contentAngle || "-"} · mode:{" "}
         {row.generationMode}
       </p>
-      <p className="hint">
+      <p className="admin-muted">
         pipeline: {row.pipelineVersion} · plannerPrompt: {row.plannerPromptVersion} · writerPrompt:{" "}
         {row.writerPromptVersion}
       </p>
-      <p className="hint">
+      <p className="admin-muted">
         calls P/W: {row.plannerCalls}/{row.writerCalls} · tokens P/W:{" "}
         {row.plannerTokens?.totalTokens ?? "null"}/{row.writerTokens?.totalTokens ?? "null"}
       </p>
-      {row.searchIntent ? (
-        <pre className="hint">{JSON.stringify(row.searchIntent, null, 2)}</pre>
-      ) : null}
+      {row.searchIntent ? <pre className="qa-json">{JSON.stringify(row.searchIntent, null, 2)}</pre> : null}
       {row.contentStrategy ? (
-        <pre className="hint">{JSON.stringify(row.contentStrategy, null, 2)}</pre>
+        <pre className="qa-json">{JSON.stringify(row.contentStrategy, null, 2)}</pre>
       ) : null}
-      <h4>Sections</h4>
-      <ol className="hint">
+      <h3>Sections</h3>
+      <ol className="qa-section-list">
         {(row.sections || []).map((s) => (
           <li key={s.blockKey}>
             <code>{s.blockKey}</code> — {s.heading}
-            <br />
-            purpose: {s.purpose}
+            <div className="admin-muted">purpose: {s.purpose}</div>
           </li>
         ))}
       </ol>
-      <h4>Verified availability</h4>
-      <p className="hint">{(row.verifiedBlocksAvailable || []).join(", ") || "(없음)"}</p>
-      <h4>Checks</h4>
+      <h3>Verified availability</h3>
+      <p className="admin-muted">{(row.verifiedBlocksAvailable || []).join(", ") || "(없음)"}</p>
+      <h3>Checks</h3>
       <Checks checks={row.qualityChecks} />
     </div>
   );
@@ -218,24 +294,25 @@ function PlanView({ row }: { row: QaResult }) {
 
 function FinalView({ row }: { row: QaResult }) {
   return (
-    <div>
-      <h3>Final Page View</h3>
+    <div className="qa-detail">
       <Checks checks={row.qualityChecks} />
-      <p className="hint">
-        verified rendered: {(row.verifiedBlocksRendered || []).join(", ") || "(없음)"} · bodyLength: {row.bodyLength}
+      <p className="admin-muted">
+        verified rendered: {(row.verifiedBlocksRendered || []).join(", ") || "(없음)"} · bodyLength:{" "}
+        {row.bodyLength}
       </p>
-      <h1 style={{ fontSize: "1.4rem" }}>{row.title}</h1>
-      {row.metaDescription || row.excerpt ? <p className="hint">{row.metaDescription || row.excerpt}</p> : null}
-      <article dangerouslySetInnerHTML={{ __html: row.bodyHtml }} />
+      <h3 className="qa-final-title">{row.title}</h3>
+      {row.metaDescription || row.excerpt ? (
+        <p className="admin-muted">{row.metaDescription || row.excerpt}</p>
+      ) : null}
+      <article className="qa-preview-html" dangerouslySetInnerHTML={{ __html: row.bodyHtml }} />
       {row.faqItems?.length ? (
         <div>
-          <h4>FAQ</h4>
-          <ul>
+          <h3>FAQ</h3>
+          <ul className="qa-section-list">
             {row.faqItems.map((f, i) => (
               <li key={i}>
                 <strong>{f.question}</strong>
-                <br />
-                {f.answer}
+                <div className="admin-muted">{f.answer}</div>
               </li>
             ))}
           </ul>
