@@ -23,6 +23,7 @@ export function cleanHtml(html: string): string {
       "span",
       "div",
       "section",
+      "article",
       "table",
       "thead",
       "tbody",
@@ -35,11 +36,13 @@ export function cleanHtml(html: string): string {
     ],
     allowedAttributes: {
       a: ["href", "target", "rel"],
-      img: ["src", "alt"],
+      img: ["src", "alt", "width", "height", "loading", "decoding"],
       span: ["class"],
       blockquote: ["class"],
-      div: ["class", "data-mw-slot"],
+      div: ["class", "data-block", "data-mw-slot"],
       section: ["class", "data-facts"],
+      article: ["class", "data-animal-id"],
+      figure: ["class"],
       table: ["class"],
       th: ["scope"],
       td: ["class"],
@@ -49,6 +52,10 @@ export function cleanHtml(html: string): string {
   });
 }
 
+/**
+ * Strip AI-invented images from Writer HTML while keeping Verified media
+ * (figure/img from code renderers) and structural wrappers.
+ */
 export function stripGeneratedImages(html: string): string {
   return sanitizeHtml(html, {
     allowedTags: [
@@ -68,6 +75,11 @@ export function stripGeneratedImages(html: string): string {
       "a",
       "span",
       "section",
+      "article",
+      "div",
+      "figure",
+      "figcaption",
+      "img",
       "table",
       "thead",
       "tbody",
@@ -80,9 +92,13 @@ export function stripGeneratedImages(html: string): string {
     ],
     allowedAttributes: {
       a: ["href", "target", "rel"],
+      img: ["src", "alt", "width", "height", "loading", "decoding"],
       span: ["class"],
       blockquote: ["class"],
       section: ["class", "data-facts"],
+      article: ["class", "data-animal-id"],
+      div: ["class", "data-block"],
+      figure: ["class"],
       table: ["class"],
       th: ["scope"],
       td: ["class"],

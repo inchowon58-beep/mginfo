@@ -57,6 +57,6 @@ export function issueToCheck(
   return { code, severity: "PASS", message };
 }
 
-export const PLANNER_PROMPT_VERSION = "planner-v1";
+export const PLANNER_PROMPT_VERSION = "planner-v2";
 export const WRITER_PROMPT_VERSION = "writer-v2";
 export const PIPELINE_VERSION = "planner_writer_v1";

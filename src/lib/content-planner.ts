@@ -138,7 +138,13 @@ ${formatRelated(input.related)}
 3. heading에 근거 없는 지역 특성 금지.
 4. internalLinkHints는 의도만.
 5. availableVerifiedBlocks에 없는 verified 블록을 넣지 마라.
-6. JSON만 출력.
+6. 【정보량 — 얇은 페이지 방지】
+   Verified 블록만으로 끝내지 마라. Blueprint 풀에서 AI 정보 블록(verifiedDataRequired 아닌 active 블록)을
+   contentStrategy에 맞게 충분히 고른다. faq·verified를 제외하고 AI 섹션을 최소 3개 이상 권장.
+   예(강제 고정 목차 아님): breed_intro, temperament|appearance, grooming, adoption_checklist + available_animals + store + visit + faq.
+   목표: 글자수 채우기가 아니라 분양·의뢰 전 판단에 필요한 정보량.
+7. available_animals가 있으면 contentAngle을 real_animal로 두는 것을 우선 검토하되, 최근 angle 분포와 중복을 피하라.
+8. JSON만 출력.
 
 형식:
 {

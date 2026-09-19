@@ -52,9 +52,9 @@ function h2ListsTooSimilar(a: string[], b: string[]): boolean {
 }
 
 /** Vendor/career/price claims when Verified NAP facts are absent.
- * PHASE 5 candidate: breed numeric/health memory claims (e.g. "주 2~3회", "2~4kg",
- * "피부병", "관절이 약") — too many false positives for a blunt regex; do not treat
- * Gemini memory numbers as Verified Facts. */
+ * PHASE 6 candidate (BreedFacts / Reference Data Layer): breed numeric & health
+ * memory claims (성견 체중·체고·관리 빈도·운동량·수명·질환 등). Do not promote
+ * Gemini-invented numbers to Verified Facts. Blunt regex = high false positives. */
 const CLAIM_PATTERNS: Array<{ re: RegExp; label: string }> = [
   { re: /(?:경력|운영)\s*\d+\s*년/, label: "경력 연수" },
   { re: /\d{1,3}(?:,\d{3})+\s*원|\d+\s*만원/, label: "가격" },
@@ -310,18 +310,19 @@ export function validateWriterOutput(input: {
     }
   }
 
+  // Visible text of final Hybrid HTML (AI + Verified). Tags stripped.
   const textLen = stripTags(bodyHtml).length;
   if (textLen < 800) {
     issues.push({
       code: QUALITY_CODES.BODY_TOO_SHORT,
       severity: "error",
-      message: `본문 너무 짧음 (${textLen}자)`,
+      message: `본문 너무 짧음 (${textLen}자, Hybrid visible)`,
     });
   } else if (textLen < 1200) {
     issues.push({
       code: QUALITY_CODES.BODY_TOO_SHORT,
       severity: "warn",
-      message: `본문 다소 짧음 (${textLen}자)`,
+      message: `본문 다소 짧음 (${textLen}자, Hybrid visible)`,
     });
   }
 
@@ -369,12 +370,24 @@ export function validateWriterOutput(input: {
       message: "HTML 태그 균형 이상",
     });
   }
-  if (/<h3[\s\S]*?<h2/i.test(bodyHtml)) {
-    issues.push({
-      code: QUALITY_CODES.HEADING_HIERARCHY,
-      severity: "warn",
-      message: "heading hierarchy 이상 (h3 후 h2)",
-    });
+  // Heading hierarchy: H2→H3→H2 is valid. Only flag skipped levels (e.g. H2→H4).
+  const headingLevels: number[] = [];
+  const headingRe = /<h([1-6])\b/gi;
+  let hm: RegExpExecArray | null;
+  while ((hm = headingRe.exec(bodyHtml))) {
+    headingLevels.push(Number(hm[1]));
+  }
+  for (let i = 1; i < headingLevels.length; i++) {
+    const prev = headingLevels[i - 1];
+    const cur = headingLevels[i];
+    if (cur > prev + 1) {
+      issues.push({
+        code: QUALITY_CODES.HEADING_HIERARCHY,
+        severity: "warn",
+        message: `heading level skip (h${prev}→h${cur})`,
+      });
+      break;
+    }
   }
 
   if (!bodyHtml.includes("<p>") && fixed.intro) {
