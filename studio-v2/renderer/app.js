@@ -37,6 +37,7 @@ function collectPayload() {
     designId: $("designId").value,
     imageFolderUrl: $("imageFolderUrl").value.trim(),
     prompt: $("prompt").value.trim(),
+    seoTitleSuffix: $("seoTitleSuffix").value.trim(),
     naverId: $("naverId").value.trim(),
     naverPassword: $("naverPassword").value.trim(),
     naverSiteVerification: $("naverSiteVerification").value.trim(),
@@ -67,6 +68,7 @@ function collectPayload() {
       imageFolderUrl: $("imageFolderUrl").value.trim(),
       slots: {},
       prompt: $("prompt").value.trim(),
+      seoTitleSuffix: $("seoTitleSuffix").value.trim(),
       variationSeed: "",
     },
   };
@@ -87,6 +89,7 @@ function fillForm(draft) {
   $("vendorAddress").value = vendor.address || "";
   $("vendorBiz").value = vendor.businessNumber || "";
   $("prompt").value = ml.prompt || "";
+  $("seoTitleSuffix").value = ml.seoTitleSuffix || draft?.seoTitleSuffix || "";
   $("imageFolderUrl").value = ml.imageFolderUrl || "";
   $("naverId").value = draft?.naverId || "";
   $("naverPassword").value = draft?.naverPassword || "";

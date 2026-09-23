@@ -227,6 +227,16 @@ export function MainLandingSettings() {
         placeholder="예: 교육 문의 강조, 주차 안내 한 줄 등"
       />
 
+      <label>SEO 제목 뒷말 (네이버·브라우저)</label>
+      <p className="ml-field-hint">
+        키워드 뒤에 붙습니다. 예: <code>청라두피문신 | 필릭스스칼프 SMP 정수리탈모 가르마탈모</code>
+      </p>
+      <input
+        value={cfg.seoTitleSuffix}
+        onChange={(e) => setCfg((prev) => ({ ...prev, seoTitleSuffix: e.target.value }))}
+        placeholder="필릭스스칼프 SMP 정수리탈모 가르마탈모"
+      />
+
       {error ? <p className="notice">{error}</p> : null}
       {message ? <p className="notice ok">{message}</p> : null}
       <div className="admin-actions">

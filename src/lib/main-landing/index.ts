@@ -3,7 +3,7 @@ export { applyCopyOverride, parseCopyOverride } from "./copy-override";
 export { SCALP_TATTOO_V1 } from "./designs/scalp-tattoo-v1";
 export { enrichMainLandingCopy } from "./enrich";
 export { resolveMainLandingImages, isMainLandingImageUrl } from "./images";
-export { mainLandingEnabled, parseMainLandingConfig } from "./parse";
+export { mainLandingEnabled, parseMainLandingConfig, buildMainLandingDocumentTitle } from "./parse";
 export {
   MAIN_DESIGN_IDS,
   LEGACY_MAIN_DESIGN_MAP,

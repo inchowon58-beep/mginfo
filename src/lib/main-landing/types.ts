@@ -85,6 +85,12 @@ export type MainLandingConfig = {
   /** 추가요청사항 — 없으면 기본 원고만 사용 */
   prompt: string;
   variationSeed: string;
+  /**
+   * 브라우저·네이버 제목 뒷말.
+   * 예: "필릭스스칼프 SMP 정수리탈모 가르마탈모"
+   * → "청라두피문신 | 필릭스스칼프 SMP 정수리탈모 가르마탈모"
+   */
+  seoTitleSuffix: string;
   /** 있으면 템플릿 문장 대신 이 카피로 표시 */
   copyOverride?: MainLandingCopyOverride;
   /** 내용 보충 시각 (ISO) */
@@ -189,6 +195,7 @@ export function defaultMainLandingConfig(): MainLandingConfig {
     slots: {},
     prompt: "",
     variationSeed: "",
+    seoTitleSuffix: "",
     copyOverride: undefined,
     enrichedAt: "",
   };

@@ -64,6 +64,7 @@ export function parseMainLandingConfig(raw: unknown): MainLandingConfig {
     slots: parseSlots(row.slots),
     prompt: trimStr(row.prompt),
     variationSeed: trimStr(row.variationSeed),
+    seoTitleSuffix: trimStr(row.seoTitleSuffix ?? row.titleSuffix),
     ...(copyOverride ? { copyOverride } : {}),
     enrichedAt: trimStr(row.enrichedAt),
   };
@@ -71,4 +72,20 @@ export function parseMainLandingConfig(raw: unknown): MainLandingConfig {
 
 export function mainLandingEnabled(settings: { mainLanding?: MainLandingConfig | null } | null | undefined) {
   return Boolean(settings?.mainLanding?.enabled);
+}
+
+/** 네이버·브라우저용 문서 제목: `키워드 | 뒷말` */
+export function buildMainLandingDocumentTitle(
+  landing: MainLandingConfig,
+  fallbackName = ""
+): string {
+  const keyword =
+    String(landing.vendor.keyword || "").trim() ||
+    String(fallbackName || landing.vendor.name || "").trim() ||
+    "사이트";
+  const suffix = String(landing.seoTitleSuffix || "").trim();
+  if (suffix) return `${keyword} | ${suffix}`;
+  const brand = String(landing.vendor.name || "").trim();
+  if (brand && brand !== keyword) return `${keyword} · ${brand}`;
+  return keyword;
 }

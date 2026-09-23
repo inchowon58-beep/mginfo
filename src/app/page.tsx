@@ -17,6 +17,7 @@ import { pickRandomBanner } from "@/lib/banners";
 import { getEnabledBanners, getPartners, getPublishedPosts, getSettings } from "@/lib/db";
 import {
   buildMainLandingCopy,
+  buildMainLandingDocumentTitle,
   mainLandingEnabled,
   parseMainLandingConfig,
   resolveMainLandingImages,
@@ -33,10 +34,12 @@ export async function generateMetadata(): Promise<Metadata> {
   const landing = parseMainLandingConfig(settings.mainLanding);
   if (landing.enabled) {
     const name = landing.vendor.name || brand.name;
-    const title = landing.vendor.keyword
-      ? `${landing.vendor.keyword} · ${name}`
-      : `${name} — ${brand.tagline}`;
-    const description = landing.vendor.intro || brand.description;
+    const title = buildMainLandingDocumentTitle(landing, brand.name);
+    const description =
+      landing.vendor.intro ||
+      (landing.seoTitleSuffix
+        ? `${landing.vendor.keyword || name} — ${landing.seoTitleSuffix}`
+        : brand.description);
     return {
       title: { absolute: title },
       description,

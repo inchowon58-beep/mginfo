@@ -235,6 +235,7 @@ ipcMain.handle("brand:save-draft", async (_e, payload) => {
     naverSiteVerification: String(payload?.naverSiteVerification || "").trim(),
     naverMetaMap: String(payload?.naverMetaMap || ""),
     mainLanding: payload?.mainLanding || {},
+    seoTitleSuffix: String(payload?.seoTitleSuffix || payload?.mainLanding?.seoTitleSuffix || "").trim(),
     notes: String(payload?.notes || ""),
     createdAt: drafts.find((d) => d.id === id)?.createdAt || now,
     updatedAt: now,
@@ -281,6 +282,7 @@ ipcMain.handle("brand:publish-batch", async (event, payload) => {
   const designId = String(payload?.designId || "scalp-tattoo-v1");
   const imageFolderUrl = String(payload?.imageFolderUrl || "").trim();
   const prompt = String(payload?.prompt || "").trim();
+  const seoTitleSuffix = String(payload?.seoTitleSuffix || payload?.mainLanding?.seoTitleSuffix || "").trim();
   const businessName = String(vendor.name || "").trim() || "필릭스스칼프";
   const typedAddress = String(vendor.address || "").trim();
   const naverId = String(payload?.naverId || "").trim();
@@ -302,6 +304,7 @@ ipcMain.handle("brand:publish-batch", async (event, payload) => {
     });
     sendLog(event, `\n===== [${i + 1}/${keywords.length}] ${keyword} → ${domain} =====`);
     sendLog(event, `메인 디자인: ON (${designId})`);
+    if (seoTitleSuffix) sendLog(event, `SEO 제목: ${keyword} | ${seoTitleSuffix}`);
     sendLog(event, `블로그 디자인: ${siteTheme}${themeChoice === "random" ? " (랜덤)" : ""}`);
     sendLog(event, `주소: ${address}${typedAddress ? "" : " (자동)"}`);
     if (naverSiteVerification) sendLog(event, "네이버 인증 메타: 적용 예정");
@@ -346,6 +349,7 @@ ipcMain.handle("brand:publish-batch", async (event, payload) => {
         imageFolderUrl,
         slots: {},
         prompt,
+        seoTitleSuffix,
         variationSeed,
       };
 
