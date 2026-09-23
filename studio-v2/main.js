@@ -264,6 +264,9 @@ ipcMain.handle("brand:preview", async (_e, payload) => {
 ipcMain.handle("brand:publish-batch", async (event, payload) => {
   const cfg = ensureConfigHydrated();
   if (!cfg.token) throw new Error("계정 설정에서 Vercel 토큰을 저장하거나, 기존 스튜디오 설정을 가져오세요.");
+  if (!String(cfg.opsMasterPassword || "").trim()) {
+    throw new Error("계정 설정에 마스터 비밀번호를 저장하세요. 메인 디자인을 켠 상태로 사이트에 심을 때 필요합니다.");
+  }
   const apex = String(payload?.apexDomain || "")
     .trim()
     .replace(/^https?:\/\//i, "")
@@ -298,6 +301,7 @@ ipcMain.handle("brand:publish-batch", async (event, payload) => {
       name: businessName,
     });
     sendLog(event, `\n===== [${i + 1}/${keywords.length}] ${keyword} → ${domain} =====`);
+    sendLog(event, `메인 디자인: ON (${designId})`);
     sendLog(event, `블로그 디자인: ${siteTheme}${themeChoice === "random" ? " (랜덤)" : ""}`);
     sendLog(event, `주소: ${address}${typedAddress ? "" : " (자동)"}`);
     if (naverSiteVerification) sendLog(event, "네이버 인증 메타: 적용 예정");
@@ -350,8 +354,8 @@ ipcMain.handle("brand:publish-batch", async (event, payload) => {
       } else {
         sendLog(event, "제미나이 키로 메인 내용 보충을 시도합니다…");
       }
-      sendLog(event, "메인랜딩·블로그 테마 적용 중…");
-      await applyBrandBootstrap(
+      sendLog(event, "메인랜딩 ON · 블로그 테마 적용 중…");
+      const bootstrapped = await applyBrandBootstrap(
         [provisioned.siteUrl, provisioned.vercelHost],
         {
           siteName: keyword,
@@ -360,7 +364,7 @@ ipcMain.handle("brand:publish-batch", async (event, payload) => {
           address,
           bizNo: mainLanding.vendor.businessNumber,
           siteTheme,
-          mainLanding,
+          mainLanding: { ...mainLanding, enabled: true },
           enrich: true,
           ...(cfg.geminiApiKey ? { geminiApiKey: cfg.geminiApiKey } : {}),
           ...(cfg.geminiModel ? { geminiModel: cfg.geminiModel } : {}),
@@ -369,6 +373,10 @@ ipcMain.handle("brand:publish-batch", async (event, payload) => {
         cfg.opsMasterPassword,
         (msg) => sendLog(event, msg)
       );
+      if (!bootstrapped) {
+        throw new Error("메인 디자인(ON) 적용에 실패했습니다. 마스터 비밀번호·배포 상태를 확인하세요.");
+      }
+      sendLog(event, "메인 디자인이 켜진 상태로 적용되었습니다.");
 
       const sites = upsertSite(app.getPath("userData"), {
         keyword,
@@ -377,6 +385,7 @@ ipcMain.handle("brand:publish-batch", async (event, payload) => {
         apexDomain: apex,
         siteTheme,
         designId,
+        mainLandingEnabled: true,
         variationSeed,
         address,
         naverId,
@@ -394,6 +403,7 @@ ipcMain.handle("brand:publish-batch", async (event, payload) => {
         keyword,
         ok: true,
         siteTheme,
+        mainLandingEnabled: true,
         address,
         variationSeed,
         ...provisioned,

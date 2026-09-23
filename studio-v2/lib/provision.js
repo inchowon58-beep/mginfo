@@ -606,7 +606,16 @@ async function applyBrandBootstrap(urls, payload, masterPassword, onLog = () => 
     return false;
   }
   const bases = [...new Set(urls.map((u) => String(u || "").replace(/\/$/, "")).filter(Boolean))];
-  const body = { enrich: true, ...(payload || {}) };
+  const incoming = payload || {};
+  const body = {
+    enrich: true,
+    ...incoming,
+    // Studio 대량생성: 메인 디자인은 항상 ON
+    mainLanding:
+      incoming.mainLanding !== undefined
+        ? { ...incoming.mainLanding, enabled: true }
+        : incoming.mainLanding,
+  };
   for (let attempt = 0; attempt < 8; attempt += 1) {
     for (const base of bases) {
       try {
@@ -621,9 +630,9 @@ async function applyBrandBootstrap(urls, payload, masterPassword, onLog = () => 
         });
         if (res.ok) {
           const data = await res.json().catch(() => ({}));
-          if (data.enriched) onLog(`메인·블로그 설정 + 제미나이 내용 보충 완료: ${base}`);
-          else if (data.enrichError) onLog(`메인 설정 적용. 내용 보충 보류: ${data.enrichError}`);
-          else onLog(`메인·블로그 설정을 적용했습니다: ${base}`);
+          if (data.enriched) onLog(`메인 디자인 ON + 제미나이 내용 보충 완료: ${base}`);
+          else if (data.enrichError) onLog(`메인 디자인 ON 적용. 내용 보충 보류: ${data.enrichError}`);
+          else onLog(`메인 디자인 ON · 블로그 설정을 적용했습니다: ${base}`);
           return true;
         }
         const data = await res.json().catch(() => ({}));
@@ -634,7 +643,7 @@ async function applyBrandBootstrap(urls, payload, masterPassword, onLog = () => 
     }
     await sleep(4000);
   }
-  onLog("배포는 됐지만 메인랜딩 자동 적용에 실패했습니다. 사이트 관리자에서 수동 저장하세요.");
+  onLog("배포는 됐지만 메인 디자인(ON) 자동 적용에 실패했습니다. 사이트 관리자에서 메인 랜딩을 켜 주세요.");
   return false;
 }
 
