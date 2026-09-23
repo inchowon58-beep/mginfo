@@ -4,6 +4,7 @@ import { fetchCloneMaster, patchCloneMaster } from "@/lib/clone-remote";
 import { isOpsHub } from "@/lib/ops-hub";
 import { getOpsSites } from "@/lib/ops-store";
 import { persistFail } from "@/lib/persist-api";
+import { siteRequestOrigin } from "@/lib/site-origin";
 
 export const dynamic = "force-dynamic";
 
@@ -33,7 +34,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "사이트를 찾을 수 없습니다." }, { status: 404 });
   }
   try {
-    const data = await fetchCloneMaster(site.domain);
+    const data = await fetchCloneMaster(siteRequestOrigin(site) || site.domain);
     return NextResponse.json({ ok: true, domain: site.domain, siteName: site.siteName, settings: data });
   } catch (err) {
     return NextResponse.json({ error: err instanceof Error ? err.message : "불러오지 못했습니다." }, { status: 502 });
@@ -58,7 +59,7 @@ export async function POST(request: Request) {
   }
   const settings = body.settings && typeof body.settings === "object" ? body.settings : {};
   try {
-    const data = await patchCloneMaster(site.domain, settings);
+    const data = await patchCloneMaster(siteRequestOrigin(site) || site.domain, settings);
     return NextResponse.json({ ok: true, domain: site.domain, ...data });
   } catch (err) {
     if (err instanceof Error) {

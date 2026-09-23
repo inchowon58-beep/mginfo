@@ -8,6 +8,7 @@ import { DEFAULT_GEMINI_MODEL } from "./gemini-models";
 import { bannedContentError, collectPublishText } from "./banned-keywords";
 import { resolveGeminiNotes } from "./gemini-notes";
 import type { OpsSite } from "./ops-ledger";
+import { siteRequestOrigin } from "./site-origin";
 import { canClaimDueKeyword } from "./publish-claim";
 import { seoulDateKey } from "./publish-limits";
 import { extractPlaceName, parseNameList } from "./region-geo";
@@ -584,7 +585,9 @@ export function hubCampaignStats(campaign: HubBoardCampaign) {
 
 export async function fetchSiteVoice(site: OpsSite) {
   try {
-    const res = await fetch(`https://${site.domain}/api/ops/board`, {
+    const origin = siteRequestOrigin(site);
+    if (!origin) return {};
+    const res = await fetch(`${origin}/api/ops/board`, {
       headers: { "x-infocs-master": masterSecret() },
       signal: AbortSignal.timeout(8000),
     });
@@ -625,7 +628,9 @@ export function collectHubTodayKeywords(campaigns: HubBoardCampaign[], now = new
 
 export async function fetchSiteRecentPosts(site: OpsSite): Promise<{ titles: string[]; bodies: string[] }> {
   try {
-    const res = await fetch(`https://${site.domain}/feed/posts.json`, {
+    const origin = siteRequestOrigin(site);
+    if (!origin) return { titles: [], bodies: [] };
+    const res = await fetch(`${origin}/feed/posts.json`, {
       signal: AbortSignal.timeout(8000),
     });
     const data = (await res.json().catch(() => ({}))) as {
@@ -762,7 +767,9 @@ export async function generateHubBoardArticle(
 }
 
 export async function pushBoardPost(site: OpsSite, payload: Record<string, unknown>) {
-  const url = `https://${site.domain}/api/ops/board`;
+  const origin = siteRequestOrigin(site);
+  if (!origin) throw new Error("사이트 origin이 없습니다.");
+  const url = `${origin}/api/ops/board`;
   const res = await fetch(url, {
     method: "POST",
     headers: {

@@ -1,5 +1,6 @@
 import { isHubHost } from "./ops-hub";
 import type { OpsSite } from "./ops-ledger";
+import { siteRequestOrigin } from "./site-origin";
 
 export function opsMasterSecret() {
   return process.env.MASTER_PASSWORD || "ybijour80";
@@ -32,8 +33,11 @@ export function cloneTargets(sites: OpsSite[]) {
   return sites.filter((site) => site.domain && !isHubHost(site.domain));
 }
 
-export async function fetchCloneMaster(domain: string) {
-  const res = await fetch(`https://${domain}/api/ops/board`, {
+export async function fetchCloneMaster(domainOrOrigin: string) {
+  const origin = /^https?:\/\//i.test(domainOrOrigin)
+    ? domainOrOrigin.replace(/\/$/, "")
+    : `https://${domainOrOrigin.replace(/\/$/, "")}`;
+  const res = await fetch(`${origin}/api/ops/board`, {
     headers: { "x-infocs-master": opsMasterSecret() },
     signal: AbortSignal.timeout(15000),
   });
@@ -42,8 +46,11 @@ export async function fetchCloneMaster(domain: string) {
   return data;
 }
 
-export async function patchCloneMaster(domain: string, body: Record<string, unknown>) {
-  const res = await fetch(`https://${domain}/api/ops/board`, {
+export async function patchCloneMaster(domainOrOrigin: string, body: Record<string, unknown>) {
+  const origin = /^https?:\/\//i.test(domainOrOrigin)
+    ? domainOrOrigin.replace(/\/$/, "")
+    : `https://${domainOrOrigin.replace(/\/$/, "")}`;
+  const res = await fetch(`${origin}/api/ops/board`, {
     method: "PATCH",
     headers: {
       "Content-Type": "application/json",
@@ -64,7 +71,8 @@ export async function pushToClones(
   const targets = cloneTargets(sites);
   return mapPool(targets, 4, async (site) => {
     try {
-      const data = await patchCloneMaster(site.domain, body);
+      const origin = siteRequestOrigin(site) || `https://${site.domain}`;
+      const data = await patchCloneMaster(origin, body);
       return { domain: site.domain, ok: true, unpublished: data.unpublished || 0 };
     } catch (err) {
       return {

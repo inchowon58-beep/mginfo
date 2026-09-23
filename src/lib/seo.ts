@@ -1,17 +1,10 @@
 import { SITE } from "./categories";
 import { decodeSlugParam } from "./slug";
+import { resolveCanonicalHost } from "./site-origin";
 
 function resolveSiteOrigin() {
-  const fromEnv = String(process.env.SITE_DOMAIN || process.env.NEXT_PUBLIC_SITE_DOMAIN || "")
-    .trim()
-    .replace(/^https?:\/\//i, "")
-    .replace(/\/$/, "");
-  if (fromEnv) return `https://${fromEnv}`;
-  const vercel = String(process.env.VERCEL_PROJECT_PRODUCTION_URL || "")
-    .trim()
-    .replace(/^https?:\/\//i, "")
-    .replace(/\/$/, "");
-  if (vercel) return `https://${vercel}`;
+  const host = resolveCanonicalHost();
+  if (host) return `https://${host}`;
   return `https://${SITE.domain}`;
 }
 

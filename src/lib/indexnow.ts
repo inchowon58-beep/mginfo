@@ -1,4 +1,4 @@
-import { INDEXNOW_KEY, SITE_ORIGIN } from "./seo";
+import { INDEXNOW_KEY, SITE_ORIGIN, postUrl, siteUrl } from "./seo";
 
 const ENDPOINTS = [
   "https://searchadvisor.naver.com/indexnow",
@@ -41,13 +41,9 @@ export async function notifyIndexNow(urls: string[]): Promise<{ ok: boolean; det
 
 export async function notifyPostIndexed(slug: string): Promise<{ ok: boolean; detail?: string }> {
   return notifyIndexNow([
-    siteUrlFromSlug(slug),
-    `${SITE_ORIGIN}/`,
-    `${SITE_ORIGIN}/sitemap.xml`,
-    `${SITE_ORIGIN}/rss.xml`,
+    postUrl(slug),
+    siteUrl("/"),
+    siteUrl("/sitemap.xml"),
+    siteUrl("/rss.xml"),
   ]);
-}
-
-function siteUrlFromSlug(slug: string): string {
-  return `${SITE_ORIGIN}/posts/${slug}`;
 }

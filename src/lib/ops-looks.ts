@@ -1,5 +1,6 @@
 import { isHubHost } from "./ops-hub";
 import type { OpsSite } from "./ops-ledger";
+import { siteRequestOrigin } from "./site-origin";
 import { shuffledSiteThemes } from "./site-theme";
 import { shuffledWritingTones } from "./writing-tone";
 
@@ -30,7 +31,18 @@ export async function shuffleCloneLooks(sites: OpsSite[]): Promise<ShuffleLookRe
       const writingTone = tones[index % tones.length];
       const siteTheme = themes[index % themes.length];
       try {
-        const res = await fetch(`https://${site.domain}/api/ops/board`, {
+        const origin = siteRequestOrigin(site);
+        if (!origin) {
+          results[index] = {
+            domain: site.domain,
+            writingTone,
+            siteTheme,
+            ok: false,
+            error: "origin 없음",
+          };
+          continue;
+        }
+        const res = await fetch(`${origin}/api/ops/board`, {
           method: "PATCH",
           headers: {
             "Content-Type": "application/json",
