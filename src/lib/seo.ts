@@ -5,11 +5,13 @@ function resolveSiteOrigin() {
   const fromEnv = String(process.env.SITE_DOMAIN || process.env.NEXT_PUBLIC_SITE_DOMAIN || "")
     .trim()
     .replace(/^https?:\/\//i, "")
+    .replace(/^www\./i, "")
     .replace(/\/$/, "");
   if (fromEnv) return `https://${fromEnv}`;
   const vercel = String(process.env.VERCEL_PROJECT_PRODUCTION_URL || "")
     .trim()
     .replace(/^https?:\/\//i, "")
+    .replace(/^www\./i, "")
     .replace(/\/$/, "");
   if (vercel) return `https://${vercel}`;
   return `https://${SITE.domain}`;
