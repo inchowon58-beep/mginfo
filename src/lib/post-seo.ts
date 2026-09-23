@@ -1,6 +1,5 @@
 import type { Category, Post, Settings } from "./types";
 import type { FaqItem } from "./faq";
-import { FREE_BOARD_SLUG } from "./categories";
 import { resolveRegionContext } from "./region-intro";
 import { postUrl, siteUrl } from "./seo";
 import { stripHtml } from "./format";
@@ -109,86 +108,45 @@ export function relatedClusters(post: Post, all: Post[]): RelatedCluster[] {
   const regionKey = norm(post.region);
   const keywordKey = norm(post.focusKeyword);
   const tags = new Set(post.tags.map((tag) => norm(tag)).filter(Boolean));
-  const industryId = String(post.industryId || "").trim();
-  const isFreeBoard = post.category === FREE_BOARD_SLUG;
 
-  const preferIndustry = (list: Post[]) => {
-    if (!industryId) return list;
-    const same = list.filter((item) => String(item.industryId || "").trim() === industryId);
-    const rest = list.filter((item) => String(item.industryId || "").trim() !== industryId);
-    return [...same, ...rest];
-  };
-
-  const regionPosts = preferIndustry(
-    regionKey
-      ? others
-          .filter(
-            (item) =>
-              norm(item.region) &&
-              (norm(item.region).includes(regionKey) || regionKey.includes(norm(item.region)))
-          )
-          .slice(0, 12)
-      : []
-  ).slice(0, 6);
+  const regionPosts = regionKey
+    ? others.filter((item) => norm(item.region) && (norm(item.region).includes(regionKey) || regionKey.includes(norm(item.region)))).slice(0, 6)
+    : [];
   const used = new Set(regionPosts.map((item) => item.id));
 
-  const keywordPosts = preferIndustry(
-    others
-      .filter((item) => {
-        if (used.has(item.id)) return false;
-        const itemKw = norm(item.focusKeyword);
-        if (keywordKey && itemKw && (itemKw === keywordKey || itemKw.includes(keywordKey) || keywordKey.includes(itemKw))) {
-          return true;
-        }
-        return item.tags.some((tag) => tags.has(norm(tag)));
-      })
-      .slice(0, 12)
-  ).slice(0, 6);
+  const keywordPosts = others
+    .filter((item) => {
+      if (used.has(item.id)) return false;
+      const itemKw = norm(item.focusKeyword);
+      if (keywordKey && itemKw && (itemKw === keywordKey || itemKw.includes(keywordKey) || keywordKey.includes(itemKw))) {
+        return true;
+      }
+      return item.tags.some((tag) => tags.has(norm(tag)));
+    })
+    .slice(0, 6);
   keywordPosts.forEach((item) => used.add(item.id));
 
-  // 자유게시판 광고: 같은 카테고리(자유)만으로 부동산·파양 등을 섞지 않음. 업종 일치분만.
-  const categoryPosts = preferIndustry(
-    others
-      .filter((item) => {
-        if (used.has(item.id)) return false;
-        if (isFreeBoard) {
-          if (!industryId) return false;
-          return String(item.industryId || "").trim() === industryId;
-        }
-        return item.category === post.category;
-      })
-      .slice(0, 12)
-  ).slice(0, 6);
-
-  const filterCross = (list: Post[]) => {
-    if (!industryId) return isFreeBoard ? list.slice(0, 6) : list;
-    const same = list.filter((item) => String(item.industryId || "").trim() === industryId);
-    if (same.length >= 2) return same.slice(0, 6);
-    // 자유게시판은 업종 불일치 글을 채우지 않음
-    if (isFreeBoard) return same.slice(0, 6);
-    return list.slice(0, 6);
-  };
+  const categoryPosts = others
+    .filter((item) => item.category === post.category && !used.has(item.id))
+    .slice(0, 6);
 
   const clusters: RelatedCluster[] = [];
-  const regionFinal = filterCross(regionPosts);
-  if (regionFinal.length) {
+  if (regionPosts.length) {
     clusters.push({
       heading: `${post.region}에서 함께 보는 글`,
-      posts: regionFinal,
+      posts: regionPosts,
     });
   }
-  const keywordFinal = filterCross(keywordPosts);
-  if (keywordFinal.length) {
+  if (keywordPosts.length) {
     clusters.push({
       heading: post.focusKeyword ? `${post.focusKeyword}와 이어 읽기` : "같은 주제로 이어 읽기",
-      posts: keywordFinal,
+      posts: keywordPosts,
     });
   }
-  const categoryFinal = filterCross(categoryPosts);
-  if (categoryFinal.length) {
+  if (categoryPosts.length) {
     clusters.push({
-      heading: industryId ? "같은 업종의 글" : "같은 분야의 글",
-      posts: categoryFinal,
+      heading: "같은 분야의 글",
+      posts: categoryPosts,
     });
   }
   return clusters;
@@ -258,11 +216,9 @@ export function buildArticleJsonLd(input: {
           mentions: {
             "@type": "LocalBusiness",
             name: post.vendorName,
-            ...(post.vendorPhone ? { telephone: post.vendorPhone } : {}),
-            ...(post.vendorWebsite || post.vendorPlaceUrl
-              ? { url: post.vendorWebsite || post.vendorPlaceUrl }
-              : {}),
-            ...(region ? { areaServed: region } : {}),
+            telephone: post.vendorPhone,
+            url: post.vendorWebsite || post.vendorPlaceUrl,
+            areaServed: region || undefined,
           },
         }
       : {}),

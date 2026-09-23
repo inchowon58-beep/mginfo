@@ -328,13 +328,7 @@ export function validateWriterOutput(input: {
 
   if (keyword) {
     const kwCount = countOccurrences(hay, keyword);
-    if (kwCount > 18) {
-      issues.push({
-        code: QUALITY_CODES.KEYWORD_OVERUSE,
-        severity: "error",
-        message: `focusKeyword 과다 반복 (${kwCount}회) — 문장을 줄이거나 대명사로 바꿔 주세요.`,
-      });
-    } else if (kwCount > 10) {
+    if (kwCount > 12) {
       issues.push({
         code: QUALITY_CODES.KEYWORD_OVERUSE,
         severity: "warn",
@@ -343,13 +337,7 @@ export function validateWriterOutput(input: {
     }
   }
   for (const place of places) {
-    if (place && countOccurrences(hay, place) > 14) {
-      issues.push({
-        code: QUALITY_CODES.REGION_NAME_OVERUSE,
-        severity: "error",
-        message: `지역명 과다 반복: ${place}`,
-      });
-    } else if (place && countOccurrences(hay, place) > 8) {
+    if (place && countOccurrences(hay, place) > 10) {
       issues.push({
         code: QUALITY_CODES.REGION_NAME_OVERUSE,
         severity: "warn",

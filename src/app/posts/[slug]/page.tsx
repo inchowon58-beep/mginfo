@@ -24,9 +24,7 @@ import { buildBreadcrumbJsonLd, buildFaqPageJsonLd } from "@/lib/site-jsonld";
 import { ArticlePhoto } from "@/components/ArticlePhoto";
 import { EngagementBar } from "@/components/EngagementBar";
 import { resolveRegionContext } from "@/lib/region-intro";
-import { buildPublicFactSection } from "@/lib/public-facts";
-import { stripFactBlocks } from "@/lib/body-uniqueness";
-import { extractFaqFromBodyHtml, mergeFaqItems, stripBodyFaqSections } from "@/lib/faq";
+import { hasPublicFactBlock, buildPublicFactSection } from "@/lib/public-facts";
 import { regionHubPath } from "@/lib/region-hub";
 import { PUBLISH_DISCLAIMER } from "@/lib/publish-disclaimer";
 import { placeInlineImages } from "@/lib/post-images";
@@ -100,86 +98,12 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
   ]);
   const cat = getCategory(post.category, categories);
   const siteName = displaySiteName(settings.siteName);
+  const related = relatedClusters(post, published);
   const pageUrl = postCanonical(post);
   const keyword = pageKeyword(post);
   const description = buildPostSeoDescription(post);
   const keywords = buildPostKeywords(post, cat?.name);
-
-  if (post.publishMode === "direct") {
-    const crumbs = [
-      { name: "홈", path: "/" },
-      { name: cat?.name || "글", path: `/category/${post.category}` },
-      { name: keyword, path: `/posts/${post.slug}` },
-    ];
-    return (
-      <SiteFrame hideBottomNav current={post.category}>
-        <JsonLd
-          data={[
-            buildArticleJsonLd({
-              post,
-              pageUrl,
-              description,
-              keywords,
-              siteName,
-              settings,
-              categoryName: cat?.name,
-            }),
-            buildBreadcrumbJsonLd(crumbs),
-          ]}
-        />
-        <article className="article container-narrow post-detail post-direct">
-          <header className="article-head">
-            <nav className="article-crumb" aria-label="경로">
-              <Link href="/">홈</Link>
-              <span aria-hidden="true">/</span>
-              <Link href={`/category/${post.category}`}>{cat?.name}</Link>
-              <span aria-hidden="true">/</span>
-              <span>{keyword}</span>
-            </nav>
-            <div className="article-meta">
-              <Link className="article-cat" href={`/category/${post.category}`}>
-                {cat?.name}
-              </Link>
-              <span>·</span>
-              <span>{siteName}</span>
-            </div>
-            <h1>{post.title}</h1>
-            <div className="article-info">
-              <span>{formatDate(post.publishedAt)}</span>
-              {post.tags.length > 0 && <span>· {post.tags.join(" · ")}</span>}
-            </div>
-          </header>
-          <EngagementBar postId={post.id} className="article-engage engage-bar" />
-          {post.coverImage ? (
-            <ArticlePhoto
-              image={{ url: post.coverImage, caption: post.coverCaption }}
-              alt={post.title}
-            />
-          ) : null}
-          <div
-            className="post-direct-body article-body"
-            dangerouslySetInnerHTML={{ __html: post.bodyHtml }}
-          />
-          {post.tags.length > 0 && (
-            <div className="article-tags">
-              {post.tags.map((tag) => (
-                <span className="tag" key={tag}>
-                  #{tag}
-                </span>
-              ))}
-            </div>
-          )}
-          <p className="article-disclaimer">{PUBLISH_DISCLAIMER}</p>
-        </article>
-      </SiteFrame>
-    );
-  }
-
-  const related = relatedClusters(post, published);
-  const faqs = mergeFaqItems(
-    resolveFaqItems(post, cat?.name),
-    extractFaqFromBodyHtml(post.bodyHtml)
-  );
+  const faqs = resolveFaqItems(post, cat?.name);
   const geo = resolveRegionContext(post, { categoryName: cat?.name });
   const publicFacts = buildPublicFactSection({
     place: geo?.place || post.region,
@@ -189,8 +113,7 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
     slug: post.slug,
   });
   const extras = post.extraImages || [];
-  const bodyClean = stripBodyFaqSections(stripFactBlocks(post.bodyHtml));
-  const placed = placeInlineImages(bodyClean, extras, keyword, { hasCover: Boolean(post.coverImage) });
+  const placed = placeInlineImages(post.bodyHtml, extras, keyword, { hasCover: Boolean(post.coverImage) });
   const liveVendor = liveVendorView(
     post,
     post.vendorId ? vendors.find((row) => row.id === post.vendorId) : undefined
@@ -212,10 +135,7 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
     vendorKakao: liveVendor.vendorKakao,
     vendorPlaceUrl: liveVendor.vendorPlaceUrl,
   };
-  const hasGeoExtras = Boolean(
-    geo && (geo.regionInfo || geo.nearbyAreas.length > 0 || geo.nearbyStations.length > 0)
-  );
-  const hasArticleExtras = Boolean(publicFacts || related.length > 0 || hasGeoExtras);
+  const showPageFacts = Boolean(publicFacts) && !hasPublicFactBlock(post.bodyHtml);
   const crumbs = [
     { name: "홈", path: "/" },
     { name: cat?.name || "글", path: `/category/${post.category}` },
@@ -240,8 +160,7 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
           ...(faqs.length ? [buildFaqPageJsonLd(faqs)] : []),
         ]}
       />
-      <article className={`article container-narrow post-detail ${post.theme || "art-v1"}`}>
-        <header className="article-head">
+      <article className={`article container-narrow ${post.theme || "art-v1"}`}>
         <nav className="article-crumb" aria-label="경로">
           <Link href="/">홈</Link>
           <span aria-hidden="true">/</span>
@@ -267,7 +186,6 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
           ) : null}
           {post.tags.length > 0 && <span>· {post.tags.join(" · ")}</span>}
         </div>
-        </header>
         <EngagementBar postId={post.id} className="article-engage engage-bar" />
         {post.coverImage ? (
           <ArticlePhoto
@@ -294,7 +212,7 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
         />
         {faqs.length > 0 && (
           <section className="article-faq">
-            <h2>{post.category === "free" ? "자주 묻는 질문" : `${keyword} 자주 묻는 질문`}</h2>
+            <h2>{keyword} 자주 묻는 질문</h2>
             {faqs.map((item) => (
               <details key={item.question}>
                 <summary>{item.question}</summary>
@@ -312,88 +230,81 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
             ))}
           </div>
         )}
+        {showPageFacts && publicFacts ? (
+          <section className="article-facts">
+            <h2>{publicFacts.heading}</h2>
+            <p>{publicFacts.lead}</p>
+            <table>
+              <tbody>
+                {publicFacts.rows.map((row) => (
+                  <tr key={row.label}>
+                    <th scope="row">{row.label}</th>
+                    <td>{row.value}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <p className="article-facts-note">{publicFacts.note}</p>
+          </section>
+        ) : null}
         <p className="article-disclaimer">{PUBLISH_DISCLAIMER}</p>
-        {hasArticleExtras ? (
-          <details className="article-extras">
-            <summary>함께 보면 좋은 정보</summary>
-            <div className="article-extras-body">
-              {publicFacts ? (
-                <section className="article-facts">
-                  <h2>{publicFacts.heading}</h2>
-                  <p>{publicFacts.lead}</p>
-                  <table>
-                    <tbody>
-                      {publicFacts.rows.map((row) => (
-                        <tr key={row.label}>
-                          <th scope="row">{row.label}</th>
-                          <td>{row.value}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                  <p className="article-facts-note">{publicFacts.note}</p>
-                </section>
-              ) : null}
-              {related.length > 0 ? (
-                <div className="related-posts">
-                  {related.map((cluster) => (
-                    <div className="related-cluster" key={cluster.heading}>
-                      <h2>{cluster.heading}</h2>
-                      <ul>
-                        {cluster.posts.map((item) => (
-                          <li key={item.id}>
-                            <Link href={`/posts/${item.slug}`}>{postLinkLabel(item)}</Link>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
+        {related.length > 0 && (
+          <div className="related-posts">
+            {related.map((cluster) => (
+              <div className="related-cluster" key={cluster.heading}>
+                <h2>{cluster.heading}</h2>
+                <ul>
+                  {cluster.posts.map((item) => (
+                    <li key={item.id}>
+                      <Link href={`/posts/${item.slug}`}>{postLinkLabel(item)}</Link>
+                    </li>
                   ))}
-                  {cat ? (
-                    <p className="related-hub">
-                      <Link href={`/category/${cat.slug}`}>
-                        {post.focusKeyword ? `${post.focusKeyword} · ${cat.name} 더 보기` : `${cat.name} 전체 글`}
-                      </Link>
-                      {geo?.place ? (
-                        <>
-                          {" · "}
-                          <Link href={regionHubPath(geo.place)}>{geo.place} 지역 글</Link>
-                        </>
-                      ) : null}
-                    </p>
-                  ) : null}
-                </div>
-              ) : null}
-              {hasGeoExtras && geo ? (
-                <section className="article-geo">
-                  {geo.regionInfo ? <p className="article-region">{geo.regionInfo}</p> : null}
-                  {geo.nearbyAreas.length > 0 ? (
-                    <div>
-                      <h2>{geo.nearbyHeading}</h2>
-                      <p>{geo.nearbyLead}</p>
-                      <ul>
-                        {geo.nearbyAreas.map((area, index) => (
-                          <li key={area}>
-                            <Link href={regionHubPath(area)}>{geo.nearbyLabels[index] || `${area} ${keyword}`}</Link>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  ) : null}
-                  {geo.nearbyStations.length > 0 ? (
-                    <div>
-                      <h2>{geo.stationHeading}</h2>
-                      <p>{geo.stationLead}</p>
-                      <ul>
-                        {geo.nearbyStations.map((station, index) => (
-                          <li key={station}>{geo.stationLabels[index] || `${station} ${keyword}`}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  ) : null}
-                </section>
-              ) : null}
-            </div>
-          </details>
+                </ul>
+              </div>
+            ))}
+            {cat ? (
+              <p className="related-hub">
+                <Link href={`/category/${cat.slug}`}>
+                  {post.focusKeyword ? `${post.focusKeyword} · ${cat.name} 더 보기` : `${cat.name} 전체 글`}
+                </Link>
+                {geo?.place ? (
+                  <>
+                    {" · "}
+                    <Link href={regionHubPath(geo.place)}>{geo.place} 지역 글</Link>
+                  </>
+                ) : null}
+              </p>
+            ) : null}
+          </div>
+        )}
+        {geo && (geo.regionInfo || geo.nearbyAreas.length > 0 || geo.nearbyStations.length > 0) ? (
+          <section className="article-geo">
+            {geo.regionInfo ? <p className="article-region">{geo.regionInfo}</p> : null}
+            {geo.nearbyAreas.length > 0 ? (
+              <div>
+                <h2>{geo.nearbyHeading}</h2>
+                <p>{geo.nearbyLead}</p>
+                <ul>
+                  {geo.nearbyAreas.map((area, index) => (
+                    <li key={area}>
+                      <Link href={regionHubPath(area)}>{geo.nearbyLabels[index] || `${area} ${keyword}`}</Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+            {geo.nearbyStations.length > 0 ? (
+              <div>
+                <h2>{geo.stationHeading}</h2>
+                <p>{geo.stationLead}</p>
+                <ul>
+                  {geo.nearbyStations.map((station, index) => (
+                    <li key={station}>{geo.stationLabels[index] || `${station} ${keyword}`}</li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+          </section>
         ) : null}
       </article>
     </SiteFrame>

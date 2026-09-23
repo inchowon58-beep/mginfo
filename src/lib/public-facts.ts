@@ -137,21 +137,20 @@ export function buildPublicFactSection(input: {
   if (!items.length) return null;
   const seed = seedNumber(input.postId, input.slug, place, keyword, row.official);
   const where = row.official;
-  const topic = keyword.startsWith(place) ? keyword : `${place} ${keyword}`.trim();
   const heading = pick(
     [
-      `${place}에서 이 주제를 고를 때 숫자로 남는 맥락`,
-      `${where} 공공 기록으로 본 지역 배경`,
-      `${topic} — 지역 저장본으로 보는 숫자`,
-      `${place} 생활권 공개 통계 저장본`,
+      `${place}에서 ${keyword}를 고를 때 숫자로 남는 맥락`,
+      `${where} 공공 기록으로 본 ${keyword}`,
+      `${keyword}, ${place}에서만 맞춰 보는 저장본`,
+      `${place} ${keyword}를 다른 동네 글과 가르는 숫자`,
     ],
     seed,
     3
   );
   const lead = pick(
     [
-      `아래는 ${where} 공개 통계 저장본입니다. 가게를 추천하는 목록이 아니라, 이 동네 여건을 가늠하는 재료입니다.`,
-      `이 글을 ${place}에 붙이기 위해 인허가·보호 공고 숫자를 저장해 둔 값입니다. 상호를 나열하지 않습니다.`,
+      `아래는 ${where} 공개 통계 저장본입니다. 가게를 추천하는 목록이 아니라, 이 동네에서 ${keyword}를 볼 때 밀도와 여건을 가늠하는 재료입니다.`,
+      `${keyword} 글을 ${place}에 붙이기 위해 인허가·보호 공고 숫자를 저장해 둔 값입니다. 상호를 나열하지 않습니다.`,
       `같은 업종이라도 ${where}의 규모가 다릅니다. 저장본 숫자만 사실이고, 방문 순서는 본문 기준으로 보시면 됩니다.`,
     ],
     seed,

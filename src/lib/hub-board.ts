@@ -1,10 +1,12 @@
 import { resolveArticleStyle } from "./article-style";
 import { parseKeywordList } from "./bulk-keywords";
-import { evenPublishSlots } from "./bulk-publish";
+import { randomPublishSlots } from "./bulk-publish";
 import { parseFaqItems } from "./faq";
 import { FREE_BOARD_SLUG } from "./categories";
-import { generatePipelineArticle } from "./content-pipeline";
+import { generateArticle } from "./gemini";
+import { DEFAULT_GEMINI_MODEL } from "./gemini-models";
 import { bannedContentError, collectPublishText } from "./banned-keywords";
+import { resolveGeminiNotes } from "./gemini-notes";
 import type { OpsSite } from "./ops-ledger";
 import { canClaimDueKeyword } from "./publish-claim";
 import { seoulDateKey } from "./publish-limits";
@@ -12,16 +14,13 @@ import { extractPlaceName, parseNameList } from "./region-geo";
 import { cleanHtml } from "./sanitize";
 import { articleSlug, slugify, uid } from "./slug";
 import { attachLocalFactBlocks } from "./article-blocks";
-import { collectTodayKeywords, uniqueTextList } from "./title-uniqueness";
-import type { AdVendor, Post, Settings, Store } from "./types";
+import { collectTodayKeywords, uniqueTextList, withUniqueArticle } from "./title-uniqueness";
+import type { Post, Settings } from "./types";
 import { normalizeHttpUrl, parseVendorFields } from "./vendor";
 import { parseYoutubeUrlPair, preferYoutubePair } from "./youtube";
 import { ensureVendorSlots } from "./vendor-slots";
 import { pickRandomPostImages, mergeImageUrls } from "./image-pool";
 import { discoverWebFolderImages } from "./web-image-folder";
-import { adVendorSnapshot } from "./ad-vendors";
-import { getAdVendors, readStore } from "./db";
-import { parseVendorIds } from "./vendor-ads";
 
 export type HubBoardResult = {
   siteId: string;
@@ -343,50 +342,11 @@ export function reclaimStaleHubKeywords(campaign: HubBoardCampaign, today: strin
   };
 }
 
-/**
- * Still-future scheduled rows go back to the queue so we can re-spread them
- * evenly across today's remaining window.
- * Includes next-day 00:00 pile-ups from the old end-of-window clamp
- * (those have Seoul date = tomorrow, so a "today only" filter would miss them).
- * Overdue scheduled rows stay put so the next tick can publish them.
- */
-export function releaseFutureHubSchedules(campaign: HubBoardCampaign, today: string, now = new Date()) {
-  const nowMs = now.getTime();
-  let changed = 0;
-  const keywords = campaign.keywords.map((item) => {
-    if (item.status !== "scheduled") return item;
-    if (!item.scheduledAt) return item;
-    const dueAt = new Date(item.scheduledAt).getTime();
-    if (!Number.isFinite(dueAt) || dueAt <= nowMs) return item;
-    // Future on today, or next-day midnight leftovers — both need replan.
-    const day = seoulDateKey(item.scheduledAt);
-    if (day && day < today) return item;
-    changed += 1;
-    return {
-      ...item,
-      status: "queued" as const,
-      siteId: undefined,
-      domain: undefined,
-      scheduledAt: undefined,
-      processingAt: undefined,
-      processingClaim: undefined,
-      error: undefined,
-    };
-  });
-  if (!changed) return { campaign, released: 0 };
-  return {
-    released: changed,
-    campaign: { ...campaign, keywords, updatedAt: now.toISOString() },
-  };
-}
-
-/** Same-day window: startHour .. endHour (default 23:00). No next-day midnight end. */
-function hubSeoulWindow(dateKey: string, startHour: number, endHour = 23) {
+/** Publish window through end of Seoul day (not 23:00 sharp), so midnight rollover still plans. */
+function hubSeoulWindow(dateKey: string, startHour: number) {
   const start = new Date(`${dateKey}T${String(startHour).padStart(2, "0")}:00:00+09:00`);
-  let end = new Date(`${dateKey}T${String(endHour).padStart(2, "0")}:00:00+09:00`);
-  if (end.getTime() <= start.getTime()) {
-    end = new Date(start.getTime() + 60 * 60 * 1000);
-  }
+  const dayStart = new Date(`${dateKey}T00:00:00+09:00`);
+  const end = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
   return { start, end };
 }
 
@@ -439,8 +399,6 @@ export function planHubCampaign(
   }
   const reclaimed = reclaimStaleHubKeywords(campaign, today, now);
   campaign = reclaimed.campaign;
-  const released = releaseFutureHubSchedules(campaign, today, now);
-  campaign = released.campaign;
   const resolved = resolveCampaignTargets(campaign, sites);
   const targets = resolved.targets;
   if (resolved.campaign.siteIds.join("\0") !== campaign.siteIds.join("\0")) {
@@ -449,8 +407,7 @@ export function planHubCampaign(
     campaign = resolved.campaign;
   }
   if (!targets.length) return { planned: 0, campaign, reason: "no-sites" as const };
-  const endHour = clampHour(campaign.schedule.endHour, 23);
-  const { start, end } = hubSeoulWindow(today, campaign.schedule.startHour, endHour);
+  const { start, end } = hubSeoulWindow(today, campaign.schedule.startHour);
   if (now >= end) {
     return {
       planned: 0,
@@ -458,8 +415,7 @@ export function planHubCampaign(
       campaign: {
         ...campaign,
         schedule: { ...campaign.schedule, planDate: today },
-        updatedAt:
-          reclaimed.reclaimed || released.released ? now.toISOString() : campaign.updatedAt,
+        updatedAt: reclaimed.reclaimed ? now.toISOString() : campaign.updatedAt,
       },
     };
   }
@@ -473,24 +429,12 @@ export function planHubCampaign(
       campaign: {
         ...campaign,
         schedule: { ...campaign.schedule, planDate: today },
-        updatedAt:
-          reclaimed.reclaimed || released.released ? now.toISOString() : campaign.updatedAt,
+        updatedAt: reclaimed.reclaimed ? now.toISOString() : campaign.updatedAt,
       },
     };
   }
   const windowStart = now > start ? now : start;
-  if (windowStart >= end) {
-    return {
-      planned: 0,
-      reason: "window-closed" as const,
-      campaign: {
-        ...campaign,
-        schedule: { ...campaign.schedule, planDate: today },
-        updatedAt: now.toISOString(),
-      },
-    };
-  }
-  const slots = evenPublishSlots(take, windowStart, end);
+  const slots = randomPublishSlots(take, windowStart, end);
   const keywords = campaign.keywords.map((item) => ({ ...item }));
   queued.slice(0, take).forEach((item, i) => {
     const found = keywords.find((row) => row.id === item.id);
@@ -640,9 +584,7 @@ export function hubCampaignStats(campaign: HubBoardCampaign) {
 
 export async function fetchSiteVoice(site: OpsSite) {
   try {
-    const origin = sitePublicOrigin(site);
-    if (!origin) return {};
-    const res = await fetch(`${origin}/api/ops/board`, {
+    const res = await fetch(`https://${site.domain}/api/ops/board`, {
       headers: { "x-infocs-master": masterSecret() },
       signal: AbortSignal.timeout(8000),
     });
@@ -683,9 +625,7 @@ export function collectHubTodayKeywords(campaigns: HubBoardCampaign[], now = new
 
 export async function fetchSiteRecentPosts(site: OpsSite): Promise<{ titles: string[]; bodies: string[] }> {
   try {
-    const origin = sitePublicOrigin(site);
-    if (!origin) return { titles: [], bodies: [] };
-    const res = await fetch(`${origin}/feed/posts.json`, {
+    const res = await fetch(`https://${site.domain}/feed/posts.json`, {
       signal: AbortSignal.timeout(8000),
     });
     const data = (await res.json().catch(() => ({}))) as {
@@ -723,101 +663,44 @@ export async function generateHubBoardArticle(
     extraPrompt
   );
   if (keywordBan) throw new Error(keywordBan);
-
   const voice = await fetchSiteVoice(site);
   const writingStyle = resolveArticleStyle(campaign.writingStyle || "random", keyword.keyword);
   const siteName = voice.siteName || site.siteName || site.domain;
-  const place = extractPlaceName(keyword.keyword, site.concept, siteName) || "";
-
-  const [hubStore, vendors] = await Promise.all([readStore(), getAdVendors()]);
-  const vendorId = String(campaign.vendorId || "").trim();
-  const vendorIds = parseVendorIds(campaign.vendorIds, vendorId);
-  const vendor: AdVendor | null =
-    (vendorId && vendors.find((row) => row.id === vendorId)) ||
-    (campaign.vendorName
-      ? vendors.find((row) => row.name.trim() === String(campaign.vendorName || "").trim()) || null
-      : null) ||
-    null;
-  const resolvedIds = vendorIds.length ? vendorIds : vendor?.id ? [vendor.id] : [];
-  const adVendors: AdVendor[] = [];
-  const seenVendor = new Set<string>();
-  for (const id of resolvedIds) {
-    const row = vendors.find((item) => item.id === id);
-    if (!row || seenVendor.has(row.id)) continue;
-    seenVendor.add(row.id);
-    adVendors.push(row);
-  }
-  if (vendor && !seenVendor.has(vendor.id)) adVendors.unshift(vendor);
-
   const avoidTitles = uniqueTextList(avoid?.titles || []);
+  const avoidKeywords = uniqueTextList(avoid?.keywords || []);
   const avoidBodies = (avoid?.bodies || []).map((item) => String(item || "").trim()).filter(Boolean);
-  const ghostPosts: Post[] = [
-    ...hubStore.posts.slice(0, 20),
-    ...avoidTitles.slice(0, 30).map((title, index) => ({
-      id: `hub-avoid-title-${index}`,
-      slug: `hub-avoid-${index}`,
-      title,
-      excerpt: "",
-      bodyHtml: avoidBodies[index] || "",
-      category: FREE_BOARD_SLUG,
-      tags: [],
-      status: "published" as const,
-      publishedAt: new Date().toISOString(),
-      createdAt: "",
-      updatedAt: "",
-    })),
-  ];
-
-  const pipelineStore: Store = {
-    ...hubStore,
-    posts: ghostPosts,
-    settings: {
-      ...hubStore.settings,
-      ...settings,
-      writingTone: voice.writingTone || settings.writingTone || hubStore.settings.writingTone,
-      writingPersona: voice.writingPersona || settings.writingPersona || hubStore.settings.writingPersona,
-      geminiModel: settings.geminiModel || hubStore.settings.geminiModel,
-      geminiApiKey: apiKey,
-    },
-  };
-
-  const boardNotes = [
-    `이 글은 ${siteName} (${site.domain}) 자유게시판 광고 글이다. 사이트 컨셉: ${site.concept || "생활 정보 매거진"}${voice.siteTagline ? `. 소개: ${voice.siteTagline}` : ""}.`,
-    "메인 키워드·지역명을 문장마다 반복하지 마라. 키워드에 이미 지역이 있으면 '영월 영월'처럼 겹쳐 쓰지 마라.",
-    "본문 본론은 시술·분양·방문 판단에 두고, 공공통계·랜드마크 나열로 분량을 채우지 마라.",
-    extraPrompt ? `추가 프롬프트:\n${extraPrompt}` : "",
-  ]
-    .filter(Boolean)
-    .join("\n\n");
-
-  const article = await generatePipelineArticle({
-    store: pipelineStore,
-    keyword: keyword.keyword,
-    category: FREE_BOARD_SLUG,
-    categoryName: "자유게시판",
-    categoryNotes: boardNotes,
-    writingStyle,
-    extraPrompt,
-    vendorName: campaign.vendorName || vendor?.name || "",
-    vendorPhone: campaign.vendorPhone || vendor?.phone || "",
-    vendorWebsite: campaign.vendorWebsite || vendor?.website || "",
-    vendorKakao: campaign.vendorKakao || vendor?.kakao || "",
-    vendorId: vendor?.id || vendorId || undefined,
-    vendorIds: campaign.vendorIds || (vendorId ? [vendorId] : []),
-    vendor,
-    apiKey,
-    siteId: site.id,
-  });
-
-  const decision = article.generationLog?.publishDecision || "";
-  if (article.generationMode === "held" || decision === "HOLD" || !String(article.bodyHtml || "").trim()) {
-    const reason =
-      article.generationLog?.fallbackReason ||
-      article.generationLog?.errors?.join("; ") ||
-      "PublishGate HOLD — 자유게시판 전송을 중단했습니다.";
-    throw new Error(reason);
-  }
-
+  const place = extractPlaceName(keyword.keyword, site.concept, siteName) || "";
+  const article = await withUniqueArticle(
+    (nextAvoid) =>
+      generateArticle({
+        topic: keyword.keyword,
+        writingStyle,
+        category: FREE_BOARD_SLUG,
+        categoryName: "자유게시판",
+        notes: resolveGeminiNotes(
+          [
+            `이 글은 ${siteName} (${site.domain}) 자유게시판 광고 글이다. 사이트 컨셉: ${site.concept || "생활 정보 매거진"}${voice.siteTagline ? `. 소개: ${voice.siteTagline}` : ""}. 업체 ${campaign.vendorName || ""}를 자연스럽게 소개하되 과장 광고 문장은 피한다. 말투는 이 사이트 설정(합니다체/했어요체 등)을 그대로 따른다.`,
+            extraPrompt ? `추가 프롬프트:\n${extraPrompt}` : "",
+          ]
+            .filter(Boolean)
+            .join("\n\n"),
+          ""
+        ),
+        focusKeyword: keyword.keyword,
+        region: place,
+        vendorName: campaign.vendorName,
+        writingTone: voice.writingTone || settings.writingTone,
+        writingPersona: voice.writingPersona || settings.writingPersona,
+        experienceNotes: extraPrompt,
+        avoidTitles: nextAvoid,
+        avoidKeywords,
+        apiKey,
+        model: settings.geminiModel || DEFAULT_GEMINI_MODEL,
+      }),
+    avoidTitles,
+    avoidBodies,
+    keyword.keyword
+  );
   const generatedBan = bannedContentError(
     settings.publishBannedKeywords,
     collectPublishText({
@@ -864,43 +747,22 @@ export async function generateHubBoardArticle(
     nearbyAreas: parseNameList(article.nearbyAreas),
     nearbyStations: parseNameList(article.nearbyStations),
     slug: articleSlug(article.slugHint, keyword.keyword),
-    vendorName: campaign.vendorName || vendor?.name || "",
-    vendorPhone: campaign.vendorPhone || vendor?.phone || "",
-    vendorWebsite: campaign.vendorWebsite || vendor?.website || "",
-    vendorKakao: campaign.vendorKakao || vendor?.kakao || "",
-    vendorId: vendor?.id || campaign.vendorId || "",
-    vendorIds: resolvedIds.length ? resolvedIds : campaign.vendorIds || (campaign.vendorId ? [campaign.vendorId] : []),
-    adVendors: adVendors.map(adVendorSnapshot),
+    vendorName: campaign.vendorName || "",
+    vendorPhone: campaign.vendorPhone || "",
+    vendorWebsite: campaign.vendorWebsite || "",
+    vendorKakao: campaign.vendorKakao || "",
+    vendorId: campaign.vendorId || "",
+    vendorIds: campaign.vendorIds || (campaign.vendorId ? [campaign.vendorId] : []),
     region: extractPlaceName(article.title, keyword.keyword) || "",
     vendorRecruitSlot: Boolean(campaign.vendorRecruitSlot),
     hubVendorRegisterUrl: normalizeHttpUrl(settings.vendorRegisterUrl) || "",
     youtubeUrl1: youtube.youtubeUrl1 || "",
     youtubeUrl2: youtube.youtubeUrl2 || "",
-    industryId: article.industryId,
-    blueprintId: article.blueprintId,
-    generationMode: article.generationMode,
-    generationLog: article.generationLog,
-    tags: Array.isArray(article.tags) ? article.tags.map((item) => String(item || "").trim()).filter(Boolean) : ["자유게시판"],
   };
 }
 
-function sitePublicOrigin(site: OpsSite) {
-  const fromUrl = String(site.siteUrl || "")
-    .trim()
-    .replace(/\/+$/, "");
-  if (/^https?:\/\//i.test(fromUrl)) return fromUrl;
-  const host = String(site.domain || "")
-    .trim()
-    .replace(/^https?:\/\//i, "")
-    .replace(/^www\./i, "")
-    .replace(/\/.*$/, "");
-  return host ? `https://${host}` : "";
-}
-
 export async function pushBoardPost(site: OpsSite, payload: Record<string, unknown>) {
-  const origin = sitePublicOrigin(site);
-  if (!origin) throw new Error("사이트 도메인이 없습니다.");
-  const url = `${origin}/api/ops/board`;
+  const url = `https://${site.domain}/api/ops/board`;
   const res = await fetch(url, {
     method: "POST",
     headers: {
@@ -922,13 +784,6 @@ export function makeBoardPost(body: Record<string, unknown>, existing: Post[]): 
   const now = new Date().toISOString();
   const vendor = parseVendorFields(body);
   const hubCampaignId = trimText(body.hubCampaignId) || undefined;
-  const industryId = trimText(body.industryId) || undefined;
-  const blueprintId = trimText(body.blueprintId) || undefined;
-  const generationMode = trimText(body.generationMode) || undefined;
-  const tags = Array.isArray(body.tags)
-    ? body.tags.map((item) => String(item)).filter(Boolean)
-    : ["자유게시판"];
-  const youtube = parseYoutubeUrlPair(body);
   return {
     id: uid(),
     slug,
@@ -941,13 +796,11 @@ export function makeBoardPost(body: Record<string, unknown>, existing: Post[]): 
           place: trimText(body.region),
           keyword: trimText(body.focusKeyword) || title,
           title,
-          categoryName: "자유게시판",
-          slug,
         })
       )
     ),
     category: FREE_BOARD_SLUG,
-    tags: tags.length ? tags : ["자유게시판"],
+    tags: Array.isArray(body.tags) ? body.tags.map((item) => String(item)).filter(Boolean) : ["자유게시판"],
     coverImage: trimText(body.coverImage) || undefined,
     extraImages: Array.isArray(body.extraImages)
       ? body.extraImages
@@ -970,12 +823,7 @@ export function makeBoardPost(body: Record<string, unknown>, existing: Post[]): 
     theme: "art-v1",
     hubCampaignId,
     region: trimText(body.region) || undefined,
-    industryId,
-    blueprintId,
-    ...(generationMode ? { generationMode } : {}),
     ...vendor,
-    youtubeUrl1: youtube.youtubeUrl1 || vendor.youtubeUrl1,
-    youtubeUrl2: youtube.youtubeUrl2 || vendor.youtubeUrl2,
     vendorRecruitSlot: Boolean(body.vendorRecruitSlot) || undefined,
     hubVendorRegisterUrl: normalizeHttpUrl(body.hubVendorRegisterUrl),
   };

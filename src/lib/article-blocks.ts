@@ -76,11 +76,9 @@ export function renderLocalFactBlockHtml(input: {
   if (!geoRows.length && !factRows.length) return "";
 
   const heading = facts?.heading || `${place} 지역 기록`;
-  const topic =
-    keyword && place && keyword.startsWith(place) ? "이 주제" : keyword || "이 주제";
   const lead =
     facts?.lead ||
-    `${place} 카탈로그·공공 저장본입니다. 없는 상호나 주소를 지어내지 않고, 이 동네에서 ${topic}를 볼 때 배경만 적습니다.`;
+    `${place} 카탈로그·공공 저장본입니다. 없는 상호나 주소를 지어내지 않고, 이 동네에서 ${keyword || "이 주제"}를 볼 때 배경만 적습니다.`;
   const note = facts?.note || "지역 카탈로그 저장본. 없는 가게·주소는 만들지 않습니다.";
   const official = facts?.official || geoRows.find((row) => row.label === "공식 지명")?.value || place;
   const table = renderFactTable([
