@@ -16,12 +16,15 @@ export async function SiteFrame({
   current,
   hideBottomNav = false,
   className = "",
+  bare = false,
 }: {
   children: React.ReactNode;
-  active?: "home" | "posts" | "partners";
+  active?: "home" | "posts" | "partners" | "write";
   current?: string;
   hideBottomNav?: boolean;
   className?: string;
+  /** Skip magazine chrome (used by brand main landing). */
+  bare?: boolean;
 }) {
   const [theme, settings, categories] = await Promise.all([
     resolveSiteTheme(),
@@ -30,15 +33,32 @@ export async function SiteFrame({
   ]);
   const siteName = displaySiteName(settings.siteName);
   const { description } = siteBrand(settings);
+  const mainLandingOn = Boolean(settings.mainLanding?.enabled);
+  const jsonLd = (
+    <JsonLd data={[buildWebSiteJsonLd(siteName, description), buildOrganizationJsonLd(siteName, settings, description)]} />
+  );
+  const body = (
+    <SiteNameProvider name={siteName}>
+      <EngagementProvider value={engagementFromSettings(settings)}>
+        <CategoriesProvider categories={categories}>{children}</CategoriesProvider>
+      </EngagementProvider>
+    </SiteNameProvider>
+  );
+
+  if (bare) {
+    return (
+      <div className={className.trim() || undefined}>
+        {jsonLd}
+        {body}
+      </div>
+    );
+  }
+
   return (
     <div className={`${theme.rootClass} ${className}`.trim()}>
-      <JsonLd data={[buildWebSiteJsonLd(siteName, description), buildOrganizationJsonLd(siteName, settings, description)]} />
-      <Header themeId={theme.id} active={active} siteName={siteName} />
-      <SiteNameProvider name={siteName}>
-        <EngagementProvider value={engagementFromSettings(settings)}>
-          <CategoriesProvider categories={categories}>{children}</CategoriesProvider>
-        </EngagementProvider>
-      </SiteNameProvider>
+      {jsonLd}
+      <Header themeId={theme.id} active={active} siteName={siteName} mainLandingEnabled={mainLandingOn} />
+      {body}
       <Footer themeId={theme.id} settings={settings} />
       {hideBottomNav ? null : <BottomNav current={current} categories={categories} />}
       <SitePopup

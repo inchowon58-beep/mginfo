@@ -4,6 +4,7 @@ import { IndexList } from "@/components/IndexList";
 import { PartnerStrip } from "@/components/PartnerStrip";
 import { PostCard } from "@/components/PostCard";
 import { PromoBanner } from "@/components/PromoBanner";
+import { MainLandingPage } from "@/components/main-landing/MainLandingPage";
 import { NightHome } from "@/components/themes/NightHome";
 import { JournalHome } from "@/components/themes/JournalHome";
 import { QnaHome } from "@/components/themes/QnaHome";
@@ -14,6 +15,12 @@ import { StudioHome } from "@/components/themes/StudioHome";
 import { displaySiteName, parseCarrotKeywords, siteBrand } from "@/lib/categories";
 import { pickRandomBanner } from "@/lib/banners";
 import { getEnabledBanners, getPartners, getPublishedPosts, getSettings } from "@/lib/db";
+import {
+  buildMainLandingCopy,
+  mainLandingEnabled,
+  parseMainLandingConfig,
+  resolveMainLandingImages,
+} from "@/lib/main-landing";
 import { visitSeed } from "@/lib/shuffle";
 import { siteUrl } from "@/lib/seo";
 import type { Metadata } from "next";
@@ -23,6 +30,28 @@ export const dynamic = "force-dynamic";
 export async function generateMetadata(): Promise<Metadata> {
   const settings = await getSettings();
   const brand = siteBrand(settings);
+  const landing = parseMainLandingConfig(settings.mainLanding);
+  if (landing.enabled) {
+    const name = landing.vendor.name || brand.name;
+    const title = landing.vendor.keyword
+      ? `${landing.vendor.keyword} · ${name}`
+      : `${name} — ${brand.tagline}`;
+    const description = landing.vendor.intro || brand.description;
+    return {
+      title: { absolute: title },
+      description,
+      alternates: { canonical: siteUrl("/") },
+      robots: { index: true, follow: true },
+      openGraph: {
+        title,
+        description,
+        url: siteUrl("/"),
+        siteName: name,
+        locale: "ko_KR",
+        type: "website",
+      },
+    };
+  }
   return {
     title: { absolute: `${brand.name} — ${brand.tagline}` },
     description: brand.description,
@@ -46,6 +75,19 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function HomePage() {
+  const settings = await getSettings();
+  if (mainLandingEnabled(settings)) {
+    const landing = parseMainLandingConfig(settings.mainLanding);
+    const siteName = displaySiteName(settings.siteName);
+    const copy = buildMainLandingCopy(landing, siteName);
+    const images = await resolveMainLandingImages(landing, siteName);
+    return (
+      <SiteFrame bare hideBottomNav>
+        <MainLandingPage copy={copy} images={images} vendor={landing.vendor} />
+      </SiteFrame>
+    );
+  }
+
   const theme = await getPublicTheme();
   const posts = await getPublishedPosts();
   const cover = posts[0];
@@ -55,7 +97,6 @@ export default async function HomePage() {
   const seed = visitSeed();
 
   if (theme.id === "studio") {
-    const settings = await getSettings();
     return (
       <SiteFrame active="home">
         <StudioHome
@@ -168,7 +209,6 @@ export default async function HomePage() {
     );
   }
 
-  const settings = await getSettings();
   const brand = siteBrand(settings);
   return (
     <SiteFrame active="home">

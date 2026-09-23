@@ -3,18 +3,20 @@
 import { FormEvent, useEffect, useState } from "react";
 import { CategoryManager } from "@/components/admin/CategoryManager";
 import { HubMasterSettings } from "@/components/admin/HubMasterSettings";
+import { MainLandingSettings } from "@/components/admin/MainLandingSettings";
 import { DEFAULT_GEMINI_MODEL, GEMINI_MODELS } from "@/lib/gemini-models";
 import { SITE_THEMES } from "@/lib/site-theme";
 import { DEFAULT_WRITING_TONE, WRITING_TONES, isWritingToneId, type WritingToneId } from "@/lib/writing-tone";
 import { FOOTER_DISCLAIMER_VARIANTS, randomFooterDisclaimer } from "@/lib/publish-disclaimer";
 import type { SiteThemeId } from "@/lib/types";
 
-type SettingsTab = "basic" | "category" | "site" | "master";
+type SettingsTab = "basic" | "category" | "site" | "main" | "master";
 
 const TABS: { id: SettingsTab; label: string }[] = [
   { id: "basic", label: "기본설정" },
   { id: "category", label: "카테고리설정" },
-  { id: "site", label: "사이트설정" },
+  { id: "site", label: "블로그 디자인" },
+  { id: "main", label: "메인 사이트" },
   { id: "master", label: "마스터설정" },
 ];
 
@@ -350,11 +352,13 @@ export default function SettingsPage() {
 
       {tab === "category" ? <CategoryManager /> : null}
 
+      {tab === "main" ? <MainLandingSettings /> : null}
+
       {tab === "site" ? (
         <form className="admin-card admin-form" onSubmit={saveSite}>
-          <h2>사이트 설정</h2>
+          <h2>블로그 디자인</h2>
           <p style={{ color: "#94a3b8", fontSize: 14 }}>
-            고른 디자인이 로고, 색, 홈 구성까지 한꺼번에 바뀝니다. 지금은 1~9번입니다.
+            매거진/블로그(`/posts`)용 테마입니다. 메인 랜딩 디자인은 「메인 사이트」탭에서 따로 고릅니다.
           </p>
           <label>업체 등록안내 링크</label>
           <input

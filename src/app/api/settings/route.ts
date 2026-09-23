@@ -16,6 +16,7 @@ import { applyMasterSettingsPatch } from "@/lib/settings-apply";
 import { isSiteThemeId } from "@/lib/site-theme";
 import { isWritingToneId } from "@/lib/writing-tone";
 import { normalizeHttpUrl } from "@/lib/vendor";
+import { parseMainLandingConfig } from "@/lib/main-landing";
 
 export async function GET() {
   if (!(await isAdminSession())) {
@@ -134,6 +135,9 @@ export async function POST(request: Request) {
         );
         s.settings.commentCountMin = comments.min;
         s.settings.commentCountMax = comments.max;
+      }
+      if (body.mainLanding !== undefined) {
+        s.settings.mainLanding = parseMainLandingConfig(body.mainLanding);
       }
     });
   } catch (err) {

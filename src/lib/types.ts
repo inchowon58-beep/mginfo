@@ -1,3 +1,5 @@
+import type { MainLandingConfig } from "./main-landing/types";
+
 export type CategorySlug = string;
 
 export type CategoryVendorMode = "all" | "region";
@@ -21,6 +23,9 @@ export type Category = {
 };
 
 export type PostStatus = "draft" | "published";
+
+/** direct = blog-style authored HTML; ai = pipeline magazine layout. Missing = legacy magazine. */
+export type PublishMode = "direct" | "ai";
 
 export type FaqItem = {
   question: string;
@@ -52,6 +57,8 @@ export type Post = {
   publishedAt: string | null;
   createdAt: string;
   updatedAt: string;
+  /** How the post was authored. Affects public detail rendering. */
+  publishMode?: PublishMode;
   theme?: string;
   region?: string;
   vendorName?: string;
@@ -190,6 +197,8 @@ export type Settings = {
   staffNoticeTitle?: string;
   staffNoticeBody?: string;
   staffNoticeUpdatedAt?: string;
+  /** Brand main landing (default off — existing magazine home unchanged). */
+  mainLanding?: MainLandingConfig;
 };
 
 export type BulkKeywordStatus = "queued" | "scheduled" | "processing" | "published" | "failed";
@@ -243,6 +252,8 @@ export type BulkSchedule = {
 export type BulkPublishState = {
   schedule: BulkSchedule;
   groups: BulkGroup[];
+  /** PHASE 9 Limited Bulk Production Pilot — optional for older stores. */
+  pilot?: import("./pilot-config").BulkPilotConfig;
 };
 
 export type Store = {

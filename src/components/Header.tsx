@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { BrandMark, BrandText } from "@/components/Brand";
+import { BrandText } from "@/components/Brand";
 import { CategoryIcon } from "@/components/CategoryIcon";
+import { SiteHeader } from "@/components/SiteHeader";
 import { displaySiteName, footerBizLines } from "@/lib/categories";
 import { resolveFooterDisclaimer } from "@/lib/publish-disclaimer";
 import { getThemeChrome } from "@/lib/theme-chrome";
@@ -10,29 +11,20 @@ export function Header({
   active,
   themeId = "folio",
   siteName,
+  mainLandingEnabled = false,
 }: {
-  active?: "home" | "posts" | "partners";
+  active?: "home" | "posts" | "partners" | "write";
   themeId?: SiteThemeId;
   siteName?: string;
+  mainLandingEnabled?: boolean;
 }) {
-  const chrome = getThemeChrome(themeId);
   return (
-    <header className="site-header">
-      <div className="site-header-inner">
-        <BrandMark themeId={themeId} name={siteName} />
-        <nav className="site-nav">
-          <Link className={active === "home" ? "active" : ""} href="/">
-            {chrome.home}
-          </Link>
-          <Link className={active === "posts" ? "active" : ""} href="/posts">
-            {chrome.posts}
-          </Link>
-          <Link className={active === "partners" ? "active" : ""} href="/partners">
-            {chrome.partners}
-          </Link>
-        </nav>
-      </div>
-    </header>
+    <SiteHeader
+      active={active}
+      themeId={themeId}
+      siteName={siteName}
+      mainLandingEnabled={mainLandingEnabled}
+    />
   );
 }
 

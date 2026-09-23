@@ -10,6 +10,7 @@ import { siteAccountFrom, DEFAULT_SITE_PASSWORD, DEFAULT_SITE_USERNAME } from ".
 import { DEFAULT_WRITING_TONE, isWritingToneId, pickRandomWritingTone } from "./writing-tone";
 import { DEFAULT_SITE_THEME, getSiteTheme, isSiteThemeId, pickRandomSiteTheme } from "./site-theme";
 import { defaultBulkPublish, normalizeBulkPublish } from "./bulk-publish";
+import { defaultMainLandingConfig, parseMainLandingConfig } from "./main-landing";
 import type { AdminPostRow, AdVendor, Banner, Category, Partner, Post, Settings, Store } from "./types";
 import { DEFAULT_CATEGORIES, SITE, withFreeBoard } from "./categories";
 import { decodeSlugParam } from "./slug";
@@ -71,6 +72,7 @@ function defaultSettings(): Settings {
     address: branded ? "" : SITE.address,
     phone: "",
     email: branded ? "" : SITE.email,
+    mainLanding: defaultMainLandingConfig(),
   };
 }
 
@@ -113,6 +115,9 @@ function normalize(parsed: Store): Store {
     vendorRecruitSlot: Boolean(c.vendorRecruitSlot),
   }));
   parsed.settings = { ...defaultSettings(), ...parsed.settings };
+  parsed.settings.mainLanding = parseMainLandingConfig(
+    (parsed.settings as Settings).mainLanding ?? defaultMainLandingConfig()
+  );
   const account = siteAccountFrom(parsed.settings);
   parsed.settings.siteUsername = account.username;
   parsed.settings.sitePassword = account.password;
