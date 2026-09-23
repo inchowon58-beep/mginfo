@@ -13,6 +13,14 @@ async function authorize(request: Request) {
   return checkMasterPassword(request.headers.get("x-infocs-master") || "");
 }
 
+function pickGeminiKey(body: Record<string, unknown>, settingsKey: string) {
+  const fromBody =
+    typeof body.geminiApiKey === "string" && body.geminiApiKey.trim() && !body.geminiApiKey.includes("•")
+      ? body.geminiApiKey.trim()
+      : "";
+  return fromBody || settingsKey || process.env.GEMINI_API_KEY || "";
+}
+
 /** 메인 랜딩 문장 보충(제미나이). 섹션 뼈대 유지, copyOverride 저장. */
 export async function POST(request: Request) {
   if (!(await authorize(request))) {
@@ -20,10 +28,13 @@ export async function POST(request: Request) {
   }
   const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
   const settings = await getSettings();
-  const apiKey = settings.geminiApiKey || process.env.GEMINI_API_KEY || "";
+  const apiKey = pickGeminiKey(body, settings.geminiApiKey || "");
   if (!apiKey) {
     return NextResponse.json(
-      { error: "제미나이 API 키가 없습니다. 마스터 설정에서 키를 저장하세요." },
+      {
+        error:
+          "제미나이 API 키가 없습니다. 메인 사이트의 키 칸에 넣거나, 마스터 설정에 저장한 뒤 다시 눌러 주세요.",
+      },
       { status: 400 }
     );
   }
@@ -48,16 +59,26 @@ export async function POST(request: Request) {
       .join("|");
   }
 
+  const model =
+    typeof body.geminiModel === "string" && body.geminiModel.trim()
+      ? body.geminiModel.trim()
+      : settings.geminiModel;
+
   try {
     const copyOverride = await enrichMainLandingCopy({
       config: baseConfig,
       siteName: settings.siteName || baseConfig.vendor.keyword,
       apiKey,
-      model: settings.geminiModel,
+      model,
     });
     const enrichedAt = new Date().toISOString();
     let saved = baseConfig;
     await updateStore((s) => {
+      // 본문에 넣은 키는 사이트에 같이 저장 → 다음부터 마스터 설정 없이도 사용
+      if (typeof body.geminiApiKey === "string" && body.geminiApiKey.trim() && !body.geminiApiKey.includes("•")) {
+        s.settings.geminiApiKey = body.geminiApiKey.trim();
+      }
+      if (model) s.settings.geminiModel = model;
       const next = parseMainLandingConfig({
         ...baseConfig,
         enabled: baseConfig.enabled || body.enable === true,

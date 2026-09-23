@@ -388,6 +388,8 @@ async function provisionSite(input, onLog = () => {}) {
   let teamId = String(input.teamId || "").trim();
   const naverSiteVerification = parseNaverVerification(input.naverSiteVerification);
   const masterPassword = String(input.masterPassword || "").trim();
+  const geminiApiKey = String(input.geminiApiKey || "").trim();
+  const geminiModel = String(input.geminiModel || "").trim();
 
   if (!token) throw new Error("Vercel 토큰을 먼저 저장하세요.");
   if (!domain || !domain.includes(".")) {
@@ -423,6 +425,23 @@ async function provisionSite(input, onLog = () => {}) {
       { key: "SITE_DOMAIN", value: domain, type: "plain", target: ["production", "preview", "development"] },
       { key: "SITE_ICON_SEED", value: iconSeed, type: "plain", target: ["production", "preview", "development"] },
     ];
+    if (geminiApiKey) {
+      environmentVariables.push({
+        key: "GEMINI_API_KEY",
+        value: geminiApiKey,
+        type: "encrypted",
+        target: ["production", "preview", "development"],
+      });
+      onLog("제미나이 API 키를 환경변수로 등록했습니다.");
+    }
+    if (geminiModel) {
+      environmentVariables.push({
+        key: "GEMINI_MODEL",
+        value: geminiModel,
+        type: "plain",
+        target: ["production", "preview", "development"],
+      });
+    }
     if (naverSiteVerification) {
       environmentVariables.push({
         key: "NAVER_SITE_VERIFICATION",
@@ -472,6 +491,23 @@ async function provisionSite(input, onLog = () => {}) {
         onLog("네이버 사이트 인증 메타 환경변수를 추가했습니다.");
       } catch (err) {
         onLog(`네이버 메타 환경변수 안내: ${err.message}`);
+      }
+    }
+    if (geminiApiKey) {
+      try {
+        await vercel(token, `/v10/projects/${encodeURIComponent(projectId)}/env`, {
+          method: "POST",
+          teamId,
+          body: {
+            key: "GEMINI_API_KEY",
+            value: geminiApiKey,
+            type: "encrypted",
+            target: ["production", "preview", "development"],
+          },
+        });
+        onLog("제미나이 API 키 환경변수를 추가·갱신했습니다.");
+      } catch (err) {
+        onLog(`제미나이 키 환경변수 안내: ${err.message}`);
       }
     }
   } else {

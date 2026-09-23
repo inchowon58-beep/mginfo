@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; script-src 'self'"
+    />
+    <title>Infocs Brand Studio</title>
+    <link rel="stylesheet" href="./app.css" />
+  </head>
+  <body>
+    <div class="app">
+      <aside class="rail">
+        <div class="mark">
+          <div>
+            <em>INFOCS</em>
+            <strong>Brand Studio</strong>
+          </div>
+        </div>
+        <p class="lede">
+          PC에서 키워드별 사이트를 대량 발행합니다. 메인(두피문신)·블로그 디자인을 고르고, 사이트마다 내용이 조금
+          달라집니다. 기존 Infocs Studio와 분리됩니다.
+        </p>
+        <nav>
+          <button class="nav-btn active" data-view="compose" type="button">구성·발행</button>
+          <button class="nav-btn" data-view="sites" type="button">발행 대장</button>
+          <button class="nav-btn" data-view="settings" type="button">계정 설정</button>
+        </nav>
+        <div class="rail-foot">
+          <small>출력: 사이트만들기-브랜드 · ops 대장 미사용</small>
+        </div>
+      </aside>
+
+      <main>
+        <section class="view show" id="view-compose">
+          <header class="page-head">
+            <p>Publish</p>
+            <h1>구성 · 대량 발행</h1>
+          </header>
+
+          <label>초안 이름</label>
+          <input id="title" placeholder="예: 경기 두피문신 캠페인" />
+
+          <div class="grid-2">
+            <div>
+              <label>메인 디자인</label>
+              <select id="designId">
+                <option value="scalp-tattoo-v1">두피문신 (필릭스형)</option>
+              </select>
+            </div>
+            <div>
+              <label>블로그 디자인 (siteTheme)</label>
+              <select id="siteTheme">
+                <option value="random" selected>랜덤 (사이트마다 자동)</option>
+                <option value="folio">1 · 폴리오</option>
+                <option value="press">2 · 라이브매거진</option>
+                <option value="night">3 · 나이트마켓</option>
+                <option value="journal">4 · 노트블로그</option>
+                <option value="qna">5 · 지식데스크</option>
+                <option value="talk">6 · 라이프피드</option>
+                <option value="portal">7 · 포털홈</option>
+                <option value="carrot">8 · 당근형</option>
+                <option value="studio">9 · 스튜디오</option>
+              </select>
+            </div>
+          </div>
+          <p class="hint">랜덤이면 키워드마다 블로그 테마가 다르게 정해집니다.</p>
+
+          <label>apex 도메인 (루트)</label>
+          <input id="apexDomain" placeholder="koreascalp.co.kr" />
+          <p class="hint">키워드마다 <code>키워드.apex</code> 서브도메인으로 사이트가 만들어집니다.</p>
+
+          <label>키워드 목록 (한 줄에 하나 = 사이트 1개)</label>
+          <textarea id="keywords" rows="8" placeholder="평택두피문신&#10;부천두피문신&#10;인천두피문신"></textarea>
+
+          <div class="grid-2">
+            <div>
+              <label>업체명</label>
+              <input id="vendorName" placeholder="필릭스스칼프" />
+            </div>
+            <div>
+              <label>전화</label>
+              <input id="vendorPhone" />
+            </div>
+            <div>
+              <label>카카오톡 링크</label>
+              <input id="vendorKakao" placeholder="없으면 미노출" />
+            </div>
+            <div>
+              <label>사업자등록번호</label>
+              <input id="vendorBiz" placeholder="없으면 미노출" />
+            </div>
+            <div>
+              <label>네이버 아이디</label>
+              <input id="naverId" maxlength="80" autocomplete="off" placeholder="웹문서 등록요청 아이디" />
+            </div>
+            <div>
+              <label>네이버 비밀번호</label>
+              <input id="naverPassword" type="password" maxlength="80" autocomplete="off" placeholder="웹문서 등록요청 비밀번호" />
+            </div>
+          </div>
+          <label>주소</label>
+          <input id="vendorAddress" />
+          <label>이미지 웹 폴더</label>
+          <input id="imageFolderUrl" placeholder="https://image.example.com/folder" />
+          <label>추가 요청사항 (선택)</label>
+          <textarea id="prompt" rows="2" placeholder="없으면 기본 원고만 사용. 사이트마다 variationSeed로 소폭 변형"></textarea>
+
+          <label>네이버 인증 메타 (공통, 선택)</label>
+          <textarea
+            id="naverSiteVerification"
+            rows="2"
+            placeholder='&lt;meta name="naver-site-verification" content="코드" /&gt; 또는 content 값만'
+          ></textarea>
+          <label>사이트별 네이버 인증 (선택)</label>
+          <textarea
+            id="naverMetaMap"
+            rows="5"
+            placeholder="키워드|인증코드&#10;평택두피문신|abcdef...&#10;부천두피문신|&lt;meta name=&quot;naver-site-verification&quot; content=&quot;...&quot; /&gt;"
+          ></textarea>
+          <p class="hint">사이트별 값이 있으면 그걸 쓰고, 없으면 위 공통 메타를 씁니다. 둘 다 비우면 미적용.</p>
+
+          <div class="actions">
+            <button class="btn" type="button" id="btn-preview">미리보기</button>
+            <button class="btn" type="button" id="btn-save-draft">초안 저장</button>
+            <button class="btn primary" type="button" id="btn-publish">대량 사이트 발행</button>
+          </div>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>키워드</th>
+                  <th>호스트</th>
+                  <th>퓨니코드(발행용)</th>
+                </tr>
+              </thead>
+              <tbody id="preview-body"></tbody>
+            </table>
+          </div>
+
+          <label>발행 로그</label>
+          <pre id="publish-log" class="log"></pre>
+          <p id="status" class="status"></p>
+        </section>
+
+        <section class="view" id="view-sites">
+          <header class="page-head">
+            <p>Ledger</p>
+            <h1>발행 대장 (로컬)</h1>
+          </header>
+          <p class="hint">이 PC에만 저장됩니다. 기존 Infocs Studio / ops 사이트 대장과 분리되어 있습니다.</p>
+          <p id="site-count" class="hint"></p>
+          <ul id="site-list" class="draft-list"></ul>
+          <nav id="site-pager" class="pager" aria-label="발행 대장 페이지"></nav>
+
+          <div id="site-edit" class="site-edit" hidden>
+            <h3>사이트 수정</h3>
+            <p id="site-edit-title" class="hint"></p>
+            <label>네이버 인증 메타</label>
+            <textarea id="edit-naver-meta" rows="3" placeholder='content 값 또는 &lt;meta ...&gt;'></textarea>
+            <div class="grid-2">
+              <div>
+                <label>네이버 아이디</label>
+                <input id="edit-naver-id" />
+              </div>
+              <div>
+                <label>네이버 비밀번호</label>
+                <input id="edit-naver-pw" type="password" />
+              </div>
+            </div>
+            <label>주소</label>
+            <input id="edit-address" />
+            <label>블로그 디자인</label>
+            <select id="edit-site-theme">
+              <option value="folio">1 · 폴리오</option>
+              <option value="press">2 · 라이브매거진</option>
+              <option value="night">3 · 나이트마켓</option>
+              <option value="journal">4 · 노트블로그</option>
+              <option value="qna">5 · 지식데스크</option>
+              <option value="talk">6 · 라이프피드</option>
+              <option value="portal">7 · 포털홈</option>
+              <option value="carrot">8 · 당근형</option>
+              <option value="studio">9 · 스튜디오</option>
+            </select>
+            <div class="actions">
+              <button class="btn primary" type="button" id="btn-save-site">저장</button>
+              <button class="btn" type="button" id="btn-cancel-site">닫기</button>
+            </div>
+            <p id="site-edit-status" class="status"></p>
+          </div>
+        </section>
+
+        <section class="view" id="view-settings">
+          <header class="page-head">
+            <p>Account</p>
+            <h1>계정 설정</h1>
+          </header>
+          <p class="hint">
+            기존 Infocs Studio(`AppData\infocs-studio\studio-config.json`) 토큰·팀·마스터 비번을 가져올 수 있습니다.
+            앱을 열 때 토큰이 비어 있으면 자동으로 한 번 가져옵니다.
+          </p>
+          <label>Vercel 토큰</label>
+          <input id="token" type="password" autocomplete="off" placeholder="vercel_ 로 시작하는 토큰" />
+          <p class="hint">
+            <a href="https://vercel.com/account/tokens" id="link-vercel-tokens">vercel.com/account/tokens</a>
+          </p>
+          <label>Team ID (선택)</label>
+          <input id="teamId" placeholder="team_…" />
+          <label>GitHub 저장소</label>
+          <input id="repo" placeholder="org/mginfo" />
+          <label>마스터 비밀번호</label>
+          <input id="opsMasterPassword" type="password" placeholder="클론 설정 주입용 (기존 스튜디오와 동일)" />
+          <label>Gemini API Key</label>
+          <input id="geminiApiKey" type="password" autocomplete="off" placeholder="AIza… (메인 내용 보충·사이트마다 다른 카피)" />
+          <p class="hint">
+            새 사이트 생성 시 각 사이트에 키를 심고, 제미나이로 메인 문장을 다르게 씁니다. Google AI Studio에서 발급.
+          </p>
+          <label>Gemini 모델 (선택)</label>
+          <input id="geminiModel" placeholder="비우면 사이트 기본 모델" />
+          <label>허브 URL (참고)</label>
+          <input id="opsHubUrl" />
+          <div class="actions">
+            <button class="btn" type="button" id="btn-import-studio">기존 스튜디오 설정 가져오기</button>
+            <button class="btn" type="button" id="btn-verify">토큰 확인</button>
+            <button class="btn primary" type="button" id="btn-save-settings">저장</button>
+          </div>
+          <p id="settings-status" class="status"></p>
+        </section>
+      </main>
+    </div>
+    <script src="./app.js"></script>
+  </body>
+</html>

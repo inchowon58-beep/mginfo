@@ -20,6 +20,13 @@ export async function POST(request: Request) {
   }
   const body = await request.json().catch(() => ({}));
   const wantEnrich = body.enrich !== false && body.mainLanding !== undefined;
+  const geminiFromStudio =
+    typeof body.geminiApiKey === "string" && body.geminiApiKey.trim() && !body.geminiApiKey.includes("•")
+      ? body.geminiApiKey.trim()
+      : "";
+  const geminiModel =
+    typeof body.geminiModel === "string" && body.geminiModel.trim() ? body.geminiModel.trim() : "";
+
   try {
     await updateStore((s) => {
       if (typeof body.siteName === "string" && body.siteName.trim()) {
@@ -33,6 +40,8 @@ export async function POST(request: Request) {
       if (typeof body.naverSiteVerification === "string") {
         s.settings.naverSiteVerification = body.naverSiteVerification.trim();
       }
+      if (geminiFromStudio) s.settings.geminiApiKey = geminiFromStudio;
+      if (geminiModel) s.settings.geminiModel = geminiModel;
       if (body.mainLanding !== undefined) {
         s.settings.mainLanding = parseMainLandingConfig({
           ...body.mainLanding,
@@ -47,7 +56,8 @@ export async function POST(request: Request) {
       const settings = await getSettings();
       const apiKey = settings.geminiApiKey || process.env.GEMINI_API_KEY || "";
       if (!apiKey) {
-        enrichError = "제미나이 키 없음 — 기본 원고만 적용. 관리자에서 「내용 보충」 가능.";
+        enrichError =
+          "제미나이 키 없음 — Studio 계정 설정에 Gemini API Key를 넣거나, 관리자 마스터 설정에 저장하세요.";
       } else {
         try {
           const config = parseMainLandingConfig(settings.mainLanding);

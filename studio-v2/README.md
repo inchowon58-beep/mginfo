@@ -9,10 +9,10 @@
 ## 사용
 
 1. `cd studio-v2 && npm install && npm start`
-2. **계정 설정**: Vercel 토큰 · (선택) Team · GitHub repo · 마스터 비번
+2. **계정 설정**: Vercel 토큰 · (선택) Team · GitHub repo · 마스터 비번 · **Gemini API Key**
 3. **구성·발행**: apex · 키워드 목록 · 업체 최소정보 · 메인/블로그 디자인 → **대량 사이트 발행**
 4. 배포된 코드에 `/api/brand-studio/bootstrap`이 있어야 메인랜딩이 자동 적용됩니다 (이 저장소 main 배포 후).
-   사이트에 제미나이 키가 있으면 bootstrap이 **내용 보충**까지 돌려 사이트마다 문장을 다르게 씁니다.
+   Studio에 넣은 제미나이 키가 각 사이트에 심기고, bootstrap이 **내용 보충**으로 사이트마다 문장을 다르게 씁니다.
 
 ```bash
 npm run dist

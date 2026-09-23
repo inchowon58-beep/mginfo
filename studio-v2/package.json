@@ -1,0 +1,42 @@
+{
+  "name": "infocs-brand-studio",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Infocs Brand Studio — main landing drafts (isolated from Infocs Studio)",
+  "author": "Infocs",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win portable --x64"
+  },
+  "build": {
+    "appId": "co.infocs.studio.brand",
+    "productName": "Infocs Brand Studio",
+    "asar": true,
+    "files": [
+      "main.js",
+      "preload.js",
+      "renderer/**",
+      "lib/**"
+    ],
+    "directories": {
+      "output": "../사이트만들기-브랜드"
+    },
+    "win": {
+      "signAndEditExecutable": false,
+      "target": [
+        {
+          "target": "portable",
+          "arch": ["x64"]
+        }
+      ]
+    },
+    "portable": {
+      "artifactName": "InfocsBrandStudio.exe"
+    }
+  },
+  "devDependencies": {
+    "electron": "^33.4.11",
+    "electron-builder": "^25.1.8"
+  }
+}
