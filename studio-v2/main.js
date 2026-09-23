@@ -58,6 +58,59 @@ function defaultConfig() {
   };
 }
 
+function maskSecret(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  if (raw.length <= 10) return "****";
+  return `${raw.slice(0, 6)}****${raw.slice(-4)}`;
+}
+
+/** 마스킹·빈 값이면 이전 비밀값을 유지 */
+function isKeepPreviousSecret(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return true;
+  if (raw.includes("*") || raw.includes("•") || raw.includes("…")) return true;
+  return false;
+}
+
+/** 모델 칸에 API 키를 잘못 넣은 경우 감지 */
+function looksLikeGeminiApiKey(value) {
+  const raw = String(value || "").trim();
+  if (raw.length < 20) return false;
+  if (/^AIza[0-9A-Za-z_\-]{20,}$/.test(raw)) return true;
+  if (/^AQ\.[A-Za-z0-9_\-]{20,}$/.test(raw)) return true;
+  if (/gemini/i.test(raw)) return false;
+  if (/^[A-Za-z0-9._\-]{36,}$/.test(raw)) return true;
+  return false;
+}
+
+function resolveGeminiFields(payload, prev) {
+  let nextKey = String(payload?.geminiApiKey ?? "").trim();
+  let nextModel = String(payload?.geminiModel ?? "").trim();
+  let rescued = false;
+  if (isKeepPreviousSecret(nextKey) && looksLikeGeminiApiKey(nextModel)) {
+    nextKey = nextModel;
+    nextModel = "";
+    rescued = true;
+  }
+  let geminiApiKey = !isKeepPreviousSecret(nextKey) ? nextKey : String(prev.geminiApiKey || "").trim();
+  let geminiModel = nextModel;
+  if (!nextModel && payload?.geminiModel === undefined) {
+    geminiModel = String(prev.geminiModel || "").trim();
+  }
+  if (!geminiApiKey && looksLikeGeminiApiKey(geminiModel)) {
+    geminiApiKey = geminiModel;
+    geminiModel = "";
+    rescued = true;
+  }
+  if (!geminiApiKey && looksLikeGeminiApiKey(prev.geminiModel)) {
+    geminiApiKey = String(prev.geminiModel || "").trim();
+    geminiModel = "";
+    rescued = true;
+  }
+  return { geminiApiKey, geminiModel, rescued };
+}
+
 function readStudioConfig() {
   try {
     const raw = JSON.parse(fs.readFileSync(studioConfigPath(), "utf8"));
@@ -107,7 +160,20 @@ function ensureConfigHydrated() {
 
 function readConfig() {
   try {
-    return { ...defaultConfig(), ...JSON.parse(fs.readFileSync(configPath(), "utf8")) };
+    const raw = { ...defaultConfig(), ...JSON.parse(fs.readFileSync(configPath(), "utf8")) };
+    const fixed = resolveGeminiFields(
+      { geminiApiKey: raw.geminiApiKey, geminiModel: raw.geminiModel },
+      raw
+    );
+    const next = {
+      ...raw,
+      geminiApiKey: fixed.geminiApiKey,
+      geminiModel: fixed.geminiModel,
+    };
+    if (fixed.rescued || next.geminiApiKey !== raw.geminiApiKey || next.geminiModel !== raw.geminiModel) {
+      writeConfig(next);
+    }
+    return next;
   } catch {
     return defaultConfig();
   }
@@ -154,8 +220,8 @@ ipcMain.handle("brand:load", async () => {
   return {
     config: {
       ...cfg,
-      token: cfg.token ? `${cfg.token.slice(0, 6)}••••` : "",
-      geminiApiKey: cfg.geminiApiKey ? `${cfg.geminiApiKey.slice(0, 6)}••••` : "",
+      token: maskSecret(cfg.token),
+      geminiApiKey: maskSecret(cfg.geminiApiKey),
       hasToken: Boolean(cfg.token),
       hasGeminiKey: Boolean(cfg.geminiApiKey),
       importedFromStudio: Boolean(cfg.token && readStudioConfig()?.token),
@@ -172,8 +238,8 @@ ipcMain.handle("brand:import-studio-settings", async () => {
     ok: true,
     config: {
       ...cfg,
-      token: cfg.token ? `${cfg.token.slice(0, 6)}••••` : "",
-      geminiApiKey: cfg.geminiApiKey ? `${cfg.geminiApiKey.slice(0, 6)}••••` : "",
+      token: maskSecret(cfg.token),
+      geminiApiKey: maskSecret(cfg.geminiApiKey),
       hasToken: Boolean(cfg.token),
       hasGeminiKey: Boolean(cfg.geminiApiKey),
       studioConfigPath: studioConfigPath(),
@@ -184,24 +250,25 @@ ipcMain.handle("brand:import-studio-settings", async () => {
 ipcMain.handle("brand:save-settings", async (_e, payload) => {
   const prev = readConfig();
   const nextToken = String(payload?.token || "").trim();
-  const nextGemini = String(payload?.geminiApiKey || "").trim();
+  const gemini = resolveGeminiFields(payload || {}, prev);
   const cfg = {
     ...prev,
-    token: nextToken && !nextToken.includes("•") ? nextToken : prev.token,
+    token: !isKeepPreviousSecret(nextToken) ? nextToken : prev.token,
     teamId: String(payload?.teamId || "").trim(),
     repo: String(payload?.repo || "").trim() || DEFAULT_REPO,
     opsHubUrl: String(payload?.opsHubUrl || "").trim() || "https://magazine.infocs.co.kr",
     opsMasterPassword: String(payload?.opsMasterPassword || ""),
-    geminiApiKey: nextGemini && !nextGemini.includes("•") ? nextGemini : prev.geminiApiKey || "",
-    geminiModel: String(payload?.geminiModel || "").trim() || prev.geminiModel || "",
+    geminiApiKey: gemini.geminiApiKey,
+    geminiModel: gemini.geminiModel,
   };
   writeConfig(cfg);
   return {
     ok: true,
+    rescuedGeminiKey: Boolean(gemini.rescued),
     config: {
       ...cfg,
-      token: cfg.token ? `${cfg.token.slice(0, 6)}••••` : "",
-      geminiApiKey: cfg.geminiApiKey ? `${cfg.geminiApiKey.slice(0, 6)}••••` : "",
+      token: maskSecret(cfg.token),
+      geminiApiKey: maskSecret(cfg.geminiApiKey),
       hasToken: Boolean(cfg.token),
       hasGeminiKey: Boolean(cfg.geminiApiKey),
     },

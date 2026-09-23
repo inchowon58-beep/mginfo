@@ -315,16 +315,24 @@ $("btn-save-settings").onclick = async () => {
       geminiModel: $("geminiModel").value,
     });
     state.config = res.config || {};
-    $("settings-status").textContent = state.config.hasGeminiKey
-      ? "설정 저장됨 (제미나이 키 포함)"
-      : "설정 저장됨 · 제미나이 키 없음 — 메인 내용이 사이트마다 같아질 수 있습니다";
+    if (res.rescuedGeminiKey) {
+      $("settings-status").textContent =
+        "설정 저장됨 — 모델 칸에 있던 값을 API 키로 옮겨 저장했습니다.";
+    } else if (state.config.hasGeminiKey) {
+      $("settings-status").textContent = "설정 저장됨 (제미나이 키 포함)";
+    } else {
+      $("settings-status").textContent =
+        "설정 저장됨 · 제미나이 키 없음 — 위 Gemini API Key 칸에 AIza/AQ. 키를 넣고 다시 저장하세요.";
+    }
     $("settings-status").style.color = "";
     $("token").value = "";
     $("token").placeholder = state.config.hasToken ? "저장됨 · 바꾸려면 새 토큰 입력" : "vercel_ 로 시작하는 토큰";
     $("geminiApiKey").value = "";
     $("geminiApiKey").placeholder = state.config.hasGeminiKey
       ? "저장됨 · 바꾸려면 새 키 입력"
-      : "AIza… (메인 내용 보충·사이트마다 다른 카피)";
+      : "AIza… 또는 AQ.… 로 시작하는 API 키";
+    $("geminiModel").value = state.config.geminiModel || "";
+    if (res.rescuedGeminiKey) $("geminiModel").value = "";
   } catch (err) {
     $("settings-status").textContent = err.message;
     $("settings-status").style.color = "#f0a0a0";
