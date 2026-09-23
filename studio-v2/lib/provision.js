@@ -166,12 +166,30 @@ function gitSourceFrom(project, repo) {
 }
 
 function isApexDomain(domain) {
-  const parts = String(domain || "").split(".").filter(Boolean);
+  const host = String(domain || "")
+    .toLowerCase()
+    .replace(/^www\./, "");
+  const parts = host.split(".").filter(Boolean);
   const last2 = parts.slice(-2).join(".");
   if (["co.kr", "or.kr", "go.kr", "ne.kr", "re.kr", "ac.kr"].includes(last2)) {
     return parts.length === 3;
   }
   return parts.length === 2;
+}
+
+/** Apex sites use www as the public canonical host (Naver Search Advisor). */
+function canonicalPublicHost(domain) {
+  const host = String(domain || "")
+    .toLowerCase()
+    .replace(/^www\./, "");
+  if (!host) return "";
+  return isApexDomain(host) ? `www.${host}` : host;
+}
+
+function apexHost(domain) {
+  return String(domain || "")
+    .toLowerCase()
+    .replace(/^www\./, "");
 }
 
 function dnsHostLabel(domain) {
@@ -271,17 +289,22 @@ async function dnsGuidance(token, teamId, projectId, domain, domainInfo) {
   };
 }
 
-async function attachDomain(token, teamId, projectId, domain, onLog) {
+async function attachDomain(token, teamId, projectId, domain, onLog, { redirectTo = null, redirectStatusCode = 301 } = {}) {
   let info = await getProjectDomain(token, teamId, projectId, domain);
   if (info) {
     onLog(`도메인이 이 프로젝트에 있습니다. 인증 상태: ${info.verified ? "완료" : "대기"}`);
   } else {
     onLog(`도메인 연결: ${domain}`);
     try {
+      const body = { name: domain };
+      if (redirectTo) {
+        body.redirect = redirectTo;
+        body.redirectStatusCode = redirectStatusCode;
+      }
       info = await vercel(token, `/v10/projects/${projectId}/domains`, {
         method: "POST",
         teamId,
-        body: { name: domain },
+        body,
       });
       onLog("도메인을 이 프로젝트에 등록했습니다.");
     } catch (err) {
@@ -326,10 +349,67 @@ async function attachDomain(token, teamId, projectId, domain, onLog) {
     }
   }
 
+  if (redirectTo) {
+    const currentRedirect = String(info.redirect || "").toLowerCase();
+    if (currentRedirect !== String(redirectTo).toLowerCase() || Number(info.redirectStatusCode) !== redirectStatusCode) {
+      try {
+        info = await vercel(token, `/v9/projects/${projectId}/domains/${encodeURIComponent(domain)}`, {
+          method: "PATCH",
+          teamId,
+          body: { redirect: redirectTo, redirectStatusCode },
+        });
+        onLog(`${domain} → ${redirectTo} (${redirectStatusCode}) 리다이렉트를 설정했습니다.`);
+      } catch (err) {
+        onLog(`리다이렉트 설정 안내: ${err.message}`);
+      }
+    }
+  }
+
   const dns = await dnsGuidance(token, teamId, projectId, domain, info);
   if (dns.verified) onLog("도메인 연결이 완료되었습니다.");
   else onLog("Vercel에는 연결했습니다. 도메인 업체에서 아래 DNS만 맞추면 열립니다.");
   return { ...info, dns: dns.rows, misconfigured: dns.misconfigured, alreadyConnected: false };
+}
+
+/**
+ * Apex: www is primary (200), apex permanently redirects to www.
+ * Subdomain: attach as-is (no www policy).
+ */
+async function attachPublicDomains(token, teamId, projectId, domain, onLog) {
+  const apex = apexHost(domain);
+  const canonical = canonicalPublicHost(apex);
+  if (!isApexDomain(apex)) {
+    return attachDomain(token, teamId, projectId, apex, onLog);
+  }
+
+  onLog(`apex 도메인은 www를 대표주소로 사용합니다: ${canonical}`);
+  const wwwInfo = await attachDomain(token, teamId, projectId, canonical, onLog);
+  const apexInfo = await attachDomain(token, teamId, projectId, apex, onLog, {
+    redirectTo: canonical,
+    redirectStatusCode: 301,
+  });
+  const dns = [
+    ...(wwwInfo.dns || []),
+    ...(apexInfo.dns || []).filter((row) => !(wwwInfo.dns || []).some((w) => w.type === row.type && w.name === row.name)),
+  ];
+  // Prefer www DNS tip: CNAME www → vercel
+  if (!dns.some((row) => String(row.name || "").toLowerCase() === "www")) {
+    dns.unshift({
+      type: "CNAME",
+      name: "www",
+      value: "cname.vercel-dns.com",
+      reason: "www 대표주소를 Vercel에 연결합니다. apex(@)는 www로 301 됩니다.",
+    });
+  }
+  return {
+    ...wwwInfo,
+    name: canonical,
+    apexName: apex,
+    dns,
+    misconfigured: Boolean(wwwInfo.misconfigured || apexInfo.misconfigured),
+    alreadyConnected: Boolean(wwwInfo.alreadyConnected && apexInfo.alreadyConnected),
+    verified: Boolean(wwwInfo.verified),
+  };
 }
 
 async function assignDomainAlias(token, teamId, deploymentId, domain, onLog) {
@@ -375,8 +455,8 @@ async function startOrWaitDeploy(token, teamId, project, projectName, repo, onLo
 
 async function provisionSite(input, onLog = () => {}) {
   const token = String(input.token || "").trim();
-  let domain = cleanDomain(input.domain);
-  const domainFromName = cleanDomain(input.blogName);
+  let domain = apexHost(cleanDomain(input.domain));
+  const domainFromName = apexHost(cleanDomain(input.blogName));
   if ((!domain || !domain.includes(".")) && domainFromName.includes(".")) {
     domain = domainFromName;
   }
@@ -390,13 +470,14 @@ async function provisionSite(input, onLog = () => {}) {
   const masterPassword = String(input.masterPassword || "").trim();
   const geminiApiKey = String(input.geminiApiKey || "").trim();
   const geminiModel = String(input.geminiModel || "").trim();
+  const publicHost = canonicalPublicHost(domain);
 
   if (!token) throw new Error("Vercel 토큰을 먼저 저장하세요.");
   if (!domain || !domain.includes(".")) {
     throw new Error("도메인을 올바르게 입력하세요. 예: magazine.agapet.co.kr");
   }
 
-  onLog(`도메인: ${domain}`);
+  onLog(`도메인: ${domain}${publicHost !== domain ? ` (대표: ${publicHost})` : ""}`);
   onLog("계정 확인 중…");
   const user = await vercel(token, "/v2/user");
   const account = user.user || user;
@@ -422,7 +503,7 @@ async function provisionSite(input, onLog = () => {}) {
     const environmentVariables = [
       { key: "AUTH_SECRET", value: authSecret, type: "encrypted", target: ["production", "preview", "development"] },
       { key: "SITE_NAME", value: blogName, type: "plain", target: ["production", "preview", "development"] },
-      { key: "SITE_DOMAIN", value: domain, type: "plain", target: ["production", "preview", "development"] },
+      { key: "SITE_DOMAIN", value: publicHost, type: "plain", target: ["production", "preview", "development"] },
       { key: "SITE_ICON_SEED", value: iconSeed, type: "plain", target: ["production", "preview", "development"] },
     ];
     if (geminiApiKey) {
@@ -562,19 +643,41 @@ async function provisionSite(input, onLog = () => {}) {
     }
   }
 
-  const domainInfo = await attachDomain(token, teamId, projectId, domain, onLog);
+  const domainInfo = await attachPublicDomains(token, teamId, projectId, domain, onLog);
+
+  // Ensure existing projects also use www canonical for apex hosts.
+  if (reused && isApexDomain(domain)) {
+    try {
+      const envList = await vercel(token, `/v9/projects/${encodeURIComponent(projectId)}/env`, { teamId });
+      const rows = Array.isArray(envList?.envs) ? envList.envs : Array.isArray(envList) ? envList : [];
+      const siteDomainEnv = rows.find((row) => row.key === "SITE_DOMAIN");
+      if (siteDomainEnv?.id && String(siteDomainEnv.value || "") !== publicHost) {
+        await vercel(token, `/v9/projects/${encodeURIComponent(projectId)}/env/${siteDomainEnv.id}`, {
+          method: "PATCH",
+          teamId,
+          body: { value: publicHost },
+        });
+        onLog(`SITE_DOMAIN을 ${publicHost}로 맞췄습니다.`);
+      }
+    } catch (err) {
+      onLog(`SITE_DOMAIN 안내: ${err.message}`);
+    }
+  }
 
   onLog(reused ? "기존 배포를 확인합니다…" : "프로덕션 배포 시작…");
   const ready = await startOrWaitDeploy(token, teamId, project, projectName, repo, onLog, {
     reuseExisting: reused && !naverSiteVerification,
   });
   if (!domainInfo.alreadyConnected) {
-    await assignDomainAlias(token, teamId, ready.id || ready.uid, domain, onLog);
+    await assignDomainAlias(token, teamId, ready.id || ready.uid, publicHost, onLog);
+    if (publicHost !== domain) {
+      await assignDomainAlias(token, teamId, ready.id || ready.uid, domain, onLog);
+    }
   }
 
   const vercelHost = ready.url ? `https://${ready.url}` : `https://${projectName}.vercel.app`;
-  const siteUrl = `https://${domain}`;
-  const adminUrl = domainInfo.verified ? `https://${domain}/admin` : `${vercelHost}/admin`;
+  const siteUrl = `https://${publicHost}`;
+  const adminUrl = domainInfo.verified ? `https://${publicHost}/admin` : `${vercelHost}/admin`;
 
   if (naverSiteVerification) {
     onLog("네이버 메타 반영을 확인합니다…");
@@ -586,6 +689,7 @@ async function provisionSite(input, onLog = () => {}) {
   return {
     blogName,
     domain,
+    publicHost,
     projectName,
     projectId,
     vercelHost,
