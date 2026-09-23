@@ -1,5 +1,7 @@
 export { resolveVendorAddress, autoAddressFromKeyword } from "./auto-address";
+export { applyCopyOverride, parseCopyOverride } from "./copy-override";
 export { SCALP_TATTOO_V1 } from "./designs/scalp-tattoo-v1";
+export { enrichMainLandingCopy } from "./enrich";
 export { resolveMainLandingImages, isMainLandingImageUrl } from "./images";
 export { mainLandingEnabled, parseMainLandingConfig } from "./parse";
 export {
@@ -12,6 +14,7 @@ export {
   type MainDesignId,
   type MainLandingConfig,
   type MainLandingCopy,
+  type MainLandingCopyOverride,
   type MainLandingImageSlots,
   type MainLandingResolvedImages,
   type MainLandingSectionId,

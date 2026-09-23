@@ -1,3 +1,4 @@
+import { applyCopyOverride } from "./copy-override";
 import { buildScalpTattooV1Base } from "./designs/scalp-tattoo-v1";
 import type { MainLandingConfig, MainLandingCopy, MainLandingSectionId, MainLandingTheme } from "./types";
 
@@ -47,28 +48,34 @@ export function resolveVariationSeed(config: MainLandingConfig, siteName: string
 export function buildMainLandingCopy(config: MainLandingConfig, siteName: string): MainLandingCopy {
   const seed = resolveVariationSeed(config, siteName);
   const rand = mulberry32(hashSeed(seed));
-  const base = buildScalpTattooV1Base(config.vendor, siteName);
+  const rawBase = buildScalpTattooV1Base(config.vendor, siteName);
+  const base = applyCopyOverride(rawBase, config.copyOverride);
   const order = ORDERS[Math.floor(rand() * ORDERS.length)] || ORDERS[0];
   const theme = THEMES[Math.floor(rand() * THEMES.length)] || THEMES[0];
 
   const processSteps = [...base.processSteps];
-  if (rand() > 0.65 && processSteps.length > 2) {
+  if (!config.copyOverride?.processSteps && rand() > 0.65 && processSteps.length > 2) {
     const i = 1 + Math.floor(rand() * (processSteps.length - 1));
     const j = 1 + Math.floor(rand() * (processSteps.length - 1));
     [processSteps[i], processSteps[j]] = [processSteps[j], processSteps[i]];
   }
   const services = [...base.services];
-  if (rand() > 0.5) services.reverse();
+  if (!config.copyOverride?.services && rand() > 0.5) services.reverse();
   const reviews = [...base.reviews];
-  if (rand() > 0.45) {
+  if (!config.copyOverride?.reviews && rand() > 0.45) {
     const i = Math.floor(rand() * reviews.length);
     const j = Math.floor(rand() * reviews.length);
     [reviews[i], reviews[j]] = [reviews[j], reviews[i]];
   }
 
   const extra = String(config.prompt || "").trim();
-  const heroLead = extra ? `${base.heroLead} ${extra.slice(0, 140)}` : base.heroLead;
-  const aboutBody = extra && extra.length > 40 ? `${base.aboutBody} ${extra.slice(0, 100)}` : base.aboutBody;
+  const hasOverride = Boolean(config.copyOverride?.heroLead || config.copyOverride?.aboutBody);
+  const heroLead =
+    !hasOverride && extra ? `${base.heroLead} ${extra.slice(0, 140)}` : base.heroLead;
+  const aboutBody =
+    !hasOverride && extra && extra.length > 40
+      ? `${base.aboutBody} ${extra.slice(0, 100)}`
+      : base.aboutBody;
 
   return {
     ...base,

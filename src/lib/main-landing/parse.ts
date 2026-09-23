@@ -1,3 +1,4 @@
+import { parseCopyOverride } from "./copy-override";
 import {
   defaultMainLandingConfig,
   emptyMainLandingVendor,
@@ -54,6 +55,7 @@ export function parseMainLandingConfig(raw: unknown): MainLandingConfig {
   if (!raw || typeof raw !== "object") return fallback;
   const row = raw as Record<string, unknown>;
   const designId = resolveMainDesignId(row.designId);
+  const copyOverride = parseCopyOverride(row.copyOverride);
   return {
     enabled: row.enabled === true || row.enabled === "true" || row.enabled === 1 || row.enabled === "1",
     designId,
@@ -62,6 +64,8 @@ export function parseMainLandingConfig(raw: unknown): MainLandingConfig {
     slots: parseSlots(row.slots),
     prompt: trimStr(row.prompt),
     variationSeed: trimStr(row.variationSeed),
+    ...(copyOverride ? { copyOverride } : {}),
+    enrichedAt: trimStr(row.enrichedAt),
   };
 }
 

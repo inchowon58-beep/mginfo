@@ -33,6 +33,49 @@ export type MainLandingImageSlots = {
   contact?: string;
 };
 
+export type MainLandingPromise = { n: string; title: string; body: string };
+export type MainLandingStep = { title: string; body: string };
+export type MainLandingService = { title: string; body: string; tag?: string };
+export type MainLandingDirectorGroup = { title: string; items: string[] };
+export type MainLandingReview = { quote: string; name: string; course: string };
+
+/** Gemini「내용 보충」으로 채운 문장 오버라이드. 섹션 뼈대는 유지. */
+export type MainLandingCopyOverride = {
+  tagline?: string;
+  heroKicker?: string;
+  heroSubtitle?: string;
+  heroLead?: string;
+  heroHint?: string;
+  aboutKicker?: string;
+  aboutTitle?: string;
+  aboutBody?: string;
+  aboutPromises?: MainLandingPromise[];
+  processKicker?: string;
+  processTitle?: string;
+  processLead?: string;
+  processSteps?: MainLandingStep[];
+  servicesKicker?: string;
+  servicesTitle?: string;
+  servicesLead?: string;
+  services?: MainLandingService[];
+  galleryKicker?: string;
+  galleryTitle?: string;
+  galleryLead?: string;
+  directorKicker?: string;
+  directorTitle?: string;
+  directorLead?: string;
+  directorGroups?: MainLandingDirectorGroup[];
+  reviewsKicker?: string;
+  reviewsTitle?: string;
+  reviewsLead?: string;
+  reviews?: MainLandingReview[];
+  faqKicker?: string;
+  faqTitle?: string;
+  faqLead?: string;
+  faqs?: { q: string; a: string }[];
+  footerTagline?: string;
+};
+
 export type MainLandingConfig = {
   enabled: boolean;
   designId: MainDesignId;
@@ -42,6 +85,10 @@ export type MainLandingConfig = {
   /** 추가요청사항 — 없으면 기본 원고만 사용 */
   prompt: string;
   variationSeed: string;
+  /** 있으면 템플릿 문장 대신 이 카피로 표시 */
+  copyOverride?: MainLandingCopyOverride;
+  /** 내용 보충 시각 (ISO) */
+  enrichedAt?: string;
 };
 
 export type MainLandingResolvedImages = {
@@ -60,12 +107,6 @@ export type MainLandingSectionId =
   | "director"
   | "reviews"
   | "faq";
-
-export type MainLandingPromise = { n: string; title: string; body: string };
-export type MainLandingStep = { title: string; body: string };
-export type MainLandingService = { title: string; body: string; tag?: string };
-export type MainLandingDirectorGroup = { title: string; items: string[] };
-export type MainLandingReview = { quote: string; name: string; course: string };
 
 export type MainLandingTheme = {
   accent: string;
@@ -148,6 +189,8 @@ export function defaultMainLandingConfig(): MainLandingConfig {
     slots: {},
     prompt: "",
     variationSeed: "",
+    copyOverride: undefined,
+    enrichedAt: "",
   };
 }
 
