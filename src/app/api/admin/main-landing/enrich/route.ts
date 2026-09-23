@@ -33,7 +33,7 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         error:
-          "제미나이 API 키가 없습니다. 메인 사이트의 키 칸에 넣거나, 마스터 설정에 저장한 뒤 다시 눌러 주세요.",
+          "제미나이 API 키가 없습니다. 이 사이트 관리자 → 마스터 설정에서 키를 저장한 뒤 다시 시도하세요.",
       },
       { status: 400 }
     );
@@ -74,7 +74,7 @@ export async function POST(request: Request) {
     const enrichedAt = new Date().toISOString();
     let saved = baseConfig;
     await updateStore((s) => {
-      // 본문에 넣은 키는 사이트에 같이 저장 → 다음부터 마스터 설정 없이도 사용
+      // Studio bootstrap으로 넘어온 키만 저장. 관리자 내용 보충은 마스터 설정 키를 사용.
       if (typeof body.geminiApiKey === "string" && body.geminiApiKey.trim() && !body.geminiApiKey.includes("•")) {
         s.settings.geminiApiKey = body.geminiApiKey.trim();
       }

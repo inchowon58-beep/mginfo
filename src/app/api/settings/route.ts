@@ -31,7 +31,7 @@ export async function GET() {
       ...rest,
       geminiApiKey: master && geminiApiKey ? `${geminiApiKey.slice(0, 6)}••••${geminiApiKey.slice(-4)}` : "",
       geminiModel: master ? geminiModel : undefined,
-      hasKey: master ? Boolean(geminiApiKey) : undefined,
+      hasKey: Boolean(geminiApiKey),
       naverSiteVerification: master ? naverSiteVerification || "" : undefined,
       sitePassword: master ? sitePassword : undefined,
       publishBannedKeywords: master ? publishBannedKeywords || [] : undefined,

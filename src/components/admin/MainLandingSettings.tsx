@@ -10,7 +10,6 @@ import {
 
 export function MainLandingSettings() {
   const [cfg, setCfg] = useState<MainLandingConfig>(defaultMainLandingConfig());
-  const [geminiApiKey, setGeminiApiKey] = useState("");
   const [hasStoredKey, setHasStoredKey] = useState(false);
   const [busy, setBusy] = useState(false);
   const [enriching, setEnriching] = useState(false);
@@ -22,11 +21,10 @@ export function MainLandingSettings() {
       .then((r) => r.json())
       .then((data) => {
         setCfg(parseMainLandingConfig(data.settings?.mainLanding));
-        // 마스터가 아니면 hasKey가 안 올 수 있음 → 키 칸은 항상 입력 가능하게
-        setHasStoredKey(Boolean(data.settings?.hasKey));
-        if (typeof data.settings?.geminiApiKey === "string" && data.settings.geminiApiKey.includes("•")) {
-          setHasStoredKey(true);
-        }
+        setHasStoredKey(
+          Boolean(data.settings?.hasKey) ||
+            (typeof data.settings?.geminiApiKey === "string" && data.settings.geminiApiKey.includes("•"))
+        );
       })
       .catch(() => setError("설정을 불러오지 못했습니다."));
   }, []);
@@ -66,11 +64,6 @@ export function MainLandingSettings() {
     setError("");
     setMessage("");
     try {
-      const typedKey = geminiApiKey.trim();
-      if (!hasStoredKey && !typedKey) {
-        throw new Error("제미나이 API 키를 아래에 입력하세요. (마스터 설정에 넣었다면 키를 다시 붙여 넣어도 됩니다)");
-      }
-
       const saveRes = await fetch("/api/settings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -85,16 +78,12 @@ export function MainLandingSettings() {
         body: JSON.stringify({
           mainLanding: { ...cfg, enabled: true },
           enable: true,
-          ...(typedKey && !typedKey.includes("•") ? { geminiApiKey: typedKey } : {}),
         }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "내용 보충 실패");
       if (data.mainLanding) setCfg(parseMainLandingConfig(data.mainLanding));
-      if (typedKey && !typedKey.includes("•")) {
-        setHasStoredKey(true);
-        setGeminiApiKey("");
-      }
+      setHasStoredKey(true);
       setMessage(data.message || "메인 내용을 다르게 보충했습니다.");
     } catch (err) {
       setError(err instanceof Error ? err.message : "내용 보충 실패");
@@ -114,12 +103,22 @@ export function MainLandingSettings() {
         아래만 넣으면 기본 뼈대로 홈이 만들어집니다. 문장이 사이트마다 같으면{" "}
         <b>내용 보충</b>을 눌러 제미나이로 본문을 다시 씁니다(섹션 구조는 유지).
         <br />
+        제미나이 키는 <b>마스터 설정</b>에 저장된 키를 사용합니다.
+        <br />
         <b>문의 폼은 없습니다.</b> 카카오/전화만 노출됩니다.
         {hasEnriched && cfg.enrichedAt ? (
           <>
             <br />
             <span style={{ color: "#86efac" }}>
               내용 보충됨 · {new Date(cfg.enrichedAt).toLocaleString("ko-KR")}
+            </span>
+          </>
+        ) : null}
+        {!hasStoredKey ? (
+          <>
+            <br />
+            <span style={{ color: "#fbbf24" }}>
+              이 사이트 마스터 설정에 제미나이 키가 없습니다. 먼저 마스터 설정에 키를 저장하세요.
             </span>
           </>
         ) : null}
@@ -226,21 +225,6 @@ export function MainLandingSettings() {
         onChange={(e) => setCfg((prev) => ({ ...prev, prompt: e.target.value }))}
         rows={3}
         placeholder="예: 교육 문의 강조, 주차 안내 한 줄 등"
-      />
-
-      <h3 className="admin-subhead">내용 보충 (제미나이)</h3>
-      <p className="ml-field-hint" style={{ marginTop: 0 }}>
-        {hasStoredKey
-          ? "이 사이트에 키가 저장되어 있습니다. 바꾸려면 새 키를 입력하세요. 내용 보충 시 키도 함께 저장됩니다."
-          : "마스터 설정에 넣은 키가 이 사이트에 없으면 여기에도 같은 키를 넣으세요. 보충 시 이 사이트에 저장됩니다."}
-      </p>
-      <label>Gemini API Key</label>
-      <input
-        type="password"
-        value={geminiApiKey}
-        onChange={(e) => setGeminiApiKey(e.target.value)}
-        placeholder={hasStoredKey ? "저장됨 · 바꾸려면 새 키 입력" : "AIza..."}
-        autoComplete="off"
       />
 
       {error ? <p className="notice">{error}</p> : null}
