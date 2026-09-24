@@ -4,19 +4,21 @@ import { FormEvent, useEffect, useState } from "react";
 import { CategoryManager } from "@/components/admin/CategoryManager";
 import { HubMasterSettings } from "@/components/admin/HubMasterSettings";
 import { MainLandingSettings } from "@/components/admin/MainLandingSettings";
+import { HubPortalSettings } from "@/components/admin/HubPortalSettings";
 import { DEFAULT_GEMINI_MODEL, GEMINI_MODELS } from "@/lib/gemini-models";
 import { SITE_THEMES } from "@/lib/site-theme";
 import { DEFAULT_WRITING_TONE, WRITING_TONES, isWritingToneId, type WritingToneId } from "@/lib/writing-tone";
 import { FOOTER_DISCLAIMER_VARIANTS, randomFooterDisclaimer } from "@/lib/publish-disclaimer";
 import type { SiteThemeId } from "@/lib/types";
 
-type SettingsTab = "basic" | "category" | "site" | "main" | "master";
+type SettingsTab = "basic" | "category" | "site" | "main" | "portal" | "master";
 
 const TABS: { id: SettingsTab; label: string }[] = [
   { id: "basic", label: "기본설정" },
   { id: "category", label: "카테고리설정" },
   { id: "site", label: "블로그 디자인" },
   { id: "main", label: "메인 사이트" },
+  { id: "portal", label: "허브 포털" },
   { id: "master", label: "마스터설정" },
 ];
 
@@ -234,7 +236,7 @@ export default function SettingsPage() {
   return (
     <div className="settings-stack">
       <div className="admin-tabs" role="tablist" aria-label="설정 구분">
-        {TABS.map((item) => (
+        {TABS.filter((item) => item.id !== "portal" || opsHub).map((item) => (
           <button
             key={item.id}
             type="button"
@@ -353,6 +355,7 @@ export default function SettingsPage() {
       {tab === "category" ? <CategoryManager /> : null}
 
       {tab === "main" ? <MainLandingSettings /> : null}
+      {tab === "portal" ? <HubPortalSettings /> : null}
 
       {tab === "site" ? (
         <form className="admin-card admin-form" onSubmit={saveSite}>

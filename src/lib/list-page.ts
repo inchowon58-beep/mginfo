@@ -1,4 +1,4 @@
-export const PUBLIC_LIST_PAGE_SIZE = 12;
+export const PUBLIC_LIST_PAGE_SIZE = 30;
 
 export function parseListPage(raw?: string) {
   const n = Number(raw || 1);

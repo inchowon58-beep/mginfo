@@ -9,12 +9,14 @@ const NAV = [
   { href: "/admin/settings", label: "설정" },
   { href: "/admin/posts/new", label: "새 글 작성" },
   { href: "/admin/bulk", label: "대량발행예약" },
-  { href: "/admin/content-qa", label: "콘텐츠 QA" },
+  { href: "/admin/bulk-pilot", label: "소량 자동발행 모니터" },
+  { href: "/admin/content-qa", label: "글 품질 미리보기" },
   { href: "/admin/vendors", label: "광고업체정보설정" },
-  { href: "/admin/vendors/verified", label: "Verified 업체데이터" },
+  { href: "/admin/vendors/verified", label: "업체 검증 데이터" },
+  { href: "/admin/reference", label: "품종·공정 참고자료" },
   { href: "/admin/ops", label: "사이트 대장" },
   { href: "/admin/ops/board", label: "자유게시판 광고" },
-  { href: "/admin/ops/blueprints", label: "콘텐츠 Blueprint" },
+  { href: "/admin/ops/blueprints", label: "글 구성 재료" },
   { href: "/admin/posts", label: "글 목록" },
   { href: "/admin/banners", label: "메인 배너" },
 ];
@@ -27,8 +29,11 @@ function isActive(pathname: string, href: string) {
     return pathname === "/admin/posts" || (pathname.startsWith("/admin/posts/") && pathname !== "/admin/posts/new");
   }
   if (href === "/admin/password") return pathname.startsWith("/admin/password");
+  if (href === "/admin/bulk-pilot") return pathname.startsWith("/admin/bulk-pilot");
+  if (href === "/admin/bulk") return pathname.startsWith("/admin/bulk");
   if (href === "/admin/content-qa") return pathname.startsWith("/admin/content-qa");
   if (href === "/admin/vendors/verified") return pathname.startsWith("/admin/vendors/verified");
+  if (href === "/admin/reference") return pathname.startsWith("/admin/reference");
   if (href === "/admin/vendors") return pathname.startsWith("/admin/vendors") && !pathname.startsWith("/admin/vendors/verified");
   if (href === "/admin/ops/blueprints") return pathname.startsWith("/admin/ops/blueprints");
   if (href === "/admin/ops/board") return pathname.startsWith("/admin/ops/board");
@@ -39,15 +44,17 @@ function isActive(pathname: string, href: string) {
 function screenTitle(pathname: string) {
   if (pathname === "/admin") return "대시보드";
   if (pathname.startsWith("/admin/settings")) return "설정";
-  if (pathname.startsWith("/admin/content-qa")) return "콘텐츠 QA";
-  if (pathname.startsWith("/admin/vendors/verified")) return "Verified 업체데이터";
+  if (pathname.startsWith("/admin/content-qa")) return "글 품질 미리보기";
+  if (pathname.startsWith("/admin/vendors/verified")) return "업체 검증 데이터";
+  if (pathname.startsWith("/admin/reference")) return "품종·공정 참고자료";
   if (pathname.startsWith("/admin/vendors")) return "광고업체정보설정";
-  if (pathname.startsWith("/admin/ops/blueprints")) return "콘텐츠 Blueprint";
+  if (pathname.startsWith("/admin/ops/blueprints")) return "글 구성 재료";
   if (pathname.startsWith("/admin/ops/board")) return "자유게시판 광고";
   if (pathname === "/admin/ops") return "사이트 대장";
   if (pathname === "/admin/posts/new") return "새 글 작성";
   if (pathname.startsWith("/admin/posts/") && pathname !== "/admin/posts") return "글 수정";
   if (pathname === "/admin/posts") return "글 목록";
+  if (pathname.startsWith("/admin/bulk-pilot")) return "소량 자동발행 모니터";
   if (pathname.startsWith("/admin/bulk")) return "대량발행예약";
   if (pathname.startsWith("/admin/banners")) return "메인 배너";
   if (pathname.startsWith("/admin/password")) return "아이디/비밀번호설정";
@@ -73,7 +80,9 @@ export function AdminNav({ showOps = false }: { showOps?: boolean }) {
   const pathname = usePathname();
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
-  const items = showOps ? NAV : NAV.filter((item) => !item.href.startsWith("/admin/ops"));
+  const items = showOps
+    ? NAV
+    : NAV.filter((item) => !item.href.startsWith("/admin/ops"));
   const title = screenTitle(pathname);
 
   useEffect(() => {
@@ -111,6 +120,11 @@ export function AdminNav({ showOps = false }: { showOps?: boolean }) {
             {item.label}
           </Link>
         ))}
+        {showOps ? (
+          <Link href="/posts" target="_blank" rel="noreferrer">
+            블로그
+          </Link>
+        ) : null}
         <Link href="/" target="_blank">
           사이트 보기
         </Link>

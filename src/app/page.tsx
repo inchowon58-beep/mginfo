@@ -5,6 +5,7 @@ import { PartnerStrip } from "@/components/PartnerStrip";
 import { PostCard } from "@/components/PostCard";
 import { PromoBanner } from "@/components/PromoBanner";
 import { MainLandingPage } from "@/components/main-landing/MainLandingPage";
+import { HubPortalPage } from "@/components/hub-portal/HubPortalPage";
 import { NightHome } from "@/components/themes/NightHome";
 import { JournalHome } from "@/components/themes/JournalHome";
 import { QnaHome } from "@/components/themes/QnaHome";
@@ -22,15 +23,33 @@ import {
   parseMainLandingConfig,
   resolveMainLandingImages,
 } from "@/lib/main-landing";
+import { getHubPortalFeed, hubPortalEnabled } from "@/lib/hub-portal";
+import { isOpsHub } from "@/lib/ops-hub";
 import { visitSeed } from "@/lib/shuffle";
 import { siteUrl } from "@/lib/seo";
 import type { Metadata } from "next";
-
+import { Suspense } from "react";
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata(): Promise<Metadata> {
   const settings = await getSettings();
   const brand = siteBrand(settings);
+  if (hubPortalEnabled(settings) && (await isOpsHub())) {
+    return {
+      title: { absolute: `${brand.name} — 통합 콘텐츠` },
+      description: `${brand.name}에서 모은 최신 글과 지역·카테고리 콘텐츠`,
+      alternates: { canonical: siteUrl("/") },
+      robots: { index: true, follow: true },
+      openGraph: {
+        title: `${brand.name} — 통합 콘텐츠`,
+        description: brand.description,
+        url: siteUrl("/"),
+        siteName: brand.name,
+        locale: "ko_KR",
+        type: "website",
+      },
+    };
+  }
   const landing = parseMainLandingConfig(settings.mainLanding);
   if (landing.enabled) {
     const name = landing.vendor.name || brand.name;
@@ -79,6 +98,16 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function HomePage() {
   const settings = await getSettings();
+  if (hubPortalEnabled(settings) && (await isOpsHub())) {
+    const feed = await getHubPortalFeed();
+    return (
+      <SiteFrame bare hideBottomNav>
+        <Suspense fallback={<div style={{ padding: 40, color: "#eee" }}>불러오는 중…</div>}>
+          <HubPortalPage feed={feed} siteName={displaySiteName(settings.siteName)} settings={settings} />
+        </Suspense>
+      </SiteFrame>
+    );
+  }
   if (mainLandingEnabled(settings)) {
     const landing = parseMainLandingConfig(settings.mainLanding);
     const siteName = displaySiteName(settings.siteName);

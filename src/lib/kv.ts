@@ -3,6 +3,9 @@ const OPS_KEY = "infocs-ops-ledger";
 const HUB_BOARD_KEY = "infocs-hub-board";
 const CONTENT_BLUEPRINT_KEY = "infocs-content-blueprints";
 const VENDOR_PROFILE_KEY = "infocs-vendor-profiles";
+const REFERENCE_DATA_KEY = "infocs-reference-data";
+const BRAND_STUDIO_KEY = "infocs-brand-studio";
+const HUB_PORTAL_KEY = "infocs-hub-portal-feed";
 
 function redisConfig(): { url: string; token: string } | null {
   const url = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL || "";
@@ -138,4 +141,64 @@ export async function kvGetVendorProfilesJson<T>(): Promise<T | null> {
 export async function kvSetVendorProfilesJson(value: unknown): Promise<void> {
   if (!redisConfig()) throw new Error("Redis가 연결되어 있지 않습니다.");
   await redisCommand(["SET", VENDOR_PROFILE_KEY, JSON.stringify(value)]);
+}
+
+export async function kvGetReferenceDataJson<T>(): Promise<T | null> {
+  if (!redisConfig()) return null;
+  const result = await redisCommand(["GET", REFERENCE_DATA_KEY]);
+  if (result == null) return null;
+  if (typeof result === "object") return result as T;
+  if (typeof result === "string") {
+    try {
+      return JSON.parse(result) as T;
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
+export async function kvSetReferenceDataJson(value: unknown): Promise<void> {
+  if (!redisConfig()) throw new Error("Redis가 연결되어 있지 않습니다.");
+  await redisCommand(["SET", REFERENCE_DATA_KEY, JSON.stringify(value)]);
+}
+
+export async function kvGetBrandStudioJson<T>(): Promise<T | null> {
+  if (!redisConfig()) return null;
+  const result = await redisCommand(["GET", BRAND_STUDIO_KEY]);
+  if (result == null) return null;
+  if (typeof result === "object") return result as T;
+  if (typeof result === "string") {
+    try {
+      return JSON.parse(result) as T;
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
+export async function kvSetBrandStudioJson(value: unknown): Promise<void> {
+  if (!redisConfig()) throw new Error("Redis가 연결되어 있지 않습니다.");
+  await redisCommand(["SET", BRAND_STUDIO_KEY, JSON.stringify(value)]);
+}
+
+export async function kvGetHubPortalJson<T>(): Promise<T | null> {
+  if (!redisConfig()) return null;
+  const result = await redisCommand(["GET", HUB_PORTAL_KEY]);
+  if (result == null) return null;
+  if (typeof result === "object") return result as T;
+  if (typeof result === "string") {
+    try {
+      return JSON.parse(result) as T;
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
+export async function kvSetHubPortalJson(value: unknown): Promise<void> {
+  if (!redisConfig()) throw new Error("Redis가 연결되어 있지 않습니다.");
+  await redisCommand(["SET", HUB_PORTAL_KEY, JSON.stringify(value)]);
 }

@@ -11,6 +11,7 @@ import { DEFAULT_WRITING_TONE, isWritingToneId, pickRandomWritingTone } from "./
 import { DEFAULT_SITE_THEME, getSiteTheme, isSiteThemeId, pickRandomSiteTheme } from "./site-theme";
 import { defaultBulkPublish, normalizeBulkPublish } from "./bulk-publish";
 import { defaultMainLandingConfig, parseMainLandingConfig } from "./main-landing";
+import { defaultHubPortalConfig, parseHubPortalConfig } from "./hub-portal";
 import type { AdminPostRow, AdVendor, Banner, Category, Partner, Post, Settings, Store } from "./types";
 import { DEFAULT_CATEGORIES, SITE, withFreeBoard } from "./categories";
 import { decodeSlugParam } from "./slug";
@@ -73,6 +74,7 @@ function defaultSettings(): Settings {
     phone: "",
     email: branded ? "" : SITE.email,
     mainLanding: defaultMainLandingConfig(),
+    hubPortal: defaultHubPortalConfig(),
   };
 }
 
@@ -117,6 +119,9 @@ function normalize(parsed: Store): Store {
   parsed.settings = { ...defaultSettings(), ...parsed.settings };
   parsed.settings.mainLanding = parseMainLandingConfig(
     (parsed.settings as Settings).mainLanding ?? defaultMainLandingConfig()
+  );
+  parsed.settings.hubPortal = parseHubPortalConfig(
+    (parsed.settings as Settings).hubPortal ?? defaultHubPortalConfig()
   );
   const account = siteAccountFrom(parsed.settings);
   parsed.settings.siteUsername = account.username;

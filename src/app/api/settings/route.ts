@@ -17,6 +17,7 @@ import { isSiteThemeId } from "@/lib/site-theme";
 import { isWritingToneId } from "@/lib/writing-tone";
 import { normalizeHttpUrl } from "@/lib/vendor";
 import { parseMainLandingConfig } from "@/lib/main-landing";
+import { parseHubPortalConfig } from "@/lib/hub-portal";
 
 export async function GET() {
   if (!(await isAdminSession())) {
@@ -138,6 +139,9 @@ export async function POST(request: Request) {
       }
       if (body.mainLanding !== undefined) {
         s.settings.mainLanding = parseMainLandingConfig(body.mainLanding);
+      }
+      if (body.hubPortal !== undefined) {
+        s.settings.hubPortal = parseHubPortalConfig(body.hubPortal);
       }
     });
   } catch (err) {

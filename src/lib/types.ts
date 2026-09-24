@@ -1,4 +1,5 @@
 import type { MainLandingConfig } from "./main-landing/types";
+import type { HubPortalConfig } from "./hub-portal/types";
 
 export type CategorySlug = string;
 
@@ -199,6 +200,8 @@ export type Settings = {
   staffNoticeUpdatedAt?: string;
   /** Brand main landing (default off — existing magazine home unchanged). */
   mainLanding?: MainLandingConfig;
+  /** Hub-only clone aggregator portal home (default off). */
+  hubPortal?: HubPortalConfig;
 };
 
 export type BulkKeywordStatus = "queued" | "scheduled" | "processing" | "published" | "failed";

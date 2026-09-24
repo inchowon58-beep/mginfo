@@ -5,6 +5,9 @@ const OPS_PATH = "infocs-ops-ledger.json";
 const HUB_BOARD_PATH = "infocs-hub-board.json";
 const CONTENT_BLUEPRINT_PATH = "infocs-content-blueprints.json";
 const VENDOR_PROFILE_PATH = "infocs-vendor-profiles.json";
+const REFERENCE_DATA_PATH = "infocs-reference-data.json";
+const BRAND_STUDIO_PATH = "infocs-brand-studio.json";
+const HUB_PORTAL_PATH = "infocs-hub-portal-feed.json";
 
 export function hasBlobStore(): boolean {
   return Boolean(
@@ -74,4 +77,28 @@ export async function blobGetVendorProfilesJson<T>(): Promise<T | null> {
 
 export async function blobSetVendorProfilesJson(value: unknown): Promise<void> {
   return blobSetJson(value, VENDOR_PROFILE_PATH);
+}
+
+export async function blobGetReferenceDataJson<T>(): Promise<T | null> {
+  return blobGetJson<T>(REFERENCE_DATA_PATH);
+}
+
+export async function blobSetReferenceDataJson(value: unknown): Promise<void> {
+  return blobSetJson(value, REFERENCE_DATA_PATH);
+}
+
+export async function blobGetBrandStudioJson<T>(): Promise<T | null> {
+  return blobGetJson<T>(BRAND_STUDIO_PATH);
+}
+
+export async function blobSetBrandStudioJson(value: unknown): Promise<void> {
+  return blobSetJson(value, BRAND_STUDIO_PATH);
+}
+
+export async function blobGetHubPortalJson<T>(): Promise<T | null> {
+  return blobGetJson<T>(HUB_PORTAL_PATH);
+}
+
+export async function blobSetHubPortalJson(value: unknown): Promise<void> {
+  return blobSetJson(value, HUB_PORTAL_PATH);
 }

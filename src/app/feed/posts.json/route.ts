@@ -18,6 +18,7 @@ export async function GET() {
     description: buildPostSeoDescription(post),
     publishedAt: post.publishedAt || post.createdAt,
     updatedAt: post.updatedAt,
+    coverImage: post.coverImage || "",
     category: post.category,
     region: post.region || "",
     bodyPreview: htmlToCompareText(post.bodyHtml).slice(0, 800),
