@@ -1,6 +1,5 @@
 import { resolveArticleStyle } from "./article-style";
 import { parseKeywordList } from "./bulk-keywords";
-import { evenPublishSlots } from "./bulk-publish";
 import { parseFaqItems } from "./faq";
 import { FREE_BOARD_SLUG } from "./categories";
 import { generateArticle } from "./gemini";
@@ -23,6 +22,22 @@ import { ensureVendorSlots } from "./vendor-slots";
 import { pickRandomPostImages, mergeImageUrls } from "./image-pool";
 import { discoverWebFolderImages } from "./web-image-folder";
 
+/** Spread publish times evenly across [start, end]. Avoids midnight pile-up. */
+function evenPublishSlots(count: number, start: Date, end: Date): Date[] {
+  if (count <= 0) return [];
+  const startMs = start.getTime();
+  const endMs = Math.max(startMs + 60_000, end.getTime());
+  const span = endMs - startMs;
+  if (count === 1) {
+    return [new Date(startMs + Math.floor(span / 2))];
+  }
+  const slots: Date[] = [];
+  for (let i = 0; i < count; i += 1) {
+    const t = startMs + Math.floor(((i + 0.5) / count) * span);
+    slots.push(new Date(Math.min(endMs - 1_000, Math.max(startMs, t))));
+  }
+  return slots;
+}
 export type HubBoardResult = {
   siteId: string;
   domain: string;
