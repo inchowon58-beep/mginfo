@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { ARTICLE_STYLE_OPTIONS } from "@/lib/article-style";
 import { VendorPicker } from "@/components/admin/VendorPicker";
 import { MultiFileButton } from "@/components/admin/MultiFileButton";
@@ -135,14 +135,16 @@ function statusLabel(status: string) {
 
 function formatScheduleTime(iso?: string) {
   if (!iso) return "";
+  const ts = Date.parse(iso);
+  if (!Number.isFinite(ts)) return "";
   return new Intl.DateTimeFormat("ko-KR", {
     timeZone: "Asia/Seoul",
     month: "2-digit",
     day: "2-digit",
     hour: "2-digit",
     minute: "2-digit",
-    hourCycle: "h23",
-  }).format(new Date(iso));
+    hour12: false,
+  }).format(new Date(ts));
 }
 
 function seoulTodayKey() {
@@ -221,6 +223,8 @@ export function HubBoardAds() {
   const [listPage, setListPage] = useState(1);
   const [extras, setExtras] = useState<Campaign[]>([]);
   const [extraTexts, setExtraTexts] = useState<string[]>([]);
+  const formCardRef = useRef<HTMLFormElement | null>(null);
+  const draftingRef = useRef(false);
   const [today, setToday] = useState<{
     date: string;
     publishedToday: number;
@@ -255,6 +259,10 @@ export function HubBoardAds() {
         setMessage("오늘 새로 배정할 대기 키워드가 없거나, 이미 예약된 상태입니다.");
       }
     }
+    // Keep blank "새 광고" form — never let a stale load() yank back into an existing campaign.
+    if (draftingRef.current) {
+      return { sites: nextSites, campaigns: nextCampaigns };
+    }
     const keepId = preferredId;
     const selected =
       (keepId && nextCampaigns.find((row) => row.id === keepId)) ||
@@ -262,8 +270,9 @@ export function HubBoardAds() {
         row.keywords.some((k) => k.status === "queued" || k.status === "scheduled" || k.status === "processing")
       ) ||
       nextCampaigns[0];
-    if (selected) setForm(selected);
-    else setForm(emptyCampaign(nextSites.map((site) => site.id)));
+    if (selected) {
+      setForm(selected);
+    } else setForm(emptyCampaign(nextSites.map((site) => site.id)));
     return { sites: nextSites, campaigns: nextCampaigns };
   }
 
@@ -281,11 +290,13 @@ export function HubBoardAds() {
   );
 
   useEffect(() => {
-    if (!hubCatchupOn) return;
+    if (!hubCatchupOn || !form.id || draftingRef.current) return;
+    const campaignId = form.id;
     let cancelled = false;
     const tick = () => {
+      if (draftingRef.current || cancelled) return;
       fetch("/api/cron/hub-board", { method: "POST" })
-        .then(() => (cancelled ? null : load(form.id)))
+        .then(() => (cancelled || draftingRef.current ? null : load(campaignId)))
         .catch(() => undefined);
     };
     tick();
@@ -394,6 +405,7 @@ export function HubBoardAds() {
   }
 
   async function openCampaign(campaign: Campaign) {
+    draftingRef.current = false;
     setBusy(true);
     setText("");
     setExtras([]);
@@ -447,6 +459,7 @@ export function HubBoardAds() {
       setCampaigns(next);
       setMessage("광고를 삭제했습니다.");
       if (form.id === campaignId) {
+        draftingRef.current = false;
         if (next[0]) setForm(next[0]);
         else setForm(emptyCampaign(sites.map((site) => site.id)));
       }
@@ -482,12 +495,18 @@ export function HubBoardAds() {
   }
 
   function startNew() {
+    draftingRef.current = true;
     setForm(emptyCampaign(sites.map((site) => site.id)));
     setText("");
     setExtras([]);
     setExtraTexts([]);
     setError("");
-    setMessage("");
+    setMessage("새 광고를 작성 중입니다. 저장하면 목록에 추가됩니다.");
+    setActivePage(1);
+    setDonePage(1);
+    window.requestAnimationFrame(() => {
+      formCardRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
   }
 
   function addExtra() {
@@ -529,7 +548,8 @@ export function HubBoardAds() {
       setExtras([]);
       setExtraTexts([]);
       const savedId = String(data.campaigns?.[0]?.id || data.campaign?.id || form.id || "");
-      const fresh = await load();
+      draftingRef.current = false;
+      const fresh = await load(savedId || undefined);
       const saved = fresh.campaigns.find((row) => row.id === savedId) || data.campaign;
       if (saved) setForm(saved);
       const count = Array.isArray(data.campaigns) ? data.campaigns.length : 1;
@@ -564,7 +584,7 @@ export function HubBoardAds() {
             ? `오늘 분량 ${data.planned}건을 예약했습니다.`
             : "지금은 발행할 예약이 없습니다."
       );
-      await load(form.id);
+      await load(form.id || undefined);
     } catch (err) {
       setError(err instanceof Error ? err.message : "실행 실패");
     } finally {
@@ -615,7 +635,13 @@ export function HubBoardAds() {
         body: JSON.stringify({ campaignId: form.id, keywordId }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "발행 실패");
+      if (!res.ok) {
+        const tip = String(data.error || "");
+        if (tip.includes("마스터")) {
+          throw new Error("마스터 잠금이 풀렸습니다. 페이지를 새로고침한 뒤 마스터 비밀번호로 다시 열어 주세요.");
+        }
+        throw new Error(tip || "발행 실패");
+      }
       setMessage(`${data.keyword} → ${data.domain} 자유게시판에 등록했습니다.`);
       if (data.campaign) setForm(data.campaign);
       await load();
@@ -704,7 +730,7 @@ export function HubBoardAds() {
         <PageNav page={listPage} total={campaigns.length} onChange={setListPage} />
       </div>
 
-      <form className="admin-card admin-form" onSubmit={save}>
+      <form className="admin-card admin-form" onSubmit={save} ref={formCardRef}>
         <div className="admin-card-head">
           <div>
             <h2>{form.id ? "자유게시판 광고 수정" : "자유게시판 광고 등록"}</h2>
@@ -985,7 +1011,23 @@ export function HubBoardAds() {
             매일 자동발행
             <select
               value={form.schedule.enabled ? "on" : "off"}
-              onChange={(e) => setForm({ ...form, schedule: { ...form.schedule, enabled: e.target.value === "on" } })}
+              onChange={(e) => {
+                const enabled = e.target.value === "on";
+                setForm({ ...form, schedule: { ...form.schedule, enabled } });
+                if (!form.id) {
+                  setMessage(
+                    enabled
+                      ? "자동발행을 켰습니다. 아래 「저장」을 눌러야 cron에 반영됩니다."
+                      : "자동발행을 껐습니다. 「저장」을 눌러 반영하세요."
+                  );
+                } else {
+                  setMessage(
+                    enabled
+                      ? "자동발행을 켰습니다. 「저장」을 눌러야 오늘 예약·cron에 반영됩니다."
+                      : "자동발행을 껐습니다. 「저장」을 눌러 반영하세요."
+                  );
+                }
+              }}
             >
               <option value="on">켜기</option>
               <option value="off">끄기</option>

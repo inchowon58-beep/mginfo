@@ -1,6 +1,6 @@
 import { resolveArticleStyle } from "./article-style";
 import { parseKeywordList } from "./bulk-keywords";
-import { randomPublishSlots } from "./bulk-publish";
+import { evenPublishSlots } from "./bulk-publish";
 import { parseFaqItems } from "./faq";
 import { FREE_BOARD_SLUG } from "./categories";
 import { generateArticle } from "./gemini";
@@ -343,12 +343,32 @@ export function reclaimStaleHubKeywords(campaign: HubBoardCampaign, today: strin
   };
 }
 
-/** Publish window through end of Seoul day (not 23:00 sharp), so midnight rollover still plans. */
+/** Publish window from startHour through 23:59 KST (never land on next-day 00:00). */
 function hubSeoulWindow(dateKey: string, startHour: number) {
   const start = new Date(`${dateKey}T${String(startHour).padStart(2, "0")}:00:00+09:00`);
-  const dayStart = new Date(`${dateKey}T00:00:00+09:00`);
-  const end = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
+  const end = new Date(`${dateKey}T23:59:00+09:00`);
   return { start, end };
+}
+
+function seoulHourMinute(iso: string) {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Seoul",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(new Date(iso));
+  const hour = Number(parts.find((p) => p.type === "hour")?.value || "0");
+  const minute = Number(parts.find((p) => p.type === "minute")?.value || "0");
+  return { hour, minute };
+}
+
+/** True when a scheduled time is stuck at/near Seoul midnight (legacy pile-up). */
+function isMidnightStuck(iso?: string) {
+  if (!iso) return true;
+  const ts = Date.parse(iso);
+  if (!Number.isFinite(ts)) return true;
+  const { hour, minute } = seoulHourMinute(iso);
+  return hour === 0 && minute <= 5;
 }
 
 export function hubTodayProgress(campaign: HubBoardCampaign, now = new Date()) {
@@ -420,8 +440,26 @@ export function planHubCampaign(
       },
     };
   }
-  const remaining = Math.max(0, campaign.dailyLimit - hubUsedTodayQuota(campaign, today));
-  const queued = shuffleCopy(campaign.keywords.filter((item) => item.status === "queued"));
+  const keywords = campaign.keywords.map((item) => ({ ...item }));
+
+  // Re-slot today's future reservations stuck at Seoul 00:00 (legacy midnight pile-up).
+  const rescheduleIds = new Set<string>();
+  for (const item of keywords) {
+    if (item.status !== "scheduled") continue;
+    if (!item.scheduledAt || seoulDateKey(item.scheduledAt) !== today) continue;
+    const dueAt = Date.parse(item.scheduledAt);
+    if (!Number.isFinite(dueAt) || dueAt <= now.getTime()) continue;
+    if (!isMidnightStuck(item.scheduledAt)) continue;
+    item.status = "queued";
+    item.scheduledAt = undefined;
+    item.siteId = undefined;
+    item.domain = undefined;
+    item.error = undefined;
+    rescheduleIds.add(item.id);
+  }
+
+  const remaining = Math.max(0, campaign.dailyLimit - hubUsedTodayQuota({ ...campaign, keywords }, today));
+  const queued = shuffleCopy(keywords.filter((item) => item.status === "queued"));
   const take = Math.min(remaining, queued.length);
   if (!take) {
     return {
@@ -429,14 +467,14 @@ export function planHubCampaign(
       reason: remaining <= 0 ? ("limit" as const) : ("empty" as const),
       campaign: {
         ...campaign,
+        keywords,
         schedule: { ...campaign.schedule, planDate: today },
-        updatedAt: reclaimed.reclaimed ? now.toISOString() : campaign.updatedAt,
+        updatedAt: reclaimed.reclaimed || rescheduleIds.size ? now.toISOString() : campaign.updatedAt,
       },
     };
   }
   const windowStart = now > start ? now : start;
-  const slots = randomPublishSlots(take, windowStart, end);
-  const keywords = campaign.keywords.map((item) => ({ ...item }));
+  const slots = evenPublishSlots(take, windowStart, end);
   queued.slice(0, take).forEach((item, i) => {
     const found = keywords.find((row) => row.id === item.id);
     if (!found) return;
