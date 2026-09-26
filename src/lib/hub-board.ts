@@ -457,14 +457,16 @@ export function planHubCampaign(
   }
   const keywords = campaign.keywords.map((item) => ({ ...item }));
 
-  // Re-slot today's future reservations stuck at Seoul 00:00 (legacy midnight pile-up).
+  // Re-slot legacy midnight piles: today 00:00 (past or future) and next-day 00:00
+  // from the old window end (dayStart + 24h). Those never re-planned when we only
+  // looked at "today's future" slots.
   const rescheduleIds = new Set<string>();
   for (const item of keywords) {
     if (item.status !== "scheduled") continue;
-    if (!item.scheduledAt || seoulDateKey(item.scheduledAt) !== today) continue;
-    const dueAt = Date.parse(item.scheduledAt);
-    if (!Number.isFinite(dueAt) || dueAt <= now.getTime()) continue;
-    if (!isMidnightStuck(item.scheduledAt)) continue;
+    if (!item.scheduledAt || !isMidnightStuck(item.scheduledAt)) continue;
+    const day = seoulDateKey(item.scheduledAt);
+    // Yesterday+ is reclaimed above; keep releasing today/tomorrow midnight leftovers.
+    if (!day || day < today) continue;
     item.status = "queued";
     item.scheduledAt = undefined;
     item.siteId = undefined;

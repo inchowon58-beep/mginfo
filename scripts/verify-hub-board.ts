@@ -192,6 +192,76 @@ assert(
   "new slots land on today's Seoul calendar day"
 );
 
+// Old clamp put leftovers at next-day 00:00 KST (= 15:00Z prior day). Those must be released and re-spread.
+const midnightPile = sample({
+  dailyLimit: 4,
+  schedule: { enabled: true, startHour: 1, endHour: 23, planDate: "2026-09-14" },
+  keywords: [
+    {
+      id: "done",
+      keyword: "이미발행",
+      status: "published",
+      publishedAt: "2026-09-14T02:00:00.000Z",
+    },
+    {
+      id: "mid1",
+      keyword: "자정1",
+      status: "scheduled",
+      scheduledAt: "2026-09-14T15:00:00.000Z", // 09-15 00:00 KST
+    },
+    {
+      id: "mid2",
+      keyword: "자정2",
+      status: "scheduled",
+      scheduledAt: "2026-09-14T15:00:00.000Z",
+    },
+    {
+      id: "mid3",
+      keyword: "자정3",
+      status: "scheduled",
+      scheduledAt: "2026-09-14T15:00:00.000Z",
+    },
+  ],
+});
+const redistributed = planHubCampaign(midnightPile, sites, now);
+assert(redistributed.planned === 3, "next-day 00:00 pile is released and re-planned");
+const midSlots = redistributed.campaign.keywords
+  .filter((row) => row.id.startsWith("mid") && row.status === "scheduled")
+  .map((row) => row.scheduledAt || "")
+  .sort();
+assert(midSlots.length === 3, "three midnight leftovers become scheduled again");
+assert(
+  midSlots.every((iso) => {
+    const parts = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Seoul",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).formatToParts(new Date(iso));
+    const y = parts.find((p) => p.type === "year")?.value;
+    const m = parts.find((p) => p.type === "month")?.value;
+    const d = parts.find((p) => p.type === "day")?.value;
+    return `${y}-${m}-${d}` === "2026-09-14";
+  }),
+  "re-spread slots stay on today's Seoul calendar day"
+);
+assert(
+  midSlots.every((iso) => {
+    const parts = new Intl.DateTimeFormat("en-GB", {
+      timeZone: "Asia/Seoul",
+      hour: "2-digit",
+      minute: "2-digit",
+      hourCycle: "h23",
+    }).formatToParts(new Date(iso));
+    const hour = Number(parts.find((p) => p.type === "hour")?.value || "0");
+    return hour !== 0;
+  }),
+  "re-spread slots are not stuck at Seoul midnight"
+);
+assert(new Set(midSlots).size >= 2, "even spread does not pile every slot on one timestamp");
+const midTimes = midSlots.map((iso) => new Date(iso).getTime());
+assert(midTimes[0] < midTimes[midTimes.length - 1] || midSlots.length === 1, "slots are ordered across the window");
+
 const assigned = assignNextSite(
   sample({ siteIds: ["s1", "s2"], nextSiteIndex: 0 }),
   { id: "k", keyword: "랜덤", status: "queued" },
