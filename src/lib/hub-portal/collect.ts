@@ -39,7 +39,10 @@ function mapRemotePost(
   if (!url.startsWith("http") || !title) return null;
   const category = String(row.category || "").trim() || "life";
   const regionRaw = String(row.region || "").trim();
-  const regionKey = normalizeRegionKey(regionRaw) || normalizeRegionKey(title);
+  const regionKey =
+    normalizeRegionKey(regionRaw) ||
+    normalizeRegionKey(title) ||
+    normalizeRegionKey(String(row.description || row.bodyPreview || "").trim());
   return {
     id: `${meta.domain}:${String(row.id || url)}`,
     url,
@@ -72,7 +75,11 @@ async function collectHubOwnPosts(): Promise<HubPortalPost[]> {
   const domain = SITE_ORIGIN.replace(/^https:\/\//, "");
   return posts.slice(0, 50).map((post) => {
     const regionRaw = String(post.region || "").trim();
-    const regionKey = normalizeRegionKey(regionRaw) || normalizeRegionKey(post.title);
+    const regionKey =
+      normalizeRegionKey(regionRaw) ||
+      normalizeRegionKey(post.title) ||
+      normalizeRegionKey(String(post.focusKeyword || "").trim()) ||
+      normalizeRegionKey(buildPostSeoDescription(post).slice(0, 220));
     const category = String(post.category || "life");
     return {
       id: `hub:${post.id}`,

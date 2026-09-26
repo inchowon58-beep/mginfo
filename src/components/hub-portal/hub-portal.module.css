@@ -272,13 +272,24 @@
 
 .mainHead h1 {
   margin: 0;
-  font-size: 1.55rem;
+  font-size: clamp(1.35rem, 2.6vw, 1.75rem);
   letter-spacing: -0.03em;
+  line-height: 1.3;
+  word-break: keep-all;
 }
 
-.mainHead p {
-  margin: 6px 0 0;
+.mainLead {
+  margin: 10px 0 0;
   color: var(--hp-muted);
+  font-size: 0.98rem;
+  line-height: 1.55;
+  word-break: keep-all;
+}
+
+.mainMeta {
+  margin: 10px 0 0;
+  color: rgba(243, 239, 228, 0.5);
+  font-size: 0.86rem;
 }
 
 .grid {

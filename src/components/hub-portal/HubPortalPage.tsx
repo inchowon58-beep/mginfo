@@ -3,13 +3,15 @@
 import { useMemo } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { CategoryIcon } from "@/components/CategoryIcon";
-import { HUB_PORTAL_REGIONS } from "@/lib/hub-portal/regions";
+import { HUB_PORTAL_REGIONS, resolvePostRegionKey } from "@/lib/hub-portal/regions";
 import type { HubPortalFeed, HubPortalPost } from "@/lib/hub-portal/types";
 import type { Settings } from "@/lib/types";
 import { HubPortalChrome } from "./HubPortalChrome";
 import styles from "./hub-portal.module.css";
 
 const PAGE_SIZE = 30;
+const PORTAL_HEADLINE = "인포씨에스 매거진 - 블로그 광고 사이트 통합 콘텐츠";
+const PORTAL_LEAD = "전국의 웹 블로그 사이트 상위노출 포스팅을 확인해보세요.";
 
 function formatWhen(iso: string) {
   const ts = Date.parse(iso);
@@ -76,7 +78,7 @@ export function HubPortalPage({
 
   const filtered = useMemo(() => {
     return feed.posts.filter((post) => {
-      if (region !== "all" && post.region !== region) return false;
+      if (region !== "all" && resolvePostRegionKey(post) !== region) return false;
       if (category !== "all" && post.category !== category) return false;
       return true;
     });
@@ -109,8 +111,9 @@ export function HubPortalPage({
   return (
     <HubPortalChrome feed={feed} siteName={siteName} settings={settings} active="posts">
       <div className={styles.mainHead}>
-        <h1>추천 콘텐츠</h1>
-        <p>
+        <h1>{PORTAL_HEADLINE}</h1>
+        <p className={styles.mainLead}>{PORTAL_LEAD}</p>
+        <p className={styles.mainMeta}>
           {categoryActiveLabel}
           {regionLabel ? ` · ${regionLabel}` : ""} · {filtered.length}개
         </p>

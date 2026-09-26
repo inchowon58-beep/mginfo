@@ -36,13 +36,13 @@ export async function generateMetadata(): Promise<Metadata> {
   const brand = siteBrand(settings);
   if (hubPortalEnabled(settings) && (await isOpsHub())) {
     return {
-      title: { absolute: `${brand.name} — 통합 콘텐츠` },
-      description: `${brand.name}에서 모은 최신 글과 지역·카테고리 콘텐츠`,
+      title: { absolute: "인포씨에스 매거진 - 블로그 광고 사이트 통합 콘텐츠" },
+      description: "전국의 웹 블로그 사이트 상위노출 포스팅을 확인해보세요.",
       alternates: { canonical: siteUrl("/") },
       robots: { index: true, follow: true },
       openGraph: {
-        title: `${brand.name} — 통합 콘텐츠`,
-        description: brand.description,
+        title: "인포씨에스 매거진 - 블로그 광고 사이트 통합 콘텐츠",
+        description: "전국의 웹 블로그 사이트 상위노출 포스팅을 확인해보세요.",
         url: siteUrl("/"),
         siteName: brand.name,
         locale: "ko_KR",

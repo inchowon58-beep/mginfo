@@ -1,11 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { CategoryIcon } from "@/components/CategoryIcon";
 import { displaySiteName, footerBizLines } from "@/lib/categories";
-import { HUB_PORTAL_REGIONS } from "@/lib/hub-portal/regions";
+import { HUB_PORTAL_REGIONS, resolvePostRegionKey } from "@/lib/hub-portal/regions";
 import type { HubPortalFeed } from "@/lib/hub-portal/types";
 import { resolveFooterDisclaimer } from "@/lib/publish-disclaimer";
 import type { Settings } from "@/lib/types";
@@ -56,9 +56,19 @@ export function HubPortalChrome({
     setMenuOpen(false);
   }
 
+  const regionCounts = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const post of feed.posts) {
+      const key = resolvePostRegionKey(post);
+      if (!key) continue;
+      map.set(key, (map.get(key) || 0) + 1);
+    }
+    return map;
+  }, [feed.posts]);
+
   const regionChips = HUB_PORTAL_REGIONS.map((row) => ({
     ...row,
-    count: row.key === "all" ? feed.posts.length : feed.regions.find((r) => r.key === row.key)?.count || 0,
+    count: row.key === "all" ? feed.posts.length : regionCounts.get(row.key) || 0,
   }));
 
   function CategoryList({ onPick }: { onPick?: () => void }) {
