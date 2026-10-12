@@ -338,6 +338,10 @@ export async function publishHubKeyword(campaignId: string, keywordId: string) {
 }
 
 export async function publishDueHubBoard(limit = HUB_TICK_SOLO, totalCap?: number) {
+  const { isPublishingPaused } = await import("./publishing-paused");
+  if (isPublishingPaused()) {
+    return { planned: 0, processed: 0, results: [] as { keyword: string; ok: boolean; domain?: string; error?: string }[] };
+  }
   const sites = await getOpsSites();
   let campaigns = await getHubCampaigns();
   let planned = 0;

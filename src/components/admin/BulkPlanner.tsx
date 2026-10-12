@@ -295,12 +295,8 @@ export function BulkPlanner({
   }
 
   useEffect(() => {
-    if (!schedule.enabled) return;
-    void runTick();
-    const timer = window.setInterval(() => {
-      fetch("/api/cron/bulk-publish", { method: "POST" }).catch(() => undefined);
-    }, 15 * 60 * 1000);
-    return () => window.clearInterval(timer);
+    // 발행 일시중지: 관리자 화면 catch-up 폴링도 끄고 크론 호출 비용을 막는다.
+    return;
   }, [schedule.enabled]);
 
   return (
